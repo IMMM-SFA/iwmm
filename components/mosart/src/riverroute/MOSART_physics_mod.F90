@@ -72,21 +72,33 @@ MODULE MOSART_physics_mod
        if ( ctlSubwWRM%ReturnFlowFlag > 0) then
           call insert_returnflow_soilcolumn
        endif
-
        !call readPotentialEvap(trim(theTime))
        if ( is_new_month() ) then
-          if (masterproc) write(iulog,*) trim(subname),' updating monthly data at ',yr,mon,day,tod
-
-          ! presently the demand is hardcoded at a monthly time step else need to
-          ! be moved out of this if loopon first time step of the month
+         if (masterproc) write(iulog,*) trim(subname),' updating monthly data at ',yr,mon,day,tod
+         if (ctlSubwWRM%ExternalDemandFlag > 0) then
           call WRM_readDemand()
-          call WRM_computeRelease()
+         end if 
+         call WRM_computeRelease() !! about regulation
+       end if
 
+        if (ctlSubwWRM%ExtractionFlag > 0) then 
+         do iunit=rtmCTL%begr,rtmCTL%endr
+           if (ctlSubwWRM%ExternalDemandFlag == 0) then  ! if demand is from ELM, reset the demand0 every timestep
+             StorWater%demand0(iunit) = 0
+           endif
+            do nt=1,nt_rtm  
+              if (TUnit%mask(iunit) > 0) then
+      if (ctlSubwWRM%ExternalDemandFlag == 0) then  ! if demand is from ELM
+                 StorWater%demand0(iunit) = StorWater%demand0(iunit) - TRunoff%qdem(iunit,nt) * TUnit%area(iunit) * TUnit%frac(iunit)
+      endif
+              endif
+            enddo  
+          enddo
        end if
        StorWater%demand = StorWater%demand0 * Tctl%DeltaT
        !supply is set to zero in RtmMod so it can be accumulated there for the budget
        !StorWater%supply = 0._r8
-       StorWater%deficit =0._r8
+       !StorWater%deficit =0._r8
     endif
 #endif
 

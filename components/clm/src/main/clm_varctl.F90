@@ -124,7 +124,14 @@ module clm_varctl
   !----------------------------------------------------------
 
   ! do not irrigate by default
-  logical, public :: irrigate = .false.            
+  logical, public :: irrigate = .false.        
+
+  !----------------------------------------------------------
+  ! Coupling with MOSART
+  !----------------------------------------------------------
+
+  ! True is 2way, false is 1way  added by Tian Apr 2018
+  logical, public :: TwoWayCouplingFlag = .false.
 
   !----------------------------------------------------------
   ! Landunit logic

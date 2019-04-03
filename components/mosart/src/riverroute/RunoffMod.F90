@@ -71,6 +71,7 @@ module RunoffMod
      real(r8), pointer :: fthresh(:)       ! RTM water flood threshold
      real(r8), pointer :: inundwf(:)       ! Inundation floodplain water volume (m3)
      real(r8), pointer :: inundhf(:)       ! Inundation floodplain water depth (m)
+     real(r8), pointer :: inundff(:)       ! Inundation floodplain water area fraction (no unit) added by Tian Dec 2017
 
      !    - restarts
      real(r8), pointer :: wh(:,:)          ! MOSART hillslope surface water storage (m)
@@ -311,6 +312,7 @@ module RunoffMod
      real(r8), pointer :: tevap(:,:)   ! evaporation, [m/s]
      real(r8), pointer :: etin(:,:)    ! lateral inflow from hillslope, including surface and subsurface runoff generation components, [m3/s]
      real(r8), pointer :: etout(:,:)   ! discharge from sub-network into the main reach, [m3/s]          ( Note: outflow is negative. --Inund. )
+     real(r8), pointer :: qdem(:,:)    ! irrigation demand [m/s] !added by Yuna 1/29/2018
 
      ! main channel
      !! states
@@ -354,6 +356,7 @@ module RunoffMod
     !real(r8), pointer :: yr_ini(:)     ! Channel water depth at beginning of step (m).
     real(r8), pointer :: wf_ini(:)      ! Floodplain water volume at beginning of step (m^3).
     real(r8), pointer :: hf_ini(:)      ! Floodplain max water depth (i.e., elevation difference between water level and channel banktop) at beginning of step (m).
+    real(r8), pointer :: ff_ini(:)      ! Floodplain water area fraction at beginning of step (dimensionless). added by Tian Dec 2017
     real(r8), pointer :: se_rf(:)       ! Amount of channel--floodplain exchange (positive: flow from channel to floodplain; vice versa ) (m^3).
     real(r8), pointer :: ff_fp(:)       ! = area of inundated floodplain (not including channel area) divided by the computation-unit total area (dimensionless).
     real(r8), pointer :: fa_fp(:)       ! Area of inundated floodplain (not including channel area) (m^2).    
@@ -416,6 +419,7 @@ contains
              rtmCTL%routletg(begr:endr),          &
              rtmCTL%inundwf(begr:endr),           &
              rtmCTL%inundhf(begr:endr),           &
+             rtmCTL%inundff(begr:endr),           &   ! added by Tian Dec 2017
              rtmCTL%runofflnd_nt1(begr:endr),     &
              rtmCTL%runofflnd_nt2(begr:endr),     &
              rtmCTL%runoffocn_nt1(begr:endr),     &
@@ -474,6 +478,7 @@ contains
     rtmCTL%direct(:,:)     = 0._r8
     rtmCTL%inundwf(:)      = 0._r8
     rtmCTL%inundhf(:)      = 0._r8
+    rtmCTL%inundff(:)      = 0._r8  ! added by Tian Dec 2017
 
     rtmCTL%qsur(:,:)        = 0._r8
     rtmCTL%qsub(:,:)        = 0._r8

@@ -15,7 +15,7 @@ MODULE WRM_modules
                               MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
   use RtmTimeManager , only : get_curr_date
 #if (1 == 0)
-  use MOSART_physics_mod, only : updatestate_hillslope,	updatestate_subnetwork,	&
+  use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel, hillsloperouting, &
                                  subnetworkrouting, mainchannelrouting
   use rof_cpl_indices, only : nt_rtm
@@ -210,6 +210,7 @@ MODULE WRM_modules
      if (check_local_budget) then
         budget = Trunoff%erlateral(iunit,nt_nliq)*TheDeltaT + StorWater%supply(iunit)
      endif
+     ! erlateral is in m3/s, and flow_vol is in m3. (by Tian)
 
      flow_vol = Trunoff%erlateral(iunit,nt_nliq) * TheDeltaT
 
@@ -223,6 +224,7 @@ MODULE WRM_modules
         flow_vol = 0._r8
      end if 
 ! dwt is not updated because extraction is taken from water getting out of subnetwork channel routing only
+! flow is updated by demand/supply and converted back to m3/2 (by Tian)
 
      Trunoff%erlateral(iunit,nt_nliq) = flow_vol / TheDeltaT
 
@@ -266,8 +268,15 @@ MODULE WRM_modules
         StorWater%supply(iunit)= StorWater%supply(iunit) + flow_vol
         StorWater%demand(iunit)= StorWater%demand(iunit) - flow_vol
         flow_vol = 0._r8
-     end if
+     endif
 
+     ! debug (N. Sun)
+     if (StorWater%demand(iunit)>0 .and. iunit==1175) then
+        write(iulog,*) ' subnetwork supply = m3', iunit, StorWater%supply(iunit)
+        write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
+     endif     ! debug (N. Sun)
+        
+  
      !Trunoff%etin(iunit,nt_nliq) = flow_vol / (TheDeltaT)
      Trunoff%wt(iunit,nt_nliq) = flow_vol 
 
@@ -325,6 +334,12 @@ MODULE WRM_modules
               write(iulog,*) subname,"ERROR with extraction from main channel, ",iunit, Trunoff%wr(iunit,nt_nliq), StorWater%demand(iunit)
            endif
         endif
+     endif
+
+     ! debug (N. Sun)
+     if (StorWater%demand(iunit)>0 .and. iunit==1175) then
+        write(iulog,*) ' channel supply = m3', iunit, StorWater%supply(iunit)
+        write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
      endif
 
      if (check_local_budget) then

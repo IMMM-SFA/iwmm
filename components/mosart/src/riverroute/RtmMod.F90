@@ -391,17 +391,17 @@ contains
     Tctl%DLevelR       = DLevelR
 
 #ifdef INCLUDE_INUND
-    Tctl%OPT_inund = OPT_inund
-    Tctl%OPT_trueDW = OPT_trueDW
-    Tctl%OPT_calcNr = OPT_calcNr
-    Tctl%nr_max = nr_max
-    Tctl%nr_min = nr_min
-    Tctl%nr_uniform = nr_uniform
-    Tctl%rdepth_max = rdepth_max
-    Tctl%rdepth_min = rdepth_min
-    Tctl%rwidth_max = rwidth_max
-    Tctl%rwidth_min = rwidth_min
-    Tctl%rslp_assume = rslp_assume
+    Tctl%OPT_inund = OPT_inund     !
+    Tctl%OPT_trueDW = OPT_trueDW   ! diffusion wave method
+    Tctl%OPT_calcNr = OPT_calcNr   ! method to calculate channel Manning
+    Tctl%nr_max = nr_max           ! Max Manning coefficient
+    Tctl%nr_min = nr_min           ! Min Manning coefficient
+    Tctl%nr_uniform = nr_uniform   ! uniform Manning for all channels
+    Tctl%rdepth_max = rdepth_max   ! Max channel depth
+    Tctl%rdepth_min = rdepth_min   ! Min channel depth
+    Tctl%rwidth_max = rwidth_max   ! Max channel width
+    Tctl%rwidth_min = rwidth_min   ! Min channel width
+    Tctl%rslp_assume = rslp_assume ! assumed riverbed slope if input slope<=0
     Tctl%minL_tribRouting = minL_tribRouting
     Tctl%OPT_elevProf = OPT_elevProf
     Tctl%npt_elevProf = npt_elevProf
@@ -769,25 +769,31 @@ contains
     nrof = 0
     nout = 0
     nmos = 0
+    ! over all MOSART grid cells
     do nr=1,rtmlon*rtmlat
+       ! if ocean outlet from land
        if (gmask(nr) == 3) then
           nout = nout + 1
           nbas = nbas + 1
           nmos = nmos + 1
           nrof = nrof + 1
+       ! if ocean
        elseif (gmask(nr) == 2) then
           nbas = nbas + 1
           nrof = nrof + 1
+       ! if land
        elseif (gmask(nr) == 1) then
           nmos = nmos + 1
           nrof = nrof + 1
        endif
     enddo
+
+    ! N.Sun
     if (masterproc) then
-       write(iulog,*) 'Number of outlet basins = ',nout
-       write(iulog,*) 'Number of total  basins = ',nbas
-       write(iulog,*) 'Number of mosart points = ',nmos
-       write(iulog,*) 'Number of runoff points = ',nrof
+       write(iulog,*) 'Number of outlet basins (if ocean) = ',nout
+       write(iulog,*) 'Number of total  basins (either ocean or land-ocean outlet) = ',nbas
+       write(iulog,*) 'Number of mosart points (either land or land-ocean outlet) = ',nmos
+       write(iulog,*) 'Number of runoff points (all grids)= ',nrof
     endif
 
     !-------------------------------------------------------
@@ -1585,8 +1591,12 @@ contains
        ! If inundation scheme is turned on :
        if ( Tctl%OPT_inund .eq. 1 ) then
          !TRunoff%wf_ini(:) = rtmCTL%wf(:, 1)
+         ! Innudation floodplain water volume (m3)
          TRunoff%wf_ini(:) = rtmCTL%inundwf(:)
+         ! Inundation floodplain water depth (m)
          TRunoff%hf_ini(:) = rtmCTL%inundhf(:)
+         ! Inundation floodplain fraction      ! added by Tian
+         TRunoff%ff_ini(:) = rtmCTL%inundff(:)
        end if
 #endif
 
@@ -1641,6 +1651,7 @@ contains
           if ( Tctl%OPT_inund .eq. 1 ) then
             rtmCTL%inundwf(nr) = 0._r8
             rtmCTL%inundhf(nr) = 0._r8
+            rtmCTL%inundff(nr) = 0._r8   ! added by Tian Dec 2017
           end if
 
         else
@@ -1652,6 +1663,7 @@ contains
           if ( Tctl%OPT_inund .eq. 1 ) then
             rtmCTL%inundwf(nr) = 0._r8
             rtmCTL%inundhf(nr) = 0._r8
+            rtmCTL%inundff(nr) = 0._r8   ! added by Tian Dec 2017
           end if
 
         end if
@@ -1671,6 +1683,7 @@ contains
       if ( Tctl%OPT_inund .eq. 1 ) then
         TRunoff%wf_ini(:) = rtmCTL%inundwf(:)
         TRunoff%hf_ini(:) = rtmCTL%inundhf(:)
+        TRunoff%ff_ini(:) = rtmCTL%inundff(:)  ! added by Tian Dec 2017
       end if
 
     end if
@@ -2001,7 +2014,7 @@ contains
 
 #ifdef INCLUDE_WRM
        if (wrmflag) then
-          StorWater%supply = 0._r8
+          StorWater%supply = 0._r8             !initial supply at the start of Tian Feb 2018
           nt = 1
           do nr = rtmCTL%begr,rtmCTL%endr
              budget_terms(bv_dsupp_i,nt) = budget_terms(bv_dsupp_i,nt) + StorWater%supply(nr)
@@ -2020,6 +2033,7 @@ contains
        TRunoff%qsur(nr,nt) = rtmCTL%qsur(nr,nt)
        TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
        TRunoff%qgwl(nr,nt) = rtmCTL%qgwl(nr,nt)
+       TRunoff%qdem(nr,nt) = rtmCTL%qdem(nr,nt) !added by Yuna 1/29/2018
     enddo
     enddo
   
@@ -2194,7 +2208,6 @@ contains
           write(iulog,'(2a,2g20.12,2i12)') trim(subname),' MOSART delt update from/to',delt_save,delt,nsub_save,nsub
        end if
     endif
-
     nsub_save = nsub
     delt_save = delt
     Tctl%DeltaT = delt
@@ -2209,6 +2222,7 @@ contains
        TRunoff%qsur(nr,nt) = TRunoff%qsur(nr,nt) / rtmCTL%area(nr)
        TRunoff%qsub(nr,nt) = TRunoff%qsub(nr,nt) / rtmCTL%area(nr)
        TRunoff%qgwl(nr,nt) = TRunoff%qgwl(nr,nt) / rtmCTL%area(nr)
+       TRunoff%qdem(nr,nt) = TRunoff%qdem(nr,nt) / rtmCTL%area(nr) !m3 to m added by Yuna 1/29/2018
     enddo
     enddo
 
@@ -2236,6 +2250,8 @@ contains
           call t_stopf('mosartr_inund_sim')
        else
           call t_startf('mosartr_euler')
+          ! debug (N. Sun)
+          write(iulog,*) 'clm-mosart subT: (call Euler) ns=', ns
           call Euler()
           call t_stopf('mosartr_euler')
        endif
@@ -2401,6 +2417,7 @@ contains
       !rtmCTL%wf(:, 1) = TRunoff%wf_ini(:)
       rtmCTL%inundwf(:) = TRunoff%wf_ini(:)
       rtmCTL%inundhf(:) = TRunoff%hf_ini(:)
+      rtmCTL%inundff(:) = TRunoff%ff_ini(:)  ! added by Tian
     end if
 
 #endif
@@ -2481,7 +2498,12 @@ contains
           nt = 1
           do nr = rtmCTL%begr,rtmCTL%endr
              budget_terms(bv_dsupp_f,nt) = budget_terms(bv_dsupp_f,nt) + StorWater%supply(nr)
-          enddo
+             ! convert supply from m3 per coupling delta (3hrs)  to mm/s (N. Sun)
+             if (StorWater%supply(nr) > 0) then            
+               StorWater%supply(nr) = StorWater%supply(nr)/delt_coupling               
+             endif
+
+          end do
           do idam = 1,ctlSubwWRM%LocalNumDam
              budget_terms(bv_dstor_f,nt) = budget_terms(bv_dstor_f,nt) + StorWater%storage(idam)
           enddo
@@ -2617,8 +2639,8 @@ contains
           budget_volume =  budget_terms(bv_volt_f,nt) - budget_terms(bv_volt_i,nt) + &
                            budget_terms(bv_dstor_f,nt) - budget_terms(bv_dstor_i,nt)             ! (Volume change during a coupling period. --Inund.)
           budget_input  =  budget_terms(br_qsur,nt) + budget_terms(br_qsub,nt) + &
-                           budget_terms(br_qgwl,nt) + budget_terms(br_qdto,nt) + &
-                           budget_terms(br_qdem,nt)
+                           budget_terms(br_qgwl,nt) + budget_terms(br_qdto,nt) !+ &
+                           ! budget_terms(br_qdem,nt) commented out by Tian 3/13/2018
           budget_output =  budget_terms(br_ocnout,nt) + budget_terms(br_flood,nt) + &
                            budget_terms(br_direct,nt) + &
                            budget_terms(bv_dsupp_f,nt) - budget_terms(bv_dsupp_i,nt)
@@ -2647,8 +2669,8 @@ contains
             budget_volume = (budget_global(bv_volt_f,nt) - budget_global(bv_volt_i,nt) + &
                              budget_global(bv_dstor_f,nt) - budget_global(bv_dstor_i,nt))   !(Global volume change during a coupling period. --Inund.)
             budget_input  = (budget_global(br_qsur,nt) + budget_global(br_qsub,nt) + &
-                             budget_global(br_qgwl,nt) + budget_global(br_qdto,nt) + &
-                             budget_global(br_qdem,nt))
+                             budget_global(br_qgwl,nt) + budget_global(br_qdto,nt)) !+ &
+                             ! budget_global(br_qdem,nt)) commented out by Tian 3/13/2018
             budget_output = (budget_global(br_ocnout,nt) + budget_global(br_flood,nt) + &
                              budget_global(br_direct,nt) + &
                              budget_global(bv_dsupp_f,nt) - budget_global(bv_dsupp_i,nt))
@@ -2697,14 +2719,15 @@ contains
             write(iulog,'(2a,i4,f22.6  )') trim(subname),'   input subsurf = ',nt,budget_global(br_qsub,nt)
             write(iulog,'(2a,i4,f22.6  )') trim(subname),'   input gwl     = ',nt,budget_global(br_qgwl,nt)
             write(iulog,'(2a,i4,f22.6  )') trim(subname),'   input dto     = ',nt,budget_global(br_qdto,nt)
-            write(iulog,'(2a,i4,f22.6  )') trim(subname),'   input demand  = ',nt,budget_global(br_qdem,nt)
+            write(iulog,'(2a,i4,f22.6  )') trim(subname),'   input demand -not included-  = ',nt,budget_global(br_qdem,nt)
             write(iulog,'(2a,i4,f22.6  )') trim(subname),' * input total   = ',nt,budget_input
           if (output_all_budget_terms) then
             write(iulog,'(2a,i4,f22.6,a)') trim(subname),' x input check   = ',nt,budget_input - &
                                                                              (budget_global(br_qsur,nt)+budget_global(br_qsub,nt)+ &
-                                                                              budget_global(br_qgwl,nt)+budget_global(br_qdto,nt)+ &
-                                                                              budget_global(br_qdem,nt)), &
-                                                                             ' (should be zero)'
+                                                                              budget_global(br_qgwl,nt)+budget_global(br_qdto,nt)), &
+                     ' (should be zero)'
+                     ! + budget_global(br_qdem,nt)), commented out by Tian 3/13/2018
+                                                                             
           endif
             write(iulog,'(2a)') trim(subname),'----------------'
             write(iulog,'(2a,i4,f22.6  )') trim(subname),'   output runoff = ',nt,budget_global(br_ocnout,nt)   !(Outflows to oceans. --Inund.)
@@ -3381,7 +3404,7 @@ contains
         ! Check input parameters :
         !----------------------------------   
 
-        do n = rtmCtl%begr, rtmCTL%endr
+       do n = rtmCtl%begr, rtmCTL%endr
           !if ( Tunit%mask(n) .eq. 1 .or. Tunit%mask(n) .eq. 2 ) then    ! 1-- Land; 2-- Basin outlet.
           if ( rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3 ) then   ! 1--Land; 3--Basin outlet (downstream is ocean).
 
@@ -3392,6 +3415,7 @@ contains
 
             if ( TUnit%areaTotal(n) .le. 0._r8 ) then
               write( iulog, * ) trim( subname ) // ' ERROR: TUnit%areaTotal(n) <= 0 for n=', n
+
               call shr_sys_abort( trim( subname ) // ' ERROR: TUnit%areaTotal(n) <= 0 ')
             end if
 
@@ -3402,6 +3426,7 @@ contains
 
             if ( TUnit%hslp(n) .LT. 0._r8 ) then
               write( iulog, * ) trim( subname ) // ' ERROR: TUnit%hslp(n) < 0 for n=', n
+
               call shr_sys_abort( trim( subname ) // ' ERROR: TUnit%hslp(n) < 0 ')
             end if
 
@@ -3412,6 +3437,7 @@ contains
 
             if ( TUnit%tslp(n) .LT. 0._r8 ) then
               write( iulog, * ) trim( subname ) // ' ERROR: TUnit%tslp(n) < 0 for n=', n
+
               call shr_sys_abort( trim( subname ) // ' ERROR: TUnit%tslp(n) < 0 ')
             end if
 
@@ -3432,6 +3458,7 @@ contains
 
             if ( TUnit%rslp(n) .LT. 0._r8 ) then
               write( iulog, * ) trim( subname ) // ' ERROR: TUnit%rslp(n) < 0 for n=', n
+
               call shr_sys_abort( trim( subname ) // ' ERROR: TUnit%rslp(n) < 0 ')
             end if
 
@@ -3510,7 +3537,63 @@ contains
 
           allocate( TUnit%e_eprof_in2( 11, begr:endr ) )    
           ! --------------------------------- 
-          ! Need code to read in real elevation profiles (assign elevation values to TUnit%e_eprof_in2( :, : ) ).
+          ! Need code to read in real elevation profiles (assign elevation values to TUnit%e_eprof_in2( :, : ) ). Tian Apr. 2018
+		   
+     ier = pio_inq_varid(ncid, name='ele0', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(1,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele0 ',minval(TUnit%e_eprof_in2(1,:)),maxval(TUnit%e_eprof_in2(1,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele1', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(2,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele1 ',minval(TUnit%e_eprof_in2(2,:)),maxval(TUnit%e_eprof_in2(2,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele2', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(3,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele2 ',minval(TUnit%e_eprof_in2(3,:)),maxval(TUnit%e_eprof_in2(3,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele3', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(4,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele3 ',minval(TUnit%e_eprof_in2(4,:)),maxval(TUnit%e_eprof_in2(4,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele4', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(5,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele4 ',minval(TUnit%e_eprof_in2(5,:)),maxval(TUnit%e_eprof_in2(5,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele5', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(6,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele5 ',minval(TUnit%e_eprof_in2(6,:)),maxval(TUnit%e_eprof_in2(6,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele6', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(7,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele6 ',minval(TUnit%e_eprof_in2(7,:)),maxval(TUnit%e_eprof_in2(7,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele7', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(8,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele7 ',minval(TUnit%e_eprof_in2(8,:)),maxval(TUnit%e_eprof_in2(8,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele8', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(9,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele8 ',minval(TUnit%e_eprof_in2(9,:)),maxval(TUnit%e_eprof_in2(9,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele9', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(10,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele9 ',minval(TUnit%e_eprof_in2(10,:)),maxval(TUnit%e_eprof_in2(10,:))
+     call shr_sys_flush(iulog)
+     
+     ier = pio_inq_varid(ncid, name='ele10', vardesc=vardesc)
+     call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(11,:), ier)
+     if (masterproc) write(iulog,FORMR) trim(subname),' read ele10 ',minval(TUnit%e_eprof_in2(11,:)),maxval(TUnit%e_eprof_in2(11,:))
+     call shr_sys_flush(iulog)
+     
           ! --------------------------------- 
 
           allocate (TUnit%a_eprof(begr:endr,12))
@@ -3574,7 +3657,10 @@ contains
 
      allocate (TRunoff%qgwl(begr:endr,nt_rtm))
      TRunoff%qgwl = 0._r8
-
+      
+     allocate (TRunoff%qdem(begr:endr,nt_rtm)) !added by Yuna 1/29/2018
+     TRunoff%qdem = 0._r8
+  
      allocate (TRunoff%ehout(begr:endr,nt_rtm))
      TRunoff%ehout = 0._r8
 
@@ -3718,6 +3804,9 @@ contains
 
            allocate (TRunoff%hf_ini(begr:endr))
            TRunoff%hf_ini = 0.0_r8
+           
+           allocate (TRunoff%ff_ini(begr:endr))
+           TRunoff%ff_ini = 0.0_r8 ! added by Tian Dec 2017
 
            allocate (TRunoff%se_rf(begr:endr))
            TRunoff%se_rf = 0.0_r8

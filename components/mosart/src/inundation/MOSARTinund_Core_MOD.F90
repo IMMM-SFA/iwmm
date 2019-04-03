@@ -734,6 +734,8 @@ MODULE MOSARTinund_Core_MOD
 
       ! Floodplain max water depth :
       TRunoff%hf_ini = TRunoff%hf_exchg     
+      ! Floodplain area fraction: added by Tian Dec 2017
+      TRunoff%ff_ini = TRunoff%ff_fp
     end if    
   
   end subroutine transition2nextStep

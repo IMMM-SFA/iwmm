@@ -31,6 +31,7 @@ MODULE WRM_type_mod
      integer :: ReturnFlowFlag   ! Flag for return flow, this flag indicates withdrwals and consumptive uses
      integer :: TotalDemandFlag  ! Flag to indicate if the demand includes irrigation and non irrigation demands
      integer :: GroundWaterFlag  ! Flag to know if demand needs to be separated with GW-SW
+     integer :: ExternalDemandFlag  ! Flag to decide where does the demand come from, external files or ELM
 
      character(len=256) :: paraFile         ! the path of the parameter files
      character(len=256) :: demandPath       ! the path of the water demand data
@@ -40,6 +41,7 @@ MODULE WRM_type_mod
      integer, pointer :: out_ID(:)          ! the indices of the outlet subbasins whether the stations are located
      character(len=80), pointer :: out_name(:)  ! the name of the outlets  
      character(len=80) :: curOutlet         ! the name of the current outlet
+     character(len=256) :: DemandVariableName      ! the variable from external demand file
   end type WRMcontrol_subw
   
      ! --- Topographic and geometric properties, applicable for both grid- and subbasin-based representations

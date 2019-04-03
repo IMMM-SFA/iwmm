@@ -100,7 +100,7 @@ contains
 
     if (isgrid2d) then
        allocate(idata2d(ni,nj))
-       idata2d(:,:) = 1	
+       idata2d(:,:) = 1 
        call ncd_io(ncid=ncid, varname='LANDMASK', data=idata2d, flag='read', readvar=readvar)
        if (.not. readvar) then
           call ncd_io(ncid=ncid, varname='mask', data=idata2d, flag='read', readvar=readvar)
@@ -108,7 +108,7 @@ contains
        if (readvar) then
           do j = 1,nj
           do i = 1,ni
-             n = (j-1)*ni + i	
+             n = (j-1)*ni + i 
              mask(n) = idata2d(i,j)
           enddo
           enddo
@@ -648,23 +648,23 @@ contains
     call domain_clean(surfdata_domain)
 
     ! Obtain special landunit info
-
+    
+    !!!! comment out to use surface water only option
     call surfrd_special(begg, endg, ncid, ldomain%ns)
 
- !   call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=ldomain%firrig, &
- !        dim1name=grlnd, readvar=readvar)
- !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )
+    call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=ldomain%firrig, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )
 
- !   call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=ldomain%f_surf, &
- !        dim1name=grlnd, readvar=readvar)
- !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )
+    call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=ldomain%f_surf, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )
 
- !   call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=ldomain%f_grd, &
- !        dim1name=grlnd, readvar=readvar)
- !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
-
-
-
+    call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=ldomain%f_grd, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
+    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    
     ! Obtain vegetated landunit info
 
     call surfrd_veg_all(begg, endg, ncid, ldomain%ns)
@@ -895,7 +895,7 @@ contains
     ! !LOCAL VARIABLES:
     integer  :: nl                             ! index
     integer  :: dimid,varid                    ! netCDF id's
-    integer  :: ier                            ! error status	
+    integer  :: ier                            ! error status 
     logical  :: readvar                        ! is variable on dataset
     logical  :: cft_dim_exists                 ! does the dimension 'cft' exist on the dataset?
     real(r8),pointer :: arrayl(:)              ! local array

@@ -115,12 +115,14 @@ contains
          ptr_rof=rtmCTL%dvolrdtocn_nt2, default='inactive')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
+         avgflag='A', long_name='ALM irrigation demand: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%qsur_nt1, default='active')
+       !MOSART input surface runoff was modified to ALM irrigation demand by Yuna 1/29/2018
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
+         avgflag='A', long_name='ALM irrigation demand: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%qsur_nt2, default='active')
+       !MOSART input surface runoff was modified to ALM irrigation demand by Yuna 1/29/2018
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(1)), &
@@ -157,19 +159,19 @@ contains
 #ifdef INCLUDE_WRM
     if (wrmflag) then
 
-      call RtmHistAddfld (fname='WRM_SUPPLY', units='m3',  &
+      call RtmHistAddfld (fname='WRM_SUPPLY', units='m3/s',  &
          avgflag='A', long_name='WRM supply provided ', &
          ptr_rof=StorWater%supply, default='active')
 
-      call RtmHistAddfld (fname='WRM_DEMAND', units='m3',  &
-         avgflag='A', long_name='WRM supply provided ', &
+      call RtmHistAddfld (fname='WRM_DEMAND', units='m3/s',  &
+         avgflag='A', long_name='WRM new demand after supply: same as deficit ', &
          ptr_rof=StorWater%demand, default='active')
 
-      call RtmHistAddfld (fname='WRM_DEMAND0', units='m3',  &
+      call RtmHistAddfld (fname='WRM_DEMAND0', units='m3/s',  &
          avgflag='A', long_name='WRM demand requested ', &
          ptr_rof=StorWater%demand0, default='active')
 
-      call RtmHistAddfld (fname='WRM_DEFICIT', units='m3',  &
+      call RtmHistAddfld (fname='WRM_DEFICIT', units='m3/s',  &
          avgflag='A', long_name='WRM deficit ', &
          ptr_rof=StorWater%deficit, default='active')
 
@@ -187,6 +189,11 @@ contains
       call RtmHistAddfld (fname='FLOODPLAIN_DEPTH', units='m',  &
          avgflag='A', long_name='MOSART floodplain water depth', &
          ptr_rof=rtmCTL%inundhf, default='active')
+        !!!!!!!!!!! added by Tian Dec 2017 
+      call RtmHistAddfld (fname='FLOODPLAIN_FRACTION', units='none',  &
+         avgflag='A', long_name='MOSART floodplain water area fraction', &
+         ptr_rof=rtmCTL%inundff, default='active')
+		!!!!!!!!!!!!!!!!!!!!!!!!
     endif
 #endif
 

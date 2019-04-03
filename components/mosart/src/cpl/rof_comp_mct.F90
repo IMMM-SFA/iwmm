@@ -215,11 +215,11 @@ contains
        lsize = mct_gsMap_lsize(gsMap_rof, mpicom_rof)
        call rof_domain_mct( lsize, gsMap_rof, dom_r )
        
-       ! Initialize lnd -> mosart attribute vector		
+       ! Initialize lnd -> mosart attribute vector  
        call mct_aVect_init(x2r_r, rList=seq_flds_x2r_fields, lsize=lsize)
        call mct_aVect_zero(x2r_r)
        
-       ! Initialize mosart -> ocn attribute vector		
+       ! Initialize mosart -> ocn attribute vector  
        call mct_aVect_init(r2x_r, rList=seq_flds_r2x_fields, lsize=lsize)
        call mct_aVect_zero(r2x_r) 
        
@@ -673,7 +673,8 @@ contains
        r2x_r%rattr(index_r2x_Flrr_supply,ni)  = 0._r8  ! tcxcpl
 #ifdef INCLUDE_WRM
        if (wrmflag) then
-          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n)    ! tcxcpl
+          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)   ! tcxcpl   !! converted to mm/s during budget check (N. Sun)
+          !r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8*3600)   ! supply from m3/hr to mm/s by Tian 2/27/2018
        endif
 #endif
     end do

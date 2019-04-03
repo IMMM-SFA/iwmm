@@ -74,14 +74,14 @@ MODULE WRM_subw_IO_mod
      type(mct_sMat)    :: sMat                 ! temporary sparse matrix, needed for sMatP
      character(len=256):: nlfilename_wrm
 
-     character(len=350) :: paraFile, demandPath
+     character(len=350) :: paraFile, demandPath, DemandVariableName
      integer :: ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
-        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag
+        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
      namelist /wrm_inparm/  &
-        paraFile, demandPath, &
+        paraFile, demandPath, DemandVariableName, &
         ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
-        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag
+        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
      character(len=*),parameter :: subname='(WRM_init)'
 
@@ -91,14 +91,14 @@ MODULE WRM_subw_IO_mod
      if (masterproc) write(iulog,FORMI) subname,' begr endr = ',iam,begr,endr
      call shr_sys_flush(iulog)
 
-     paraFile = '/pic/scratch/tcraig/wm_data/US_reservoir_8th_NLDAS2.nc'
-     demandPath = '/pic/scratch/tcraig/wm_data/NLDAS2_GCAM_water_demand_'
-     ExtractionFlag = 1
-     ExtractionMainChannelFlag = 1
-     RegulationFlag = 1
-     ReturnFlowFlag = 0
-     TotalDemandFlag = 1
-     GroundWaterFlag = 0
+     !paraFile = '/pic/scratch/tcraig/wm_data/US_reservoir_8th_NLDAS2.nc'
+     !demandPath = '/pic/scratch/tcraig/wm_data/NLDAS2_GCAM_water_demand_'
+     !ExtractionFlag = 1
+     !ExtractionMainChannelFlag = 1
+     !RegulationFlag = 1
+     !ReturnFlowFlag = 0
+     !TotalDemandFlag = 1
+     !GroundWaterFlag = 0
 
      nlfilename_wrm = "mosart_in" // trim(inst_suffix)
      inquire (file = trim(nlfilename_wrm), exist = lexist)
@@ -123,12 +123,14 @@ MODULE WRM_subw_IO_mod
 
      call mpi_bcast(paraFile   ,len(paraFile)  , MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(demandPath ,len(demandPath), MPI_CHARACTER, 0, mpicom_rof, ier)
+     call mpi_bcast(DemandVariableName ,len(DemandVariableName), MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionMainChannelFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(RegulationFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ReturnFlowFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(TotalDemandFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(GroundWaterFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
+     call mpi_bcast(ExternalDemandFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
 
      ctlSubwWRM%paraFile = paraFile
      ctlSubwWRM%demandPath = demandPath
@@ -138,16 +140,20 @@ MODULE WRM_subw_IO_mod
      ctlSubwWRM%ReturnFlowFlag = ReturnFlowFlag
      ctlSubwWRM%TotalDemandFlag = TotalDemandFlag
      ctlSubwWRM%GroundWaterFlag = GroundWaterFlag
+     ctlSubwWRM%ExternalDemandFlag = ExternalDemandFlag
+     ctlSubwWRM%DemandVariableName = DemandVariableName
 
      if (masterproc) then
         write(iulog,*) subname," paraFile        = ",trim(ctlSubwWRM%paraFile)
         write(iulog,*) subname," demandPath      = ",trim(ctlSubwWRM%demandPath)
+        write(iulog,*) subname," DemandVariableName = ",trim(ctlSubwWRM%DemandVariableName)
         write(iulog,*) subname," ExtractionFlag  = ",ctlSubwWRM%ExtractionFlag
         write(iulog,*) subname," ExtractionMainChannelFlag = ",ctlSubwWRM%ExtractionMainChannelFlag
         write(iulog,*) subname," RegulationFlag  = ",ctlSubwWRM%RegulationFlag
         write(iulog,*) subname," ReturnFlowFlag  = ",ctlSubwWRM%ReturnFlowFlag
         write(iulog,*) subname," TotalDemandFlag = ",ctlSubwWRM%TotalDemandFlag
         write(iulog,*) subname," GroundWaterFlag = ",ctlSubwWRM%GroundWaterFlag
+        write(iulog,*) subname," ExternalDemandFlag = ",ctlSubwWRM%ExternalDemandFlag
      endif
 
      !-------------------
@@ -597,7 +603,7 @@ MODULE WRM_subw_IO_mod
      allocate (StorWater%pot_evap(begr:endr))
      StorWater%pot_evap=0._r8
 
-     call WRM_readDemand()  ! initialize demand0
+     !call WRM_readDemand()  ! initialize demand0
 
      ier = pio_inq_varid (ncid, name='RUNOFF_CAP'   , vardesc=vardesc)
      call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2dam , WRMUnit%INVc, ier)
@@ -870,7 +876,7 @@ MODULE WRM_subw_IO_mod
         write(iulog,*) subname, ' reading ',trim(fname)
 
         call ncd_pio_openfile(ncid, trim(fname), 0)
-        ier = pio_inq_varid (ncid, name='totalDemand', vardesc=vardesc)
+        ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
         call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%demand0, ier)
         call ncd_pio_closefile(ncid)
 
@@ -905,7 +911,7 @@ MODULE WRM_subw_IO_mod
      do idam=1,ctlSubwWRM%localNumDam
         if ( mon .eq. WRMUnit%MthStOp(idam)) then
            WRMUnit%StorMthStOp(idam) = StorWater%storage(idam)
-	   end if
+    end if
      enddo
      call RegulationRelease()
      write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)

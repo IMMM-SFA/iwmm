@@ -15,7 +15,7 @@ module CanopyHydrologyMod
   use shr_sys_mod     , only : shr_sys_flush
   use decompMod       , only : bounds_type
   use abortutils      , only : endrun
-  use clm_varctl      , only : iulog
+  use clm_varctl      , only : iulog, TwoWayCouplingFlag  ! Tian Apr. 2018 true is 2 way, else one way
   use LandunitType    , only : lun_pp                
   use atm2lndType     , only : atm2lnd_type
   use AerosolType     , only : aerosol_type
@@ -113,8 +113,10 @@ contains
      use landunit_varcon    , only : istcrop, istice, istwet, istsoil, istice_mec 
      use clm_varctl         , only : subgridflag
      use clm_varpar         , only : nlevsoi,nlevsno
+     use atm2lndType        , only : atm2lnd_type !added by Yuna 1/29/2018
+     use domainMod          , only : ldomain !added by Yuna 1/29/2018
      use clm_time_manager   , only : get_step_size
-     use subgridAveMod      , only : p2c
+     use subgridAveMod      , only : p2c, p2g !Tian Apr 2018
      !
      ! !ARGUMENTS:
      type(bounds_type)      , intent(in)    :: bounds     
@@ -150,6 +152,7 @@ contains
      real(r8) :: qflx_through_snow(bounds%begp:bounds%endp)   ! direct snow throughfall [mm/s]
      real(r8) :: qflx_prec_grnd_snow(bounds%begp:bounds%endp) ! snow precipitation incident on ground [mm/s]
      real(r8) :: qflx_prec_grnd_rain(bounds%begp:bounds%endp) ! rain precipitation incident on ground [mm/s]
+     real(r8) :: qflx_irrig_grid(bounds%begg:bounds%endg)     ! irrigation at grid level [mm/s] Tian Apr 2018
      real(r8) :: z_avg                                        ! grid cell average snow depth
      real(r8) :: rho_avg                                      ! avg density of snow column
      real(r8) :: temp_snow_depth,temp_intsnow                 ! temporary variables
@@ -221,13 +224,20 @@ contains
           qflx_rain_grnd       => waterflux_vars%qflx_rain_grnd_patch      , & ! Output: [real(r8) (:)   ]  rain on ground after interception (mm H2O/s) [+]
           qflx_dirct_rain      => waterflux_vars%qflx_dirct_rain_patch     , & ! Output: [real(r8) (:)   ]  direct rain throughfall on ground (mm H2O/s) 
           qflx_leafdrip        => waterflux_vars%qflx_leafdrip_patch       , & ! Output: [real(r8) (:)   ]  leap rain drip on ground (mm H2O/s)
-          qflx_irrig           => waterflux_vars%qflx_irrig_patch            & ! Output: [real(r8) (:)   ]  irrigation amount (mm/s)                
+          qflx_irrig           => waterflux_vars%qflx_irrig_patch          , & ! Output: [real(r8) (:)   ]  total irrigation amount (surface + groundwater) (mm/s)      !commented by Tian 2/27/2018
+          qflx_real_irrig      => waterflux_vars%qflx_real_irrig_patch     , & ! Output: [real(r8) (:)   ]  actual irrigation amount (surface + groundwater) (mm/s)      !added by Tian 2/27/2018   
+		  qflx_supply          => waterflux_vars%qflx_supply_patch           & ! Output: [real(r8) (:)   ]  surface water irrigation supply from MOSART-WM (mm/s)      !added by Tian 4/11/2018 
           )
 
        ! Compute time step
        
        dtime = get_step_size()
-
+       ! Find gridcell level irrigation rate !!!!!! Tian Apr. 2018
+       call p2g(bounds, &
+         qflx_irrig (bounds%begp:bounds%endp), &
+         qflx_irrig_grid (bounds%begg:bounds%endg), &
+         p2c_scale_type='unity', c2l_scale_type= 'urbanf', l2g_scale_type='unity')
+       !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
        ! Start pft loop
 
        do f = 1, num_nolakep
@@ -339,7 +349,39 @@ contains
 
           ! Add irrigation water directly onto ground (bypassing canopy interception)
           ! Note that it's still possible that (some of) this irrigation water will runoff (as runoff is computed later)
-          qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + qflx_irrig(p)
+          
+          if (TwoWayCouplingFlag) then ! Tian Apr. 2018 true is 2 way, else one way  
+                qflx_supply(p) = atm2lnd_vars%supply_grc(g) !!! original supply from WM
+             if (qflx_irrig_grid(g) > 0._r8) then		                              
+               qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + atm2lnd_vars%supply_grc(g)*qflx_irrig(p)/qflx_irrig_grid(g) + ldomain%f_grd(g)*qflx_irrig(p) 
+               qflx_real_irrig(p) = atm2lnd_vars%supply_grc(g)*qflx_irrig(p)/qflx_irrig_grid(g) + ldomain%f_grd(g)*qflx_irrig(p) ! added by Tian 2/27/2018
+             
+             else
+               qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + ldomain%f_grd(g)*qflx_irrig(p) 
+               qflx_real_irrig(p) = ldomain%f_grd(g)*qflx_irrig(p) ! added by Tian 2/27/2018
+
+             end if		
+          else  ! one way coupling
+             qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + ldomain%f_surf(g)*qflx_irrig(p) + ldomain%f_grd(g)*qflx_irrig(p) 
+             qflx_real_irrig(p) = ldomain%f_surf(g)*qflx_irrig(p) + ldomain%f_grd(g)*qflx_irrig(p) ! added by Tian 2/27/2018
+			 qflx_supply(p) = 0._r8 !added by Tian Apr 2018
+          end if
+          
+          !!!!!!!!!!!!!!!!!!!!! old scheme, using supply at grid level instead of pft level
+          !if (TwoWayCouplingFlag) then ! Tian Apr. 2018 true is 2 way, else one way       
+          !   qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + min(ldomain%f_surf(g)*qflx_irrig(p),atm2lnd_vars%supply_grc(g)) + ldomain%f_grd(g)*qflx_irrig(p) 
+          !   qflx_real_irrig(p) = min(ldomain%f_surf(g)*qflx_irrig(p),atm2lnd_vars%supply_grc(g)) + ldomain%f_grd(g)*qflx_irrig(p) ! added by Tian 2/27/2018
+		  !   qflx_supply(p) = atm2lnd_vars%supply_grc(g) !added by Tian Apr 2018
+          !
+          !      else
+    !         qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + ldomain%f_surf(g)*qflx_irrig(p) + ldomain%f_grd(g)*qflx_irrig(p) 
+    !         qflx_real_irrig(p) = ldomain%f_surf(g)*qflx_irrig(p) + ldomain%f_grd(g)*qflx_irrig(p) ! added by Tian 2/27/2018
+    !         qflx_supply(p) = 0._r8 !added by Tian Apr 2018
+    !      end if
+          !!!!!!!!!!!!!!!!!!!!!
+
+          !no coupling
+          !qflx_prec_grnd_rain(p) = qflx_prec_grnd_rain(p) + qflx_irrig(p)
 
           ! Done irrigation
 

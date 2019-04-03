@@ -108,6 +108,8 @@ module WaterfluxType
 
      ! Irrigation
      real(r8), pointer :: qflx_irrig_patch         (:)   ! patch irrigation flux (mm H2O/s)
+     real(r8), pointer :: qflx_real_irrig_patch    (:)   ! patch real irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+	 real(r8), pointer :: qflx_supply_patch        (:)   ! patch supply flux (mm H2O/s) !added by Tian 4/11/2018
      real(r8), pointer :: qflx_irrig_col           (:)   ! col irrigation flux (mm H2O/s)
      real(r8), pointer :: qflx_irr_demand_col      (:)   ! col surface irrigation demand (mm H2O /s)
      real(r8), pointer :: irrig_rate_patch         (:)   ! current irrigation rate [mm/s]
@@ -266,7 +268,10 @@ contains
     allocate(this%qflx_liq_dynbal_grc      (begg:endg))              ; this%qflx_liq_dynbal_grc      (:)   = nan
     allocate(this%qflx_ice_dynbal_grc      (begg:endg))              ; this%qflx_ice_dynbal_grc      (:)   = nan
 
-    allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan
+    allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan ! prescribed irrig
+    allocate(this%qflx_real_irrig_patch    (begp:endp))              ; this%qflx_real_irrig_patch    (:)   = nan ! added by Tian 2/27/2018, real irrig
+    allocate(this%qflx_supply_patch        (begp:endp))              ; this%qflx_supply_patch        (:)   = nan ! added by Tian 4/11/2018, supply
+
     allocate(this%qflx_irrig_col           (begc:endc))              ; this%qflx_irrig_col           (:)   = nan
     allocate(this%qflx_irr_demand_col      (begc:endc))              ; this%qflx_irr_demand_col      (:)   = nan
     allocate(this%irrig_rate_patch         (begp:endp))              ; this%irrig_rate_patch         (:)   = nan
@@ -343,7 +348,7 @@ contains
     
     this%qflx_irr_demand_col(begc:endc) = 0._r8
     call hist_addfld1d (fname='QIRRIG_WM',  units='mm/s',  &
-         avgflag='A', long_name='Irrigation demand sent to MOSART/WM', &
+         avgflag='A', long_name='Surface water irrigation demand sent to MOSART/WM', &
          ptr_col=this%qflx_irr_demand_col, c2l_scale_type='urbanf')
 
     this%qflx_qrgwl_col(begc:endc) = spval
@@ -420,9 +425,19 @@ contains
     end if
 
     this%qflx_irrig_patch(begp:endp) = spval
-    call hist_addfld1d (fname='QIRRIG', units='mm/s', &
-         avgflag='A', long_name='water added through irrigation', &
+    call hist_addfld1d (fname='QIRRIG_ORIG', units='mm/s', &
+         avgflag='A', long_name='Original total irrigation water demand (surface + ground)', &
          ptr_patch=this%qflx_irrig_patch)
+   
+    this%qflx_real_irrig_patch(begp:endp) = spval     ! added by Tian 2/27/2018, replace the output from prescribed irrig to real irrig
+    call hist_addfld1d (fname='QIRRIG_REAL', units='mm/s', &
+         avgflag='A', long_name='actual water added through irrigation (surface + ground)', &
+         ptr_patch=this%qflx_real_irrig_patch, set_lake=0._r8)
+    
+    this%qflx_supply_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QSUPPLY', units='mm/s', &
+         avgflag='A', long_name='irrigation supply from MOSART', &
+         ptr_patch=this%qflx_supply_patch, set_lake=0._r8)
 
     this%qflx_prec_intr_patch(begp:endp) = spval
     call hist_addfld1d (fname='QINTR', units='mm/s',  &

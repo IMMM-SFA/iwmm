@@ -53,6 +53,7 @@ contains
     use SoilHydrologyMod , only : CLMVICMap, Drainage
     use clm_varctl       , only : use_vsfm
     use domainMod        , only : ldomain
+    use atm2lndType      , only : atm2lnd_type !added by Yuna 1/29/2018
     use BeTRSimulationALM, only : betr_simulation_alm_type
     !
     ! !ARGUMENTS:
@@ -103,6 +104,7 @@ contains
          total_plant_stored_h2o => waterstate_vars%total_plant_stored_h2o_col , & ! Input [real(r8) (:) dynamic water stored in plants]
          qflx_evap_tot          => waterflux_vars%qflx_evap_tot_col           , & ! Input:  [real(r8) (:)   ]  qflx_evap_soi + qflx_evap_can + qflx_tran_veg     
          qflx_irrig             => waterflux_vars%qflx_irrig_col              , & ! Input:  [real(r8) (:)   ]  irrigation flux (mm H2O /s)                       
+         irrig_rate             => waterflux_vars%irrig_rate_patch          , & ! Input:  [real(r8) (:)   ] !added by Yuna 1/29/2018
          qflx_irr_demand        => waterflux_vars%qflx_irr_demand_col         , & ! Input:  [real(r8) (:)   ]  irrigation demand sent to MOSART/WM (mm H2O /s)                       
          qflx_glcice_melt       => waterflux_vars%qflx_glcice_melt_col        , & ! Input:  [real(r8) (:)]  ice melt (positive definite) (mm H2O/s)      
          qflx_h2osfc_surf       => waterflux_vars%qflx_h2osfc_surf_col        , & ! Output: [real(r8) (:)   ]  surface water runoff (mm/s)                        
@@ -274,8 +276,13 @@ contains
          qflx_runoff(c) = qflx_drain(c) + qflx_surf(c)  + qflx_h2osfc_surf(c) + qflx_qrgwl(c) + qflx_drain_perched(c)
 
          if ((lun_pp%itype(l)==istsoil .or. lun_pp%itype(l)==istcrop) .and. col_pp%active(c)) then
-           ! qflx_runoff(c) = qflx_runoff(c) - qflx_irrig(c)
-           qflx_irr_demand(c) = -1.0_r8 * qflx_irrig(c) * ldomain%f_surf(g)
+           ! qflx_runoff(c) = qflx_runoff(c) - qflx_irrig(c)  
+            !qflx_irr_demand(c) = -1.0_r8 * min(ldomain%f_surf(g)*qflx_irrig(c),atm2lnd_vars%supply_grc(g))! two way coupling added by Yuna 1/29/2018
+            qflx_irr_demand(c) = -1.0_r8 * ldomain%f_surf(g)*qflx_irrig(c) !should keep this, not the above one because this is the max qdem send to MOSART !comment by Tian 2/27/2018
+
+           if (atm2lnd_vars%supply_grc(g) > 0._r8 .or. atm2lnd_vars%supply_grc(g) < 0._r8) then             ! Tian Feb 2018
+        !write(iulog,*)'Tian comment the supply is  =',atm2lnd_vars%supply_grc(g)
+           end if
          else
            qflx_irr_demand(c) = 0._r8
          end if
