@@ -44,7 +44,7 @@ module rof_comp_mct
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
-                                index_r2x_Flrr_supply
+                                index_r2x_Flrr_supply !, index_r2x_Flrr_supplyfrac
   use mct_mod
   use ESMF
 !
@@ -671,10 +671,11 @@ contains
        r2x_r%rattr(index_r2x_Flrr_volr,ni)    = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
        r2x_r%rattr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
        r2x_r%rattr(index_r2x_Flrr_supply,ni)  = 0._r8  ! tcxcpl
+       !r2x_r%rattr(index_r2x_Flrr_supplyfrac,ni)  = 0._r8  ! Tian
 #ifdef INCLUDE_WRM
        if (wrmflag) then
-          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)   ! tcxcpl   !! converted to mm/s during budget check (N. Sun)
-          !r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8*3600)   ! supply from m3/hr to mm/s by Tian 2/27/2018
+          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)   ! tcxcpl   !! converted to mm/s during budget check (Tian)
+          !r2x_r%rattr(index_r2x_Flrr_supplyfrac,ni)  = StorWater%SupplyFrac(n) ! passing fraction use instead of the supply flux rate (Tian June 2018)
        endif
 #endif
     end do

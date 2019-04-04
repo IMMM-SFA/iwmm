@@ -2502,7 +2502,22 @@ contains
              if (StorWater%supply(nr) > 0) then            
                StorWater%supply(nr) = StorWater%supply(nr)/delt_coupling               
              endif
+			 
+			  !!!!!!!!!!!!!!!!!!
+            ! do iunit=rtmCTL%begr,rtmCTL%endr
+			!if (StorWater%demand0(nr) >0) then
+             ! StorWater%SupplyFrac(nr) = StorWater%Supply(nr) / StorWater%demand0(nr)   ! calculate the supply percentage relative to demand0, Tian June 2018
+			  !StorWater%SupplyFrac(nr) = StorWater%Supply(nr) / (StorWater%demand(nr) + StorWater%Supply(nr))  ! calculate the supply percentage relative to demand0, Tian June 2018
 
+			  !write(iulog,*)'Tian get supply frac'
+              !write(iulog,*)'supply is ',StorWater%Supply(nr)
+              !write(iulog,*)'demand0 is ',StorWater%demand0(nr)
+              !write(iulog,*)'frac is ',StorWater%SupplyFrac(nr)
+            ! else
+             ! StorWater%SupplyFrac(nr) = 0._r8
+            !end if
+            !end do
+      !!!!!!!!!!!!!!!!!!!
           end do
           do idam = 1,ctlSubwWRM%LocalNumDam
              budget_terms(bv_dstor_f,nt) = budget_terms(bv_dstor_f,nt) + StorWater%storage(idam)

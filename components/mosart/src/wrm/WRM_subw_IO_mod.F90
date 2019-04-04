@@ -562,6 +562,8 @@ MODULE WRM_subw_IO_mod
      StorWater%demand0=0._r8
      allocate (StorWater%supply(begr:endr))
      StorWater%supply=0._r8
+     !allocate (StorWater%SupplyFrac(begr:endr)) !supply fraction relative to the demand Tian June 2018
+     !StorWater%SupplyFrac=0._r8
      allocate (StorWater%deficit(begr:endr))
      StorWater%deficit=0._r8
      allocate (StorWater%storageG(begr:endr))

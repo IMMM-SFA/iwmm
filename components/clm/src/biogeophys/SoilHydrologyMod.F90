@@ -624,6 +624,7 @@ contains
           watsat             =>    soilstate_vars%watsat_col             , & ! Input:  [real(r8) (:,:) ]  volumetric soil water at saturation (porosity)  
           eff_porosity       =>    soilstate_vars%eff_porosity_col       , & ! Input:  [real(r8) (:,:) ]  effective porosity = porosity - vol_ice         
           qflx_irrig         =>    waterflux_vars%qflx_irrig_col         , & ! Input:  [real(r8) (:)   ]  irrigation flux (mm H2O /s)
+          qflx_grnd_irrig_col=>    waterflux_vars%qflx_grnd_irrig_col    , & ! Output: [real(r8) (:)   ]  col real groundwater irrigation flux (mm H2O /s)  ! Tian                                                                                                                                                                    
           zwt                =>    soilhydrology_vars%zwt_col            , & ! Output: [real(r8) (:)   ]  water table depth (m)                             
           zwt_perched        =>    soilhydrology_vars%zwt_perched_col    , & ! Output: [real(r8) (:)   ]  perched water table depth (m)                     
           frost_table        =>    soilhydrology_vars%frost_table_col    , & ! Output: [real(r8) (:)   ]  frost table depth (m)                             
@@ -710,8 +711,10 @@ contains
           qcharge_temp = qcharge(c)
          ! qcharge(c) = qcharge(c) - qflx_irrig(c) * ldomain%f_grd(g)
 
-          wa(c)  = wa(c) - qflx_irrig(c) * ldomain%f_grd(g) * dtime
-          zwt(c) = zwt(c) + (qflx_irrig(c) * ldomain%f_grd(g) * dtime)/1000._r8/rous
+         ! wa(c)  = wa(c) - qflx_irrig(c) * ldomain%f_grd(g) * dtime
+         ! zwt(c) = zwt(c) + (qflx_irrig(c) * ldomain%f_grd(g) * dtime)/1000._r8/rous
+          wa(c)  = wa(c) - qflx_grnd_irrig_col(c) * dtime
+          zwt(c) = zwt(c) + (qflx_grnd_irrig_col(c) * dtime)/1000._r8/rous          
 
           if(jwt(c) == nlevbed) then             
       if (.not. (zengdecker_2009_with_var_soil_thick)) then

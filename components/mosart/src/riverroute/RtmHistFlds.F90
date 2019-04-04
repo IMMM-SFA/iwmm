@@ -161,7 +161,10 @@ contains
 
       call RtmHistAddfld (fname='WRM_SUPPLY', units='m3/s',  &
          avgflag='A', long_name='WRM supply provided ', &
-         ptr_rof=StorWater%supply, default='active')
+         ptr_rof=StorWater%Supply, default='active')
+      !call RtmHistAddfld (fname='WRM_SUPPLY_FRACTION', units='none',  &
+      !   avgflag='A', long_name='WRM supply fraction relative to demand ', &
+      !   ptr_rof=StorWater%SupplyFrac, default='active')                                                                                                                               
 
       call RtmHistAddfld (fname='WRM_DEMAND', units='m3/s',  &
          avgflag='A', long_name='WRM new demand after supply: same as deficit ', &

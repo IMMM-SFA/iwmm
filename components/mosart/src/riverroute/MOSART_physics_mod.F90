@@ -275,12 +275,17 @@ MODULE MOSART_physics_mod
                       call UpdateState_mainchannel(iunit,nt)
                    endif
 ! tcraig, moved out of loop
-!                   if ( ctlSubwWRM%RegulationFlag>0 .and. WRMUnit%INVicell(iunit) > 0 .and. WRMUnit%MeanMthFlow(iunit,13) > 0.01_r8 ) then
-!                      call Regulation(iunit, localDeltaT)
+                   !if ( ctlSubwWRM%RegulationFlag>0 .and. WRMUnit%INVicell(iunit) > 0 .and. WRMUnit%MeanMthFlow(iunit,13) > 0.01_r8 ) then
+
+                   if ( ctlSubwWRM%RegulationFlag>0 ) then
+!                     call t_startf('mosartr_wrm_Reg')
+                      call Regulation(iunit, localDeltaT)
+!                     call t_stopf('mosartr_wrm_Reg')
 !                      if ( ctlSubwWRM%ExtractionFlag > 0 ) then
 !                         call ExtractionRegulatedFlow(iunit, localDeltaT)
 !                      endif
-!                   endif
+ 
+                   endif
                 endif
 !                ! do not update wr after regulation or extraction from reservoir release. Because of the regulation, 
 !                ! the wr might get to crazy uncontrolled values, assume in this case wr is not changed. The storage in reservoir handles it.
@@ -325,20 +330,20 @@ MODULE MOSART_physics_mod
              TRunoff%flow(iunit,nt_nliq) = TRunoff%flow(iunit,nt_nliq) + TRunoff%erout(iunit,nt_nliq)
           enddo
           localDeltaT = Tctl%DeltaT
-          call t_startf('mosartr_wrm_Reg')
-          do iunit=rtmCTL%begr,rtmCTL%endr
-             if (TUnit%mask(iunit) > 0) then
-                call Regulation(iunit, localDeltaT)
-             endif
-          enddo
-          call t_stopf('mosartr_wrm_Reg')
+!          call t_startf('mosartr_wrm_Reg')
+!          do iunit=rtmCTL%begr,rtmCTL%endr
+!             if (TUnit%mask(iunit) > 0) then
+!                call Regulation(iunit, localDeltaT) !move regulation back into the subcycling, Tian 9/26/2018
+!             endif
+!          enddo
+!          call t_stopf('mosartr_wrm_Reg')
           if (ctlSubwWRM%ExtractionFlag > 0 ) then
              call t_startf('mosartr_wrm_ERFlow')
              call ExtractionRegulatedFlow(localDeltaT)
              call t_stopf('mosartr_wrm_ERFlow')
           endif
-          !--- now subtract updated erout to update flow calc
-          ! compute the erowm_reg terms and adjust the flow diagnostic
+!          !--- now subtract updated erout to update flow calc
+!          ! compute the erowm_reg terms and adjust the flow diagnostic
           do iunit=rtmCTL%begr,rtmCTL%endr
              TRunoff%erowm_regf(iunit,nt_nliq) = -TRunoff%erout(iunit,nt_nliq)
              TRunoff%flow(iunit,nt_nliq) = TRunoff%flow(iunit,nt_nliq) - TRunoff%erout(iunit,nt_nliq)

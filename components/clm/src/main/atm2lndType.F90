@@ -106,7 +106,7 @@ module atm2lndType
      real(r8), pointer :: volr_grc                      (:)   => null() ! rof volr total volume (m3)
      real(r8), pointer :: volrmch_grc                   (:)   => null() ! rof volr main channel (m3)
      real(r8), pointer :: supply_grc                    (:)   => null() ! rof volr supply (mm/s)
-
+     !real(r8), pointer :: supplyfrac_grc                (:)   => null() ! rof volr supply fraction
      ! anomaly forcing
      real(r8), pointer :: af_precip_grc                 (:)   => null() ! anomaly forcing 
      real(r8), pointer :: af_uwind_grc                  (:)   => null() ! anomaly forcing 
@@ -255,6 +255,7 @@ contains
     allocate(this%volr_grc                      (begg:endg))        ; this%volr_grc                      (:)   = ival
     allocate(this%volrmch_grc                   (begg:endg))        ; this%volrmch_grc                   (:)   = ival
     allocate(this%supply_grc                    (begg:endg))        ; this%supply_grc                    (:)   = ival
+    !allocate(this%supplyfrac_grc                (begg:endg))        ; this%supplyfrac_grc                (:)   = ival
 
     ! anomaly forcing
     allocate(this%bc_precip_grc                 (begg:endg))        ; this%bc_precip_grc                 (:)   = ival
@@ -321,7 +322,10 @@ contains
     call hist_addfld1d (fname='SUPPLY',  units='mm/s',  &
          avgflag='A', long_name='runoff supply for land use', &
          ptr_lnd=this%supply_grc)
-
+    !this%supplyfrac_grc(begg:endg) = spval
+    !call hist_addfld1d (fname='SUPPLY_FRACTION',  units='N/A',  &
+    !     avgflag='A', long_name='runoff supply relative to demand', &
+    !     ptr_lnd=this%supplyfrac_grc)
     this%forc_wind_grc(begg:endg) = spval
     call hist_addfld1d (fname='WIND', units='m/s',  &
          avgflag='A', long_name='atmospheric wind velocity magnitude', &

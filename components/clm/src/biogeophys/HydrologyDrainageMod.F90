@@ -280,9 +280,9 @@ contains
             !qflx_irr_demand(c) = -1.0_r8 * min(ldomain%f_surf(g)*qflx_irrig(c),atm2lnd_vars%supply_grc(g))! two way coupling added by Yuna 1/29/2018
             qflx_irr_demand(c) = -1.0_r8 * ldomain%f_surf(g)*qflx_irrig(c) !should keep this, not the above one because this is the max qdem send to MOSART !comment by Tian 2/27/2018
 
-           if (atm2lnd_vars%supply_grc(g) > 0._r8 .or. atm2lnd_vars%supply_grc(g) < 0._r8) then             ! Tian Feb 2018
+        !   if (atm2lnd_vars%supply_grc(g) > 0._r8 .or. atm2lnd_vars%supply_grc(g) < 0._r8) then             ! Tian Feb 2018
         !write(iulog,*)'Tian comment the supply is  =',atm2lnd_vars%supply_grc(g)
-           end if
+        !   end if
          else
            qflx_irr_demand(c) = 0._r8
          end if

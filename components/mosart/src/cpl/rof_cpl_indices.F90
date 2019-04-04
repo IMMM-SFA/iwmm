@@ -56,6 +56,7 @@ module rof_cpl_indices
   integer, public :: index_r2x_Flrr_volr = 0    ! rof->lnd volr total volume back to land
   integer, public :: index_r2x_Flrr_volrmch = 0 ! rof->lnd volr main channel back to land
   integer, public :: index_r2x_Flrr_supply = 0  ! rof->lnd supply flux for land use
+  !integer, public :: index_r2x_Flrr_supplyfrac = 0  ! rof->lnd supply fraction for surfacewater irrigation
   integer, public :: nflds_r2x = 0
 
 !=======================================================================
@@ -124,7 +125,7 @@ contains
     index_r2x_Flrr_volr  = mct_avect_indexra(avtmp,'Flrr_volr')
     index_r2x_Flrr_volrmch = mct_avect_indexra(avtmp,'Flrr_volrmch')
     index_r2x_Flrr_supply = mct_avect_indexra(avtmp,'Flrr_supply')
-
+    !index_r2x_Flrr_supplyfrac = mct_avect_indexra(avtmp,'Flrr_supplyfrac')
     nflds_r2x = mct_avect_nRattr(avtmp)
 
     call mct_aVect_clean(avtmp)

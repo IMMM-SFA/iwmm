@@ -152,8 +152,10 @@ contains
     ! Desired amount of time to irrigate per day (sec). Actual time may 
     ! differ if this is not a multiple of dtime. Irrigation won't work properly 
     ! if dtime > secsperday
-    integer , parameter :: irrig_length = isecspday/6       
-
+    
+    !integer , parameter :: irrig_length = isecspday/6       
+    integer , parameter :: irrig_length = isecspday  ! modified by Tian, all day irrigation
+    
     ! Determines target soil moisture level for irrigation. If h2osoi_liq_so 
     ! is the soil moisture level at which stomata are fully open and 
     ! h2osoi_liq_sat is the soil moisture level at saturation (eff_porosity), 
@@ -442,8 +444,8 @@ contains
       ! Determine step size
 
       dtime = get_step_size()
-      irrig_nsteps_per_day = ((irrig_length + (dtime - 1))/dtime)*6._r8  ! round up
-
+      !irrig_nsteps_per_day = ((irrig_length + (dtime - 1))/dtime)*6._r8  ! round up
+      irrig_nsteps_per_day = 48 ! 1800 secs/step
       ! First - set the following values over points where frac vegetation covered by snow is zero
       ! (e.g. btran, t_veg, rootr, rresis)
 

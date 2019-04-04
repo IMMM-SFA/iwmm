@@ -104,6 +104,7 @@ MODULE WRM_type_mod
 !constraints based on points of extractions along the maoin stem. Here ensure the release is the environmental flow.
 
      real(r8), pointer :: supply(:)         ! (b:e) supply of surface water [m3]
+	 !real(r8), pointer :: SupplyFrac(:)     ! (b:e) supply fraction relative to the demand ! Tian June 2018
      real(r8), pointer :: deficit(:)        ! (b:e) unmet demand [m3]
      real(r8), pointer :: demand(:)         ! (b:e) total withdrawl water demand [m3]
      real(r8), pointer :: demand0(:)        ! (b:e) baseline total withdrawl water rate demand [m3/s]

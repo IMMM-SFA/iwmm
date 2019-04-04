@@ -49,7 +49,7 @@ module rof_comp_esmf
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
-                                index_r2x_Flrr_supply
+                                index_r2x_Flrr_supply !, index_r2x_Flrr_supplyfrac
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
 !
 ! !PUBLIC MEMBER FUNCTIONS:
@@ -821,9 +821,11 @@ contains
        fptr(index_r2x_Flrr_volr,ni)    = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
        fptr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
        fptr(index_r2x_Flrr_supply,ni)  = 0._r8  ! tcxcpl
+       !fptr(index_r2x_Flrr_supplyfrac,ni)  = 0._r8  ! Tian July 2018
 #ifdef INCLUDE_WRM
        if (wrmflag) then
-          fptr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n)    ! tcxcpl
+          fptr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)    ! tcxcpl ! Tian July 2018
+          !fptr(index_r2x_Flrr_supplyfrac,ni) = StorWater%SupplyFrac(n)*1000 ! Tian July 2018
        endif
 #endif
     end do

@@ -109,10 +109,16 @@ module WaterfluxType
      ! Irrigation
      real(r8), pointer :: qflx_irrig_patch         (:)   ! patch irrigation flux (mm H2O/s)
      real(r8), pointer :: qflx_real_irrig_patch    (:)   ! patch real irrigation flux (mm H2O/s) !added by Tian 2/27/2018
-	 real(r8), pointer :: qflx_supply_patch        (:)   ! patch supply flux (mm H2O/s) !added by Tian 4/11/2018
+     real(r8), pointer :: qflx_surf_irrig_col      (:)   ! col real surface irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+     real(r8), pointer :: qflx_grnd_irrig_col      (:)   ! col real groundwater irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+	 real(r8), pointer :: qflx_grnd_irrig_patch    (:)   ! groundwater irrigation (mm H2O/s) !added by Tian 4/11/2018
+     real(r8), pointer :: qflx_surf_irrig_patch    (:)   ! surface water irrigation(mm H2O/s) !added by Tian 4/11/2018
+     real(r8), pointer :: qflx_supply_patch        (:)   ! patch supply flux (mm H2O/s) !added by Tian 4/11/2018
      real(r8), pointer :: qflx_irrig_col           (:)   ! col irrigation flux (mm H2O/s)
      real(r8), pointer :: qflx_irr_demand_col      (:)   ! col surface irrigation demand (mm H2O /s)
      real(r8), pointer :: irrig_rate_patch         (:)   ! current irrigation rate [mm/s]
+	 real(r8), pointer :: qflx_over_supply_patch   (:)   ! over supplied irrigation !added by Tian July 2018
+     real(r8), pointer :: qflx_over_supply_col     (:)   ! col over supplied irrigation !added by Tian July 2018
      integer , pointer :: n_irrig_steps_left_patch (:)   ! number of time steps for which we still need to irrigate today (if 0, ignore)
 
      ! For VSFM
@@ -270,8 +276,13 @@ contains
 
     allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan ! prescribed irrig
     allocate(this%qflx_real_irrig_patch    (begp:endp))              ; this%qflx_real_irrig_patch    (:)   = nan ! added by Tian 2/27/2018, real irrig
+    allocate(this%qflx_surf_irrig_col      (begc:endc))              ; this%qflx_surf_irrig_col      (:)   = 0._r8
+    allocate(this%qflx_grnd_irrig_col      (begc:endc))              ; this%qflx_grnd_irrig_col      (:)   = 0._r8
+    allocate(this%qflx_grnd_irrig_patch    (begp:endp))              ; this%qflx_grnd_irrig_patch    (:)   = nan
+    allocate(this%qflx_surf_irrig_patch    (begp:endp))              ; this%qflx_surf_irrig_patch    (:)   = nan
     allocate(this%qflx_supply_patch        (begp:endp))              ; this%qflx_supply_patch        (:)   = nan ! added by Tian 4/11/2018, supply
-
+    allocate(this%qflx_over_supply_patch   (begp:endp))              ; this%qflx_over_supply_patch   (:)   = nan ! added by Tian July 2018
+    allocate(this%qflx_over_supply_col     (begc:endc))              ; this%qflx_over_supply_col     (:)   = 0._r8
     allocate(this%qflx_irrig_col           (begc:endc))              ; this%qflx_irrig_col           (:)   = nan
     allocate(this%qflx_irr_demand_col      (begc:endc))              ; this%qflx_irr_demand_col      (:)   = nan
     allocate(this%irrig_rate_patch         (begp:endp))              ; this%irrig_rate_patch         (:)   = nan
@@ -432,13 +443,28 @@ contains
     this%qflx_real_irrig_patch(begp:endp) = spval     ! added by Tian 2/27/2018, replace the output from prescribed irrig to real irrig
     call hist_addfld1d (fname='QIRRIG_REAL', units='mm/s', &
          avgflag='A', long_name='actual water added through irrigation (surface + ground)', &
-         ptr_patch=this%qflx_real_irrig_patch, set_lake=0._r8)
+         ptr_patch=this%qflx_real_irrig_patch)
     
     this%qflx_supply_patch(begp:endp) = spval     ! added by Tian 4/11/2018
     call hist_addfld1d (fname='QSUPPLY', units='mm/s', &
          avgflag='A', long_name='irrigation supply from MOSART', &
-         ptr_patch=this%qflx_supply_patch, set_lake=0._r8)
-
+         ptr_patch=this%qflx_supply_patch)
+         
+    this%qflx_surf_irrig_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QSURF_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Surface water irrigation', &
+         ptr_patch=this%qflx_surf_irrig_patch)
+    
+    this%qflx_grnd_irrig_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QGRND_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Groundwater irrigation', &
+         ptr_patch=this%qflx_grnd_irrig_patch)
+		 
+    this%qflx_over_supply_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QOVER_SUPPLY', units='mm/s', &
+         avgflag='A', long_name='Over supplied irrigation due to remapping, added to irrigation to conserve mass', &
+         ptr_patch=this%qflx_over_supply_patch)
+         
     this%qflx_prec_intr_patch(begp:endp) = spval
     call hist_addfld1d (fname='QINTR', units='mm/s',  &
          avgflag='A', long_name='interception', &
