@@ -9,7 +9,7 @@ module BalanceCheckMod
   use shr_log_mod        , only : errMsg => shr_log_errMsg
   use decompMod          , only : bounds_type
   use abortutils         , only : endrun
-  use clm_varctl         , only : iulog, use_var_soil_thick
+  use clm_varctl         , only : iulog, use_var_soil_thick, TwoWayCouplingFlag
   use clm_varcon         , only : namep, namec
   use GetGlobalValuesMod , only : GetGlobalIndex
   use atm2lndType        , only : atm2lnd_type
@@ -91,10 +91,17 @@ contains
             h2ocan_col(bounds%begc:bounds%endc))
       
       if (use_var_soil_thick) then
-	 do f = 1, num_hydrologyc
+  do f = 1, num_hydrologyc
             c = filter_hydrologyc(f)
-      	    wa(c) = 0._r8                ! Made 0 for variable soil thickness
-	 end do
+            wa(c) = 0._r8                ! Made 0 for variable soil thickness
+  end do
+      else
+  do f = 1, num_hydrologyc
+            c = filter_hydrologyc(f)
+            if (zwt(c) <= zi(c,nlevsoi)) then
+               wa(c) = 5000._r8
+     end if
+         end do
       end if
       
       do f = 1, num_nolakec
@@ -167,6 +174,7 @@ contains
      use clm_varctl        , only : create_glacier_mec_landunit
      use clm_time_manager  , only : get_step_size, get_nstep
      use clm_initializeMod , only : surfalb_vars
+     use domainMod         , only : ldomain
      use CanopyStateType   , only : canopystate_type
      use subgridAveMod
      use clm_time_manager  , only : get_curr_date, get_nstep
@@ -216,7 +224,10 @@ contains
           qflx_rain_grnd_col         =>    waterflux_vars%qflx_rain_grnd_col          , & ! Input:  [real(r8) (:)   ]  rain on ground after interception (mm H2O/s) [+]
           qflx_snow_grnd_col         =>    waterflux_vars%qflx_snow_grnd_col          , & ! Input:  [real(r8) (:)   ]  snow on ground after interception (mm H2O/s) [+]
           qflx_evap_soi              =>    waterflux_vars%qflx_evap_soi_col           , & ! Input:  [real(r8) (:)   ]  soil evaporation (mm H2O/s) (+ = to atm)
-          qflx_irrig                 =>    waterflux_vars%qflx_irrig_col              , & ! Input:  [real(r8) (:)   ]  irrigation flux (mm H2O /s)             
+          qflx_irrig                 =>    waterflux_vars%qflx_irrig_col              , & ! Input:  [real(r8) (:)   ]  irrigation flux (mm H2O /s)
+          qflx_surf_irrig_col        =>    waterflux_vars%qflx_surf_irrig_col         , & ! Input:  [real(r8) (:)   ]  real surface irrigation flux (mm H2O /s)     
+          qflx_over_supply_col       =>    waterflux_vars%qflx_over_supply_col        , & ! Input:  [real(r8) (:)   ]  over supply irrigation flux (mm H2O /s)
+           
           qflx_snwcp_ice             =>    waterflux_vars%qflx_snwcp_ice_col          , & ! Input:  [real(r8) (:)   ]  excess snowfall due to snow capping (mm H2O /s) [+]`
           qflx_evap_tot              =>    waterflux_vars%qflx_evap_tot_col           , & ! Input:  [real(r8) (:)   ]  qflx_evap_soi + qflx_evap_can + qflx_tran_veg
           qflx_dew_snow              =>    waterflux_vars%qflx_dew_snow_col           , & ! Input:  [real(r8) (:)   ]  surface dew added to snow pack (mm H2O /s) [+]
@@ -279,7 +290,6 @@ contains
           ftdd                       =>    surfalb_vars%ftdd_patch                    , & ! Input:  [real(r8) (:,:)]  down direct flux below canopy per unit direct flux
           ftid                       =>    surfalb_vars%ftid_patch                    , & ! Input:  [real(r8) (:,:)]  down diffuse flux below canopy per unit direct flux
           ftii                       =>    surfalb_vars%ftii_patch                    , & ! Input:  [real(r8) (:,:)]  down diffuse flux below canopy per unit diffuse flux
-
           netrad                     =>    energyflux_vars%netrad_patch                 & ! Output: [real(r8) (:)   ]  net radiation (positive downward) (W/m**2)
           )
 
@@ -307,24 +317,30 @@ contains
        ! Water balance check
 
        do c = bounds%begc, bounds%endc
-
+          g = col_pp%gridcell(c)
           ! add qflx_drain_perched and qflx_flood
           if (col_pp%active(c)) then
-
+        !     endwb(c) = begwb(c) + (forc_rain_col(c) + forc_snow_col(c)  + qflx_floodc(c) + qflx_irrig(c) &
+        !          - qflx_evap_tot(c) - qflx_surf(c)  - qflx_h2osfc_surf(c) &
+        !          - qflx_qrgwl(c) - qflx_drain(c) - qflx_drain_perched(c) - qflx_snwcp_ice(c)) * dtime
+            !if (TwoWayCouplingFlag) then ! Tian Apr. 2018 true is 2 way, else one way
              errh2o(c) = endwb(c) - begwb(c) &
-                  - (forc_rain_col(c) + forc_snow_col(c)  + qflx_floodc(c) + qflx_irrig(c) &
-                  - qflx_evap_tot(c) - qflx_surf(c)  - qflx_h2osfc_surf(c) &
+                  - (forc_rain_col(c) + forc_snow_col(c)  + qflx_floodc(c) + qflx_surf_irrig_col(c) + qflx_over_supply_col(c) &
+                  - qflx_evap_tot(c) - qflx_surf(c)  - qflx_h2osfc_surf(c) &  
                   - qflx_qrgwl(c) - qflx_drain(c) - qflx_drain_perched(c) - qflx_snwcp_ice(c) &
-                  - qflx_lateral(c) ) * dtime
+                  - qflx_lateral(c)) * dtime 
+            !else
+            ! errh2o(c) = endwb(c) - begwb(c) &
+             !     - (forc_rain_col(c) + forc_snow_col(c)  + qflx_floodc(c) + ldomain%f_surf(g)*qflx_irrig(c) &
+             !     - qflx_evap_tot(c) - qflx_surf(c)  - qflx_h2osfc_surf(c) &  
+             !     - qflx_qrgwl(c) - qflx_drain(c) - qflx_drain_perched(c) - qflx_snwcp_ice(c) &
+             !     - qflx_lateral(c)) * dtime
+            !end if
              dwb(c) = (endwb(c)-begwb(c))/dtime
-
           else
-
              errh2o(c) = 0.0_r8
              dwb(c)    = 0.0_r8
-
-          end if
-
+          end if         
        end do
 
        ! Suppose glc_dyn_runoff_routing = T:   
@@ -379,6 +395,8 @@ contains
              write(iulog,*)'qflx_qrgwl                 = ',qflx_qrgwl(indexc)
              write(iulog,*)'qflx_drain                 = ',qflx_drain(indexc)
              write(iulog,*)'qflx_snwcp_ice             = ',qflx_snwcp_ice(indexc)
+             write(iulog,*)'qflx_supply                = ',atm2lnd_vars%supply_grc(g)
+             write(iulog,*)'f_grd                      = ',ldomain%f_grd(g)
              write(iulog,*)'qflx_lateral               = ',qflx_lateral(indexc)
              write(iulog,*)'total_plant_stored_h2o_col = ',total_plant_stored_h2o_col(indexc)
              write(iulog,*)'clm model is stopping'
@@ -395,6 +413,8 @@ contains
              write(iulog,*)'begwb                      = ',begwb(indexc)
              write(iulog,*)'qflx_evap_tot              = ',qflx_evap_tot(indexc)
              write(iulog,*)'qflx_irrig                 = ',qflx_irrig(indexc)
+             write(iulog,*)'qflx_surf_irrig_col        = ',qflx_surf_irrig_col(indexc)
+             write(iulog,*)'qflx_over_supply_col       = ',qflx_over_supply_col(indexc)                                                                                     
              write(iulog,*)'qflx_surf                  = ',qflx_surf(indexc)
              write(iulog,*)'qflx_h2osfc_surf           = ',qflx_h2osfc_surf(indexc)
              write(iulog,*)'qflx_qrgwl                 = ',qflx_qrgwl(indexc)
@@ -402,8 +422,10 @@ contains
              write(iulog,*)'qflx_drain_perched         = ',qflx_drain_perched(indexc)
              write(iulog,*)'qflx_flood                 = ',qflx_floodc(indexc)
              write(iulog,*)'qflx_snwcp_ice             = ',qflx_snwcp_ice(indexc)
+             write(iulog,*)'qflx_supply                = ',atm2lnd_vars%supply_grc(g)
              write(iulog,*)'qflx_glcice_melt           = ',qflx_glcice_melt(indexc)
              write(iulog,*)'qflx_glcice_frz            = ',qflx_glcice_frz(indexc) 
+             write(iulog,*)'f_grd                      = ',ldomain%f_grd(g)
              write(iulog,*)'qflx_lateral               = ',qflx_lateral(indexc)
              write(iulog,*)'total_plant_stored_h2o_col = ',total_plant_stored_h2o_col(indexc)
              write(iulog,*)'clm model is stopping'

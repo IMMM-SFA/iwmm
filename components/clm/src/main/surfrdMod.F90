@@ -103,7 +103,7 @@ contains
 
     if (isgrid2d) then
        allocate(idata2d(ni,nj))
-       idata2d(:,:) = 1	
+       idata2d(:,:) = 1 
        call ncd_io(ncid=ncid, varname='LANDMASK', data=idata2d, flag='read', readvar=readvar)
        if (.not. readvar) then
           call ncd_io(ncid=ncid, varname='mask', data=idata2d, flag='read', readvar=readvar)
@@ -111,7 +111,7 @@ contains
        if (readvar) then
           do j = 1,nj
           do i = 1,ni
-             n = (j-1)*ni + i	
+             n = (j-1)*ni + i 
              mask(n) = idata2d(i,j)
           enddo
           enddo
@@ -650,10 +650,23 @@ contains
     end if
     call domain_clean(surfdata_domain)
 
-    ! Obtain special landunit info
-
+    ! Obtain special landunit info    
     call surfrd_special(begg, endg, ncid, ldomain%ns)
 
+    !!!! comment out for using surface water only option  ------ Tian Apr 2018
+    call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=ldomain%firrig, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )!
+
+    call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=ldomain%f_surf, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )!
+
+    call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=ldomain%f_grd, &
+         dim1name=grlnd, readvar=readvar)
+    if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
+    !!!! end comment
+    
     ! Obtain vegetated landunit info
 
     call surfrd_veg_all(begg, endg, ncid, ldomain%ns)
@@ -685,6 +698,8 @@ contains
     use landunit_varcon , only : isturb_MIN, isturb_MAX, istdlak, istwet, istice, istice_mec
     use clm_varsur      , only : wt_lunit, urban_valid, wt_glc_mec, topo_glc_mec
     use UrbanParamsType , only : CheckUrban
+    use domainMod       , only : ldomain
+
     !
     ! !ARGUMENTS:
     integer          , intent(in)    :: begg, endg 
@@ -737,6 +752,20 @@ contains
     call ncd_io(ncid=ncid, varname='PCT_GLACIER', flag='read', data=pctgla, &
          dim1name=grlnd, readvar=readvar)
     if (.not. readvar) call endrun( msg=' ERROR: PCT_GLACIER NOT on surfdata file'//errMsg(__FILE__, __LINE__))
+
+ !   call ncd_io(ncid=ncid, varname='FIRRIG', flag='read', data=ldomain%firrig, &
+ !        dim1name=grlnd, readvar=readvar)
+ !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FIRRIG NOT on surfdata file' )
+
+ !   call ncd_io(ncid=ncid, varname='FSURF', flag='read', data=ldomain%f_surf, &
+ !        dim1name=grlnd, readvar=readvar)
+ !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FSURF NOT on surfdata file' )
+
+ !   call ncd_io(ncid=ncid, varname='FGRD', flag='read', data=ldomain%f_grd, &
+ !        dim1name=grlnd, readvar=readvar)
+ !   if (.not. readvar) call endrun( trim(subname)//' ERROR: FGRD NOT on surfdata file' )
+
+
 
     ! Read urban info
     if (nlevurb == 0) then

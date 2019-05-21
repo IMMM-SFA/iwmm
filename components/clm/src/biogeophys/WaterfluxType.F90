@@ -52,6 +52,10 @@ module WaterfluxType
      real(r8), pointer :: qflx_dew_grnd_col        (:)   ! col ground surface dew formation (mm H2O /s) [+] (+ = to atm); usually eflx_bot >= 0)
      real(r8), pointer :: qflx_prec_intr_patch     (:)   ! patch interception of precipitation [mm/s]
      real(r8), pointer :: qflx_prec_intr_col       (:)   ! col interception of precipitation [mm/s]
+     real(r8), pointer :: qflx_dirct_rain_patch    (:)   ! patch direct through rainfall [mm/s]
+     real(r8), pointer :: qflx_dirct_rain_col      (:)   ! col direct through rainfall [mm/s] 
+     real(r8), pointer :: qflx_leafdrip_patch      (:)   ! patch leaf rain drip [mm/s]
+     real(r8), pointer :: qflx_leafdrip_col        (:)   ! col leaf rain drip [mm/s]
 
      real(r8), pointer :: qflx_ev_snow_patch       (:)   ! patch evaporation heat flux from snow       (W/m**2) [+ to atm] ! NOTE: unit shall be mm H2O/s for water NOT heat
      real(r8), pointer :: qflx_ev_snow_col         (:)   ! col evaporation heat flux from snow         (W/m**2) [+ to atm] ! NOTE: unit shall be mm H2O/s for water NOT heat
@@ -105,8 +109,17 @@ module WaterfluxType
 
      ! Irrigation
      real(r8), pointer :: qflx_irrig_patch         (:)   ! patch irrigation flux (mm H2O/s)
+     real(r8), pointer :: qflx_real_irrig_patch    (:)   ! patch real irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+     real(r8), pointer :: qflx_surf_irrig_col      (:)   ! col real surface irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+     real(r8), pointer :: qflx_grnd_irrig_col      (:)   ! col real groundwater irrigation flux (mm H2O/s) !added by Tian 2/27/2018
+	 real(r8), pointer :: qflx_grnd_irrig_patch    (:)   ! groundwater irrigation (mm H2O/s) !added by Tian 4/11/2018
+     real(r8), pointer :: qflx_surf_irrig_patch    (:)   ! surface water irrigation(mm H2O/s) !added by Tian 4/11/2018
+     real(r8), pointer :: qflx_supply_patch        (:)   ! patch supply flux (mm H2O/s) !added by Tian 4/11/2018
      real(r8), pointer :: qflx_irrig_col           (:)   ! col irrigation flux (mm H2O/s)
+     real(r8), pointer :: qflx_irr_demand_col      (:)   ! col surface irrigation demand (mm H2O /s)
      real(r8), pointer :: irrig_rate_patch         (:)   ! current irrigation rate [mm/s]
+	 real(r8), pointer :: qflx_over_supply_patch   (:)   ! over supplied irrigation !added by Tian July 2018
+     real(r8), pointer :: qflx_over_supply_col     (:)   ! col over supplied irrigation !added by Tian July 2018
      integer , pointer :: n_irrig_steps_left_patch (:)   ! number of time steps for which we still need to irrigate today (if 0, ignore)
 
      ! For VSFM
@@ -196,6 +209,11 @@ contains
     allocate(this%qflx_dew_grnd_patch      (begp:endp))              ; this%qflx_dew_grnd_patch      (:)   = nan
     allocate(this%qflx_dew_snow_patch      (begp:endp))              ; this%qflx_dew_snow_patch      (:)   = nan
 
+    allocate(this%qflx_dirct_rain_patch    (begp:endp))              ; this%qflx_dirct_rain_patch    (:)   = nan
+    allocate(this%qflx_leafdrip_patch      (begp:endp))              ; this%qflx_leafdrip_patch      (:)   = nan
+    allocate(this%qflx_dirct_rain_col      (begc:endc))              ; this%qflx_dirct_rain_col      (:)   = nan
+    allocate(this%qflx_leafdrip_col        (begc:endc))              ; this%qflx_leafdrip_col        (:)   = nan
+
     allocate(this%qflx_prec_intr_col       (begc:endc))              ; this%qflx_prec_intr_col       (:)   = nan
     allocate(this%qflx_prec_grnd_col       (begc:endc))              ; this%qflx_prec_grnd_col       (:)   = nan
     allocate(this%qflx_rain_grnd_col       (begc:endc))              ; this%qflx_rain_grnd_col       (:)   = nan
@@ -262,8 +280,17 @@ contains
     allocate(this%qflx_liq_dynbal_grc      (begg:endg))              ; this%qflx_liq_dynbal_grc      (:)   = nan
     allocate(this%qflx_ice_dynbal_grc      (begg:endg))              ; this%qflx_ice_dynbal_grc      (:)   = nan
 
-    allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan
+    allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan ! prescribed irrig
+    allocate(this%qflx_real_irrig_patch    (begp:endp))              ; this%qflx_real_irrig_patch    (:)   = nan ! added by Tian 2/27/2018, real irrig
+    allocate(this%qflx_surf_irrig_col      (begc:endc))              ; this%qflx_surf_irrig_col      (:)   = 0._r8
+    allocate(this%qflx_grnd_irrig_col      (begc:endc))              ; this%qflx_grnd_irrig_col      (:)   = 0._r8
+    allocate(this%qflx_grnd_irrig_patch    (begp:endp))              ; this%qflx_grnd_irrig_patch    (:)   = nan
+    allocate(this%qflx_surf_irrig_patch    (begp:endp))              ; this%qflx_surf_irrig_patch    (:)   = nan
+    allocate(this%qflx_supply_patch        (begp:endp))              ; this%qflx_supply_patch        (:)   = nan ! added by Tian 4/11/2018, supply
+    allocate(this%qflx_over_supply_patch   (begp:endp))              ; this%qflx_over_supply_patch   (:)   = nan ! added by Tian July 2018
+    allocate(this%qflx_over_supply_col     (begc:endc))              ; this%qflx_over_supply_col     (:)   = 0._r8
     allocate(this%qflx_irrig_col           (begc:endc))              ; this%qflx_irrig_col           (:)   = nan
+    allocate(this%qflx_irr_demand_col      (begc:endc))              ; this%qflx_irr_demand_col      (:)   = nan
     allocate(this%irrig_rate_patch         (begp:endp))              ; this%irrig_rate_patch         (:)   = nan
     allocate(this%n_irrig_steps_left_patch (begp:endp))              ; this%n_irrig_steps_left_patch (:)   = 0
 
@@ -345,6 +372,11 @@ contains
     call hist_addfld1d (fname='QOVER',  units='mm/s',  &
          avgflag='A', long_name='surface runoff', &
          ptr_col=this%qflx_surf_col, c2l_scale_type='urbanf')
+    
+    this%qflx_irr_demand_col(begc:endc) = 0._r8
+    call hist_addfld1d (fname='QIRRIG_WM',  units='mm/s',  &
+         avgflag='A', long_name='Surface water irrigation demand sent to MOSART/WM', &
+         ptr_col=this%qflx_irr_demand_col, c2l_scale_type='urbanf')
 
     this%qflx_qrgwl_col(begc:endc) = spval
     call hist_addfld1d (fname='QRGWL',  units='mm/s',  &
@@ -420,10 +452,35 @@ contains
     end if
 
     this%qflx_irrig_patch(begp:endp) = spval
-    call hist_addfld1d (fname='QIRRIG', units='mm/s', &
-         avgflag='A', long_name='water added through irrigation', &
+    call hist_addfld1d (fname='QIRRIG_ORIG', units='mm/s', &
+         avgflag='A', long_name='Original total irrigation water demand (surface + ground)', &
          ptr_patch=this%qflx_irrig_patch)
-
+   
+    this%qflx_real_irrig_patch(begp:endp) = spval     ! added by Tian 2/27/2018, replace the output from prescribed irrig to real irrig
+    call hist_addfld1d (fname='QIRRIG_REAL', units='mm/s', &
+         avgflag='A', long_name='actual water added through irrigation (surface + ground)', &
+         ptr_patch=this%qflx_real_irrig_patch)
+    
+    this%qflx_supply_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QSUPPLY', units='mm/s', &
+         avgflag='A', long_name='irrigation supply from MOSART', &
+         ptr_patch=this%qflx_supply_patch)
+         
+    this%qflx_surf_irrig_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QSURF_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Surface water irrigation', &
+         ptr_patch=this%qflx_surf_irrig_patch)
+    
+    this%qflx_grnd_irrig_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QGRND_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Groundwater irrigation', &
+         ptr_patch=this%qflx_grnd_irrig_patch)
+		 
+    this%qflx_over_supply_patch(begp:endp) = spval     ! added by Tian 4/11/2018
+    call hist_addfld1d (fname='QOVER_SUPPLY', units='mm/s', &
+         avgflag='A', long_name='Over supplied irrigation due to remapping, added to irrigation to conserve mass', &
+         ptr_patch=this%qflx_over_supply_patch)
+         
     this%qflx_prec_intr_patch(begp:endp) = spval
     call hist_addfld1d (fname='QINTR', units='mm/s',  &
          avgflag='A', long_name='interception', &
@@ -453,6 +510,16 @@ contains
     call hist_addfld1d (fname='QSNWCPLIQ', units='mm H2O/s', &
          avgflag='A', long_name='excess rainfall due to snow capping', &
          ptr_patch=this%qflx_snwcp_liq_patch, c2l_scale_type='urbanf', default='inactive')
+
+    this%qflx_dirct_rain_patch(begp:endp) = spval
+    call hist_addfld1d (fname='QWTRGH', units='mm/s',  &
+         avgflag='A', long_name='direct rain throughfall', &
+         ptr_patch=this%qflx_dirct_rain_patch, c2l_scale_type='urbanf', default='inactive')
+
+    this%qflx_leafdrip_patch(begp:endp) = spval
+    call hist_addfld1d (fname='QWDRIP', units='mm/s',  &
+         avgflag='A', long_name='leaf rain drip', &
+         ptr_patch=this%qflx_leafdrip_patch, c2l_scale_type='urbanf', default='inactive')
 
     ! Use qflx_snwcp_ice_col rather than qflx_snwcp_ice_patch, because the column version 
     ! is the final version, which includes some  additional corrections beyond the patch-level version
@@ -560,12 +627,14 @@ contains
     this%qflx_snow_melt_col(bounds%begc:bounds%endc)   = 0._r8
 
     this%dwb_col(bounds%begc:bounds%endc) = 0._r8
+
     ! needed for CNNLeaching 
     do c = bounds%begc, bounds%endc
        l = col_pp%landunit(c)
        if (lun_pp%itype(l) == istsoil .or. lun_pp%itype(l) == istcrop) then
           this%qflx_drain_col(c) = 0._r8
           this%qflx_surf_col(c)  = 0._r8
+          this%qflx_irr_demand_col(c)  = 0._r8
        end if
     end do
 

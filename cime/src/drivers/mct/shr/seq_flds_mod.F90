@@ -590,6 +590,7 @@ contains
     call seq_flds_add(a2x_states,"Sa_u")
     call seq_flds_add(x2l_states,"Sa_u")
     call seq_flds_add(x2i_states,"Sa_u")
+    call seq_flds_add(x2r_states,"Sa_u")
     call seq_flds_add(x2w_states,"Sa_u")
     longname = 'Zonal wind at the lowest model level'
     stdname  = 'eastward_wind'
@@ -601,6 +602,7 @@ contains
     call seq_flds_add(a2x_states,"Sa_v")
     call seq_flds_add(x2l_states,"Sa_v")
     call seq_flds_add(x2i_states,"Sa_v")
+    call seq_flds_add(x2r_states,"Sa_v")
     call seq_flds_add(x2w_states,"Sa_v")
     longname = 'Meridional wind at the lowest model level'
     stdname  = 'northward_wind'
@@ -612,6 +614,7 @@ contains
     call seq_flds_add(a2x_states,"Sa_tbot")
     call seq_flds_add(x2l_states,"Sa_tbot")
     call seq_flds_add(x2i_states,"Sa_tbot")
+    call seq_flds_add(x2r_states,"Sa_tbot")
     call seq_flds_add(x2w_states,"Sa_tbot")
     longname = 'Temperature at the lowest model level'
     stdname  = 'air_temperature'
@@ -633,6 +636,7 @@ contains
     call seq_flds_add(a2x_states,"Sa_shum")
     call seq_flds_add(x2l_states,"Sa_shum")
     call seq_flds_add(x2i_states,"Sa_shum")
+    call seq_flds_add(x2r_states,"Sa_shum")
     longname = 'Specific humidity at the lowest model level'
     stdname  = 'specific_humidity'
     units    = 'kg kg-1'
@@ -643,6 +647,7 @@ contains
     call seq_flds_add(a2x_states,"Sa_pbot")
     call seq_flds_add(x2l_states,"Sa_pbot")
     call seq_flds_add(x2i_states,"Sa_pbot")
+    call seq_flds_add(x2r_states,"Sa_pbot")
     if (trim(cime_model) == 'e3sm') then
        call seq_flds_add(x2o_states,"Sa_pbot")
     end if
@@ -717,6 +722,7 @@ contains
     call seq_flds_add(a2x_fluxes,"Faxa_lwdn")
     call seq_flds_add(x2l_fluxes,"Faxa_lwdn")
     call seq_flds_add(x2i_fluxes,"Faxa_lwdn")
+    call seq_flds_add(x2r_fluxes,"Faxa_lwdn")
     call seq_flds_add(x2o_fluxes,"Faxa_lwdn")
     longname = 'Downward longwave heat flux'
     stdname  = 'downwelling_longwave_flux'
@@ -727,6 +733,7 @@ contains
     ! direct near-infrared incident solar radiation
     call seq_flds_add(a2x_fluxes,"Faxa_swndr")
     call seq_flds_add(x2i_fluxes,"Faxa_swndr")
+    call seq_flds_add(x2r_fluxes,"Faxa_swndr")
     call seq_flds_add(x2l_fluxes,"Faxa_swndr")
     longname = 'Direct near-infrared incident solar radiation'
     stdname  = 'surface_downward_direct_shortwave_flux_due_to_near_infrared_radiation'
@@ -737,6 +744,7 @@ contains
     ! direct visible incident solar radiation
     call seq_flds_add(a2x_fluxes,"Faxa_swvdr")
     call seq_flds_add(x2i_fluxes,"Faxa_swvdr")
+    call seq_flds_add(x2r_fluxes,"Faxa_swvdr")
     call seq_flds_add(x2l_fluxes,"Faxa_swvdr")
     longname = 'Direct visible incident solar radiation'
     stdname  = 'surface_downward_direct_shortwave_flux_due_to_visible_radiation'
@@ -747,6 +755,7 @@ contains
     ! diffuse near-infrared incident solar radiation
     call seq_flds_add(a2x_fluxes,"Faxa_swndf")
     call seq_flds_add(x2i_fluxes,"Faxa_swndf")
+    call seq_flds_add(x2r_fluxes,"Faxa_swndf")
     call seq_flds_add(x2l_fluxes,"Faxa_swndf")
     longname = 'Diffuse near-infrared incident solar radiation'
     stdname  = 'surface_downward_diffuse_shortwave_flux_due_to_near_infrared_radiation'
@@ -757,6 +766,7 @@ contains
     ! diffuse visible incident solar radiation
     call seq_flds_add(a2x_fluxes,"Faxa_swvdf")
     call seq_flds_add(x2i_fluxes,"Faxa_swvdf")
+    call seq_flds_add(x2r_fluxes,"Faxa_swvdf")
     call seq_flds_add(x2l_fluxes,"Faxa_swvdf")
     longname = 'Diffuse visible incident solar radiation'
     stdname  = 'surface_downward_diffuse_shortwave_flux_due_to_visible_radiation'
@@ -1966,6 +1976,14 @@ contains
     attname  = 'Flrl_rofi'
     call metadata_set(attname, longname, stdname, units)
 
+    call seq_flds_add(l2x_fluxes,'Flrl_demand')
+    call seq_flds_add(x2r_fluxes,'Flrl_demand')
+    longname = 'Water flux total demand in land from rof'
+    stdname  = 'water_flux_total_demand_from_runoff'
+    units    = 'kg m-2 s-1'
+    attname  = 'Flrl_demand'
+    call metadata_set(attname, longname, stdname, units)
+
     ! Currently only the CESM land and runoff models treat irrigation as a separate
     ! field: in E3SM, this field is folded in to the other runoff fields. Eventually,
     ! E3SM may want to update its land and runoff models to map irrigation specially, as
@@ -2044,6 +2062,14 @@ contains
     stdname  = 'rtm_volrmch'
     units    = 'm'
     attname  = 'Flrr_volrmch'
+    call metadata_set(attname, longname, stdname, units)
+
+    call seq_flds_add(r2x_fluxes,'Flrr_supply')
+    call seq_flds_add(x2l_fluxes,'Flrr_supply')
+    longname = 'River model supply for land use'
+    stdname  = 'rtm_supply'
+    units    = 'kg m-2 s-1'
+    attname  = 'Flrr_supply'
     call metadata_set(attname, longname, stdname, units)
 
     !-----------------------------

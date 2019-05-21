@@ -56,7 +56,32 @@
 
   <compset>
     <alias>I20TRCLM45CBCN</alias>
-    <lname>20TR_SATM_CLM45%CN_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+    <lname>20TR_SATM_CLM45%CN_SICE_SOCN_RTM_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>ICN</alias>
+    <lname>2000_DATM%QIA_CLM40%CN_SICE_SOCN_RTM_SGLC_SWAV</lname>
+  </compset>	  
+
+  <compset>
+    <alias>IMCN</alias>
+    <lname>2000_DATM%QIA_CLM40%CN_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>IMCNNLDAS</alias>
+    <lname>2000_DATM%NLDAS_CLM40%CN_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>IMCLM45CNNLDAS</alias>
+    <lname>2000_DATM%NLDAS_CLM45%CN_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
+
+  <compset>
+    <alias>I1850CN</alias>
+    <lname>1850_DATM%QIA_CLM40%CN_SICE_SOCN_RTM_SGLC_SWAV</lname>
   </compset>
 
   <compset>
@@ -287,6 +312,11 @@
    <compset>
      <alias>ICB20TRCNPRDCTCBC</alias>
      <lname>20TR_SATM_CLM45%CNPRDCTCBC_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+   </compset>
+
+   <compset>
+     <alias>IM20TRNLDASCNPECACNTBC</alias>
+     <lname>20TR_DATM%NLDAS_CLM45%CNPECACNTBC_SICE_SOCN_MOSART_SGLC_SWAV</lname>
    </compset>
 
    <!---I CRUNCEP compsets -->
