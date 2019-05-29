@@ -1,76 +1,25 @@
-[![E3SM Logo](https://e3sm.org/wp-content/themes/e3sm/assets/images/e3sm-logo.png)](https://e3sm.org)
+*Forked from [E3SM-Project/E3SM](https://github.com/E3SM-Project/E3SM/tree/v1.1.1) at tag `v1.1.1`. Please refer to the linked repository for the original README and documentation.*
 
-Energy Exascale Earth System Model (E3SM)
-================================================================================
+Integrated Water Management Model (IWMM)
+========================================
 
-E3SM is a state-of-the-art fully coupled model of the Earth's climate including
-important biogeochemical and cryospheric processes. It is intended to address
-the most challenging and demanding climate-change research problems and
-Department of Energy mission needs while efficiently using DOE Leadership
-Computing Facilities.  
+This fork of E3SM focuses on modeling runnoff with integrated water management, representing the effect of humans (reservoirs and demand).
 
-DOI: [10.11578/E3SM/dc.20180418.36](http://dx.doi.org/10.11578/E3SM/dc.20180418.36)
+More detailed documentation and customizations to follow.
 
-Please visit the [project website](https://e3sm.org) for further details.
 
-Table of Contents 
---------------------------------------------------------------------------------
-- [Quick Start](#quickstart)
-- [Supported Machines](#supportedmachines)
-- [Running](#running)
-- [Contributing](#contributing)
-- [Acknowledge](#acknowledge)
-- [License](#license)
+Workflow
+--------
 
-Quick Start
---------------------------------------------------------------------------------
-The [Quick Start](https://e3sm.org/model/running-e3sm/e3sm-quick-start/) page 
-includes instructions on obtaining the necessary code and input data for model 
-setup and execution.
+- The `master` branch will track major releases from the parent `E3SM` repository, currently at `v1.1.1`.
+- The `development` branch will house the main codebase, which integrates `E3SM` with the `hydrotian/apcraig/mosart/add-inundation` fork.
+- Development work should occur in branches prefixed with `feature/`.
+  - For instance: `feature/rainbows` could contain work that considers the effect of rainbows on water management.
+  - Should this work become relevant to IWMM as a whole, a Pull Request (PR) should be submitted to the `development` branch. This will allow team members and peers to review, discuss, and test the code before merging it.
+  - From time to time, the `development` branch will receive new code that may be relevant to ongoing work in `feature/` branches. If desired, these updates can be merged into `feature/` branches.
+- When an experiment is finalized, the code should be tagged with an `experiment/` prefix.
+  - For instance: `experiment/rainbows` could represent a published milestone in the rainbows research.
+  - Tags can be created from any fully commited branch with a command like: `git tag experiment/rainbows`. Send the tag to the repository with a command like: `git push origin experiment/rainbows`.
+  - It may be more relevant to qualify the tag with the publication name and/or authors, so that it is more easily associated with the correct work.
 
-Supported Machines 
---------------------------------------------------------------------------------
-E3SM is high-performance computing application and generally requires a cluster
-with several hundred nodes to run a scientifically validated case at a useful
-simulation speed.
-
-To run E3SM, it is recommended that you obtain time on a 
-[Supported Machine](https://e3sm.org/model/running-e3sm/supported-machines/).
-
-Running
---------------------------------------------------------------------------------
-Please refer to [Running E3SM](https://e3sm.org/model/running-e3sm/) 
- for instructions on running the model. 
-
-Contributing
---------------------------------------------------------------------------------
-Please refer to [Contributing](CONTRIBUTING.md) for details on our code development
-process for submitting pull requests.
-
-Acknowledgement
---------------------------------------------------------------------------------
-The Energy Exascale Earth System Model (E3SM) Project should be acknowledged in
-publications as the origin of the model using
-[these guidelines](https://e3sm.org/resources/policies/acknowledge-e3sm/).
-
-In addition, the software should be cited.  For your convenience,
-the following BibTeX entry is provided.
-```TeX
-@misc{e3sm-model,
-	title = {{Energy Exascale Earth System Model (E3SM)}},
-	author = {{E3SM Project}},
-	abstractNote = {{E3SM} is a state-of-the-art fully coupled model of the {E}arth's 
-		climate including important biogeochemical and cryospheric processes.},
-	howpublished = {[Computer Software] \url{https://dx.doi.org/10.11578/E3SM/dc.20180418.36}},
-	url = {https://dx.doi.org/10.11578/E3SM/dc.20180418.36},
-	doi = {10.11578/E3SM/dc.20180418.36},
-	year = 2018,
-	month = apr,
-}
-```
-
-License
---------------------------------------------------------------------------------
-The E3SM model became open development at the time of first model and data release.
-Please see [LICENSE](LICENSE) for details.
 
