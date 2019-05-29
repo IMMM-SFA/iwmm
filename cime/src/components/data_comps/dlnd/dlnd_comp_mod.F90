@@ -168,11 +168,9 @@ CONTAINS
        if (my_task == master_task) &
             write(logunit,F05) ' scm lon lat = ',scmlon,scmlat
        call shr_strdata_init(SDLND,mpicom,compid,name='lnd', &
-            scmmode=scmmode,scmlon=scmlon,scmlat=scmlat, calendar=calendar, &
-            dmodel_domain_fracname_from_stream=domain_fracname)
+            scmmode=scmmode,scmlon=scmlon,scmlat=scmlat, calendar=calendar)
     else
-       call shr_strdata_init(SDLND,mpicom,compid,name='lnd', calendar=calendar, &
-            dmodel_domain_fracname_from_stream=domain_fracname)
+       call shr_strdata_init(SDLND,mpicom,compid,name='lnd', calendar=calendar)
     endif
 
     if (my_task == master_task) then
