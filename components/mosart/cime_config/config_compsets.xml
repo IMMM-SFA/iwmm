@@ -40,7 +40,7 @@
   </help>
 
   <compset>
-    <alias>RM</alias>
+    <alias>mosart_runoff_driven</alias>
     <lname>2000_SATM_DLND%LCLMR_SICE_SOCN_MOSART_SGLC_SWAV</lname>
   </compset>
   

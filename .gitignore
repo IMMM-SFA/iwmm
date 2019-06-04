@@ -1,3 +1,6 @@
+# Ignore new files in cime/scripts
+cime/scripts/*
+
 # Object files
 *.lo
 *.o
@@ -24,3 +27,6 @@ buildnmlc
 
 # Ignore emacs backup files
 *~
+
+# Ignore vim swap
+*.swp

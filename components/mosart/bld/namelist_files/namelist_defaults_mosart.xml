@@ -33,14 +33,14 @@ for the CLM data in the CESM distribution
 
 <!-- River Transport Model river routing file (relative to {csmdata}) -->
 
-<frivinp_rtm rof_grid="r0125" >rof/mosart/MOSART_Global_8th_20160716a.nc</frivinp_rtm>
-<frivinp_rtm rof_grid="r05" >rof/mosart/MOSART_Global_half_20161014c.nc</frivinp_rtm>
-<frivinp_rtm rof_grid="NLDAS" >rof/mosart/MOSART_NLDAS_8th_20160426.nc</frivinp_rtm>
+<frivinp_rtm rof_grid="r0125" >input_data/runoff/MOSART_Global_8th_20160716a.nc</frivinp_rtm>
+<frivinp_rtm rof_grid="r05" >input_data/runoff/MOSART_Global_half_20161014c.nc</frivinp_rtm>
+<frivinp_rtm rof_grid="NLDAS" >input_data/runoff/MOSART_NLDAS_8th_20160426.nc</frivinp_rtm>
 
 <!-- WRM -->
 
-<paraFile rof_grid="NLDAS" >rof/mosart/US_reservoir_8th_NLDAS3_c20161220_updated_20170314.nc</paraFile>
-<demandPath rof_grid="NLDAS" >/pic/scratch/vois549/wm_data/NLDAS2_GCAM_water_demand_</demandPath> 
+<paraFile rof_grid="NLDAS" >input_data/runoff/US_reservoir_8th_NLDAS3_c20161220_updated_20170314.nc</paraFile>
+<demandPath rof_grid="NLDAS" >input_data/demand/GCAM_waterdemand_nc/RCP8.5_GCAM_water_demand_</demandPath>
 <ExtractionFlag>1</ExtractionFlag>
 <ExtractionMainChannelFlag>1</ExtractionMainChannelFlag>
 <RegulationFlag>1</RegulationFlag>
