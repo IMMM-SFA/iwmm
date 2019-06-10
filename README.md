@@ -11,10 +11,12 @@ Getting Started
 
 This guide assumes, for now, that you will be running your simulations on the PIC.
 
-To ensure that your environment is setup correctly, you'll need to run the following commands once connected to the PIC. It is advisable to include them in your `~/.bashrc` file so that you won't need to run them everytime you log in.
+To ensure that your environment is setup correctly, you'll need to run the following commands once connected to the PIC. It is advisable to include them in your `~/.bashrc` (or `~/.cshrc` if using `csh` as your shell) file so that you won't need to run them everytime you log in. Note the different commands for `bash` versus `csh`. Other shells will likely follow the `bash` instructions, but you may need to search StackOverflow if you are experiencing `segmentation fault` errors.
 
 ```bash
-ulimit -s unlimited
+ulimit -s unlimited #### IF YOUR SHELL IS BASH
+limit coredumpsize unlimited #### IF YOUR SHELL IS CSH
+limit stacksize unlimited #### IF YOUR SHELL IS SCH
 module load git
 module load gcc/5.2.0
 module load R/3.4.3
