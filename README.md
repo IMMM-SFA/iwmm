@@ -45,13 +45,13 @@ To change the start date and duration:
 ./xmlchange STOP_N=32
 ```
 This would create a simulation starting on December 15 1986 and running for 32 years. `STOP_OPTION` accepts most reasonable time units, prefixed with `n`, such as nminutes, ndays, nmonths, nyears, nsteps.
-To align the demand files in a particular way (being careful to respect the periodicity of leap years):
+To align the input stream files in a particular way (being careful to respect the periodicity of leap years):
 ```bash
 ./xmlchange DLND_CPLHIST_YR_ALIGN=1986
 ./xmlchange DLND_CPLHIST_YR_START=1986
 ./xmlchange DLND_CPLHIST_YR_END=2019
 ```
-This would align the demand years with the simulation years. If the years are misaligned relative to leap years, an error will occur.
+This would align the stream input years with the simulation years. If the years are misaligned relative to leap years, an error will occur.
 
 To build the case:
 ```bash
