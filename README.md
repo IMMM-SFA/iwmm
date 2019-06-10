@@ -5,21 +5,74 @@ Integrated Water Management Model (IWMM)
 
 This fork of E3SM focuses on modeling runnoff with integrated water management, representing the effect of humans (reservoirs and demand).
 
-More detailed documentation and customizations to follow.
+
+Getting Started
+---------------
+
+This guide assumes, for now, that you will be running your simulations on the PIC.
+
+To ensure that your environment is setup correctly, you'll need to run the following commands once connected to the PIC. It is advisable to include them in your `~/.bashrc` (or `~/.cshrc` if using `csh` as your shell) file so that you won't need to run them everytime you log in. Note the different commands for `bash` versus `csh`. Other shells will likely follow the `bash` instructions, but you may need to search StackOverflow if you are experiencing `segmentation fault` errors.
+
+```bash
+ulimit -s unlimited #### IF YOUR SHELL IS BASH
+limit coredumpsize unlimited #### IF YOUR SHELL IS CSH
+limit stacksize unlimited #### IF YOUR SHELL IS SCH
+module load git
+module load gcc/5.2.0
+module load R/3.4.3
+module load python/2.7.3
+```
+
+To obtain the code, navigate to your preferred working directory and run:
+```bash
+git clone https://github.com/IMMM-SFA/iwmm.git
+```
+
+To create a new case (i.e. setup a new simulation), substituting <YOUR_CASE_NAME> with something appropriate:
+```bash
+cd iwmm/cime/scripts
+./create_newcase --case <YOUR_CASE_NAME> --res NLDAS_NLDAS --compset mosart_runoff_driven --project IM3
+cd <YOUR_CASE_NAME>
+./case.setup
+```
+
+**Before proceeding**, you will want to specify parameters specific to your simulation. For instance:
+To change the water resource management (WRM) parameters, or to disable it altogether, edit the file `user_nl_mosart`.
+To change the start date and duration:
+```bash
+./xmlchange RUN_STARTDATE=1986-12-15
+./xmlchange STOP_OPTION=nyears
+./xmlchange STOP_N=32
+```
+This would create a simulation starting on December 15 1986 and running for 32 years. `STOP_OPTION` accepts most reasonable time units, prefixed with `n`, such as nminutes, ndays, nmonths, nyears, nsteps.
+To align the input stream files in a particular way (being careful to respect the periodicity of leap years):
+```bash
+./xmlchange DLND_CPLHIST_YR_ALIGN=1986
+./xmlchange DLND_CPLHIST_YR_START=1986
+./xmlchange DLND_CPLHIST_YR_END=2019
+```
+This would align the stream input years with the simulation years. If the years are misaligned relative to leap years, an error will occur.
+
+To build the case:
+```bash
+./case.build
+```
+
+To submit the simulation to the PIC:
+```bash
+./case.submit
+```
+
+To monitor the status of the case, you can watch the `CaseStatus` file:
+```bash
+tail -f CaseStatus
+```
+
+When the simulation ends, either naturally or due to an error, `CaseStatus` will indicate the location of the results or the error log.
 
 
-Workflow
---------
+Development Workflow
+--------------------
 
-- The `master` branch will track major releases from the parent `E3SM` repository, currently at `v1.1.1`.
-- The `development` branch will house the main codebase, which integrates `E3SM` with the `hydrotian/apcraig/mosart/add-inundation` fork.
-- Development work should occur in branches prefixed with `feature/`.
-  - For instance: `feature/rainbows` could contain work that considers the effect of rainbows on water management.
-  - Should this work become relevant to IWMM as a whole, a Pull Request (PR) should be submitted to the `development` branch. This will allow team members and peers to review, discuss, and test the code before merging it.
-  - From time to time, the `development` branch will receive new code that may be relevant to ongoing work in `feature/` branches. If desired, these updates can be merged into `feature/` branches.
-- When an experiment is finalized, the code should be tagged with an `experiment/` prefix.
-  - For instance: `experiment/rainbows` could represent a published milestone in the rainbows research.
-  - Tags can be created from any fully commited branch with a command like: `git tag experiment/rainbows`. Send the tag to the repository with a command like: `git push origin experiment/rainbows`.
-  - It may be more relevant to qualify the tag with the publication name and/or authors, so that it is more easily associated with the correct work.
-
+See [Code Tracking Workflows](https://immm-sfa.atlassian.net/wiki/spaces/IP/pages/642809857/Code+Tracking+Workflows) for recommendations on code management with git. Essentially: create a new branch off `development` when writing new code. Create a Pull Request back into `development` when satisified with your work. Tag code related to specific experiments or publications with a useful descriptor.
 

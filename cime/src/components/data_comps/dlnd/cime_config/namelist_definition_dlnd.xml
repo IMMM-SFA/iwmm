@@ -94,7 +94,7 @@
     <desc>Stream domain file path(s).</desc>
     <values>
       <value stream="sno.cplhist">domain.lnd.fv0.9x1.25_gx1v6.090309.nc</value>
-      <value stream="clm.nldas">Livneh_NLDAS_1970_2011.nc</value>
+      <value stream="clm.nldas">Livneh_NLDAS_1915_2011.nc</value>
       <value stream="clm.glb05">GPCC.daily.nc</value>
     </values>
   </entry>
@@ -147,7 +147,7 @@
     <desc>Stream data file path(s).</desc>
     <values>
       <value stream="sno.cplhist">$DLND_CPLHIST_CASE.cpl.hs2x.%y-01-01.nc</value>
-      <value stream="clm.nldas">Livneh_NLDAS_1970_2011.nc</value>
+      <value stream="clm.nldas">Livneh_NLDAS_1915_2011.nc</value>
       <value stream="clm.glb05">GPCC.daily.nc</value>
     </values>
   </entry>
