@@ -9,12 +9,17 @@
 !----------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------
+! See http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/nl_rtm.html for
+! additional documentation on available settings.
+!----------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------
 ! set the frequency of output file writes
-!   - a positive integer means to write a file after that many time-steps
-!     - i.e., 24 means every 24 time-steps
-!   - a negative integer means to write a file after that many hours
-!     - i.e., -24 means every day
-!   - 0 means to write a file after each month
+!   - a positive integer means write to file after that many time-steps
+!     - i.e., a value of 24 writes to file every 24 time-steps
+!   - a negative integer means write to file after that many hours
+!     - i.e., a value of -24 writes to file every day
+!   - 0, the default, means write to file each month
 !----------------------------------------------------------------------------------
 rtmhist_nhtfrq = 0
 
