@@ -9,6 +9,16 @@
 !----------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------
+! set the frequency of output file writes
+!   - a positive integer means to write a file after that many time-steps
+!     - i.e., 24 means every 24 time-steps
+!   - a negative integer means to write a file after that many hours
+!     - i.e., -24 means every day
+!   - 0 means to write a file after each month
+!----------------------------------------------------------------------------------
+rtmhist_nhtfrq = 0
+
+!----------------------------------------------------------------------------------
 ! toggle the water resources management feature [.true. / .false]
 !----------------------------------------------------------------------------------
 wrmflag = .true.

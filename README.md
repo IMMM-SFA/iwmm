@@ -36,8 +36,8 @@ cd <YOUR_CASE_NAME>
 ./case.setup
 ```
 
-**Before proceeding**, you will want to specify parameters specific to your simulation. For instance:
-To change the water resource management (WRM) parameters, or to disable it altogether, edit the file `user_nl_mosart`.
+**Before proceeding**, you will want to specify parameters specific to your simulation. Many Mosart specific settings can be found in the `user_nl_mosart` file. See this file for additional documentation.
+
 To change the start date and duration:
 ```bash
 ./xmlchange RUN_STARTDATE=1986-12-15
