@@ -9,6 +9,24 @@
 !----------------------------------------------------------------------------------
 
 !----------------------------------------------------------------------------------
+! See http://www.cesm.ucar.edu/models/cesm1.2/cesm/doc/modelnl/nl_rtm.html for
+! additional documentation on available settings.
+!----------------------------------------------------------------------------------
+
+!----------------------------------------------------------------------------------
+! set the frequency of output file writes
+!   - a positive integer means write to file after that many time-steps
+!     - i.e., a value of 24 writes to file every 24 time-steps
+!   - a negative integer means write to file after that many hours
+!     - i.e., a value of -24 writes to file each day
+!   - 0, the default, means write to file each month
+!   - regardless, a new file is still written only once every 30 days,
+!     controlled by the parameter `rtmhist_mfilt = 30`
+!----------------------------------------------------------------------------------
+rtmhist_nhtfrq = 0
+rtmhist_mfilt = 30
+
+!----------------------------------------------------------------------------------
 ! toggle the water resources management feature [.true. / .false]
 !----------------------------------------------------------------------------------
 wrmflag = .true.
