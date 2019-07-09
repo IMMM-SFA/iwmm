@@ -12,18 +12,18 @@ MODULE xx_WRM_read_print
   use rof_cpl_indices, only : nt_rtm
   use WRM_type_mod, only : ctlSubwWRM, WRMUnit, StorWater
   use WRM_start_op_year
-  
+
   implicit none
   private
 
 !-----------------------------------------------------------------------
   contains
 !-----------------------------------------------------------------------
-!______________________________________________________________________________________________________  
+!______________________________________________________________________________________________________
   subroutine xx_read_file_grid(FileName, value)
      implicit none
      character(len=250), intent(in) :: FileName
-     integer :: iunit 
+     integer :: iunit
      integer :: ios
      real(r8), intent(out) :: value(:)
 
@@ -41,7 +41,7 @@ MODULE xx_WRM_read_print
         end if
      end do
      close(unit=1)
-  end subroutine xx_read_file_grid 
+  end subroutine xx_read_file_grid
 !_______________________________________________________________________________________________________
   subroutine xx_readPotentialEvap(theTime)
   !! DESCRIPTION: read the simulated potential evaporation to adjust the storage of reservoir
@@ -58,7 +58,7 @@ MODULE xx_WRM_read_print
      ! USGS assume between 0.65 to 0.85 woith 0.7 when air temp = water temp
   end subroutine xx_readPotentialEvap
 !______________________________________________________________________________________________________
-  
+
   subroutine xx_readDemand(theTime)
   ! !DESCRIPTION: read in the irrigation demand data for each time step
      implicit none
@@ -83,10 +83,10 @@ MODULE xx_WRM_read_print
      ! Toal demand means differentiation between irrigation and non irrigation demand
      if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
         demFileName = adjustl(trim(ctlSubwWRM%demandPath))//trim(Tctl%baseName)//'_'//theTime//'.ConNonIrrig'
-        CALL read_file_grid(demFileName,StorWater%ConDemNonIrrig) 
+        CALL read_file_grid(demFileName,StorWater%ConDemNonIrrig)
         StorWater%demand = StorWater%ConDemIrrig*(1._r8-StorWater%GWShareIrrig) + StorWater%ConDemNonIrrig*(1._r8-StorWater%GWShareNonIrrig)
      endif
-             
+
      ! Return flow option means difference between consumptive use and withdrawal
      if ( ctlSubwWRM%ReturnFlowFlag > 0 ) then
         demFileName = adjustl(trim(ctlSubwWRM%demandPath))//trim(Tctl%baseName)//'_'//theTime//'.WithIrrig'
@@ -154,9 +154,9 @@ MODULE xx_WRM_read_print
      ! !DESCRIPTION: output the simulation results into external files
      implicit none
      character(len=*), intent(in) :: theTime  ! the time step to output
-     integer, intent(in) :: theUnit    ! the index of the unit to print 
+     integer, intent(in) :: theUnit    ! the index of the unit to print
      integer, intent(in) :: nio        ! unit of the file to print
-        
+
      integer :: ios,ii,nt                    ! flag of io status
 
      ii=theUnit !167 !191 !
@@ -166,7 +166,7 @@ MODULE xx_WRM_read_print
         write(unit=nio,fmt="((a10),6(e20.11))") theTime, nt, Trunoff%qsur(ii,nt), Trunoff%qsub(ii,nt), Trunoff%etin(ii,nt)/(TUnit%area(ii)*TUnit%frac(ii)), Trunoff%erlateral(ii,nt), Trunoff%erin(ii,nt), Trunoff%flow(ii,nt)
      enddo
 
-  end subroutine xx_printTest2   
+  end subroutine xx_printTest2
 !________________________________________________________________________________________________________________
 
 end MODULE xx_WRM_read_print

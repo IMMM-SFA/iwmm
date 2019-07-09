@@ -1,8 +1,8 @@
 !
-MODULE WRM_start_op_year 
+MODULE WRM_start_op_year
 ! Description: module to provide initialization information for the WRM mmodel
-! 
-! Developed by Nathalie Voisin 
+!
+! Developed by Nathalie Voisin
 ! REVISION HISTORY: 2012
 !-----------------------------------------------------------------------
 
@@ -12,7 +12,7 @@ MODULE WRM_start_op_year
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
   use RtmVar        , only : iulog
   use shr_sys_mod   , only : shr_sys_flush
-  
+
   implicit none
   private
 
@@ -21,7 +21,7 @@ MODULE WRM_start_op_year
 !-----------------------------------------------------------------------
   contains
 !-----------------------------------------------------------------------
-  
+
   subroutine WRM_init_StOp_FC
      ! !DESCRIPTION: define start of operation year - define irrigation releases pattern
      implicit none
@@ -31,7 +31,7 @@ MODULE WRM_start_op_year
      real(r8) :: peak                   ! peak value to define the start of operationalyr
      integer :: sgn,curr_sgn, nsc, ct, ct_mx, mth_op       ! number of sign change
      character(len=*),parameter :: subname='WRM_init_StOp_FC'
-  
+
      ! initialize start of the operationnal year based on long term simulation
      ! multiple hydrograph - 1 peak, 2 peaks, multiple small peaks
      !write(iulog,*) subname,"find sign"
@@ -49,7 +49,7 @@ MODULE WRM_start_op_year
               WRMUnit%MthStOp(idam) = j
            end if
         end do
-  
+
         nsc=12 ! way to keep track of problematic reservoir
         ct=1
         ct_mx=1
@@ -85,17 +85,17 @@ MODULE WRM_start_op_year
               else
                  ct = ct+1
               end if
-              sgn = curr_sgn   
-           end do  
-        endif ! condition on minimum flow of 0.05 
+              sgn = curr_sgn
+           end do
+        endif ! condition on minimum flow of 0.05
         !write(iulog,*) subname,idam,trim(WRMUnit%DamName(idam))," final start of op year is ",WRMUnit%MthStOp(idam),ct_mx,nsc,WRMUnit%MeanMthFlow(idam,13)
 
         ! FC part
         !only for flow larger than 1ms
-        if (WRMUnit%MeanMthFlow(idam,13) > 1._r8 ) then 
+        if (WRMUnit%MeanMthFlow(idam,13) > 1._r8 ) then
            j=0
            match = 0
-           do while (j< 8) 
+           do while (j< 8)
               j = j + 1
               mth =  WRMUnit%MthStOp(idam) - j
               if ( mth < 1 ) then
@@ -103,13 +103,13 @@ MODULE WRM_start_op_year
               endif
               mth1 = WRMUnit%MthStOp(idam) - j + 1
               if ( mth1 < 1 ) then
-                 mth1 = mth1 + 12 
+                 mth1 = mth1 + 12
               endif
               mth2 = WRMUnit%MthStOp(idam) - j - 1
               if ( mth2 < 1 ) then
                  mth2 = mth2 + 12
               endif
-              !write(iulog,*) subname,  WRMUnit%MthStOp(idam), mth, mth1, mth2   
+              !write(iulog,*) subname,  WRMUnit%MthStOp(idam), mth, mth1, mth2
               !write(iulog,*) subname, WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam,mth), WRMUnit%MeanMthFlow(idam,mth1), WRMUnit%MeanMthFlow(idam,mth2)
               call shr_sys_flush(iulog)
               if ( (WRMUnit%MeanMthFlow(idam,mth) >= WRMUnit%MeanMthFlow(idam,13)) .and. (WRMUnit%MeanMthFlow(idam,mth2) <= WRMUnit%MeanMthFlow(idam,13)).and. (match == 0 )) then
@@ -125,7 +125,7 @@ MODULE WRM_start_op_year
                     if ( mth3 < 1 ) then
                        mth3 = mth3 + 12
                     endif
-                  
+
                     !if (WRMUnit%MeanMthFlow(idam,mth2) <= WRMUnit%MeanMthFlow(idam,13) ) then
                     !  WRMUnit%MthStFC(idam) = mth2
                        !if (WRMUnit%MeanMthFlow(idam,mth3) <= WRMUnit%MeanMthFlow(idam,13) ) then
@@ -133,9 +133,9 @@ MODULE WRM_start_op_year
                     !endif
                     !endif
                  endif
-                    
+
               endif
-           enddo  
+           enddo
            !write(iulog,*) subname, idam, "final start of FC op is ", WRMUnit%MthStFC(idam) , WRMUnit%MthNdFC(idam), WRMUnit%MthStOp(idam)
            !write(iulog,*) subname, WRMUnit%StorCap(idam)
            ! ENForce the FC targets
@@ -151,7 +151,7 @@ MODULE WRM_start_op_year
               !write(iulog,*) subname, WRMUnit%MeanMthFlow(idam, 13)
               !call shr_sys_abort(subname//' ERROR start of FC')
            end if
-                
+
         end if
         !write(iulog,*) subname, peak, (WRMUnit%MeanMthFlow(idam,mth), mth=1,13)
      end do
@@ -165,4 +165,3 @@ MODULE WRM_start_op_year
  end subroutine WRM_init_StOp_FC
 
 end MODULE WRM_start_op_year
-

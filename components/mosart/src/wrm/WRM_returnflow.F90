@@ -1,7 +1,7 @@
 !
 MODULE WRM_returnflow
-! Description: core code of the WRM. 
-! 
+! Description: core code of the WRM.
+!
 ! Developed by Nathalie Voisin Feb 2012
 ! REVISION HISTORY:
 !-----------------------------------------------------------------------
@@ -29,10 +29,10 @@ MODULE WRM_returnflow
 !_______________________________________________________________________________________________
   subroutine estimate_returnflow_deficit()
   ! !DESCRIPTION: subnetwork channel routing irrigation extraction
-     implicit none    
+     implicit none
      integer :: iunit      ! local index
      real(r8) :: frac, firr, fnonirr , tempfloatI, tempfloatNI ! flow in cubic meter rather than cms
-               
+
      StorWater%ReturnIrrig = 0._r8
      StorWater%SuppIrrig = 0._r8
      StorWater%ReturnNonIrrig = 0._r8
@@ -42,7 +42,7 @@ MODULE WRM_returnflow
         if  (ctlSubwWRM%TotalDemandFlag > 0 ) then
            do iunit=rtmCTL%begr,rtmCTL%endr
               if ( StorWater%ConDemNonIrrig(iunit) > 0._r8 .and. StorWater%supply(iunit) > 0._r8 ) then
-                 frac = StorWater%supply(iunit)/StorWater%ConDemNonIrrig(iunit) 
+                 frac = StorWater%supply(iunit)/StorWater%ConDemNonIrrig(iunit)
                  if ( frac >= 1._r8) then
                     fnonirr = 1._r8
                  else
@@ -52,7 +52,7 @@ MODULE WRM_returnflow
                  StorWater%SuppIrrig(iunit) = StorWater%supply(iunit) - StorWater%SuppNonIrrig(iunit)
                  StorWater%ConDemNonIrrig(iunit) =  StorWater%ConDemNonIrrig(iunit) - StorWater%SuppNonIrrig(iunit)
                  StorWater%ConDemIrrig(iunit) = StorWater%ConDemIrrig(iunit) - StorWater%SuppIrrig(iunit)
-              endif 
+              endif
            end do
            if ( (ctlSubwWRM%GroundwaterFlag > 0) ) then
               do iunit=rtmCTL%begr,rtmCTL%endr
@@ -66,7 +66,7 @@ MODULE WRM_returnflow
                  StorWater%supply(iunit) = StorWater%supply(iunit) +  StorWater%GWShareIrrig(iunit) * StorWater%demand(iunit)
               enddo
            endif
-        endif 
+        endif
      else ! have return flow option
         if ( (ctlSubwWRM%TotalDemandFlag > 0) ) then
 
@@ -89,7 +89,7 @@ MODULE WRM_returnflow
                     fnonirr = 1._r8
                  else
                     fnonirr = frac
-                 endif 
+                 endif
                  StorWater%ReturnNonIrrig(iunit)=  StorWater%ReturnNonIrrig(iunit) + fnonirr * ( StorWater%WithDemNonIrrig(iunit) - StorWater%ConDemNonIrrig(iunit))
                  !StorWater%SuppNonIrrig(iunit) =  fnonirr * StorWater%WithDemNonIrrig(iunit)
                  tempfloatNI = fnonirr * StorWater%WithDemNonIrrig(iunit)
@@ -111,7 +111,7 @@ MODULE WRM_returnflow
                  else
                     firr = frac
                  endif
-                 StorWater%ReturnIrrig(iunit)= StorWater%ReturnIrrig(iunit) + firr * (StorWater%WithDemIrrig(iunit) - StorWater%ConDemIrrig(iunit)) 
+                 StorWater%ReturnIrrig(iunit)= StorWater%ReturnIrrig(iunit) + firr * (StorWater%WithDemIrrig(iunit) - StorWater%ConDemIrrig(iunit))
                  !StorWater%WithDemIrrig(iunit) = StorWater%WithDemIrrig(iunit) - StorWater%SuppIrrig(iunit)
                  StorWater%WithDemIrrig(iunit) = StorWater%WithDemIrrig(iunit) -  tempfloatI
               end if
@@ -128,12 +128,12 @@ MODULE WRM_returnflow
                     firr = frac
                  endif
                  StorWater%ReturnIrrig(iunit)= StorWater%ReturnIrrig(iunit) + firr * (StorWater%WithDemIrrig(iunit) - StorWater%ConDemIrrig(iunit))
-                 StorWater%SuppIrrig(iunit) = StorWater%SuppIrrig(iunit) + StorWater%supply(iunit) 
+                 StorWater%SuppIrrig(iunit) = StorWater%SuppIrrig(iunit) + StorWater%supply(iunit)
                  StorWater%WithDemIrrig(iunit) = StorWater%WithDemIrrig(iunit) - StorWater%Supply(iunit)
               end if
            end do
-        end if 
-     end if 
+        end if
+     end if
 
   end subroutine estimate_returnflow_deficit
 
@@ -145,10 +145,10 @@ MODULE WRM_returnflow
       integer :: iunit      ! local index
       real(r8) :: frac, firr, fnonirr, temp  ! flow in cubic meter rather than cms
 
-      !irrigation demand by default goes into baseflow 
+      !irrigation demand by default goes into baseflow
       ! version 1.0: no lag between application and return
       do iunit=rtmCTL%begr,rtmCTL%endr
-         temp = StorWater%ReturnIrrig(iunit) / ( TUnit%area(iunit) * TUnit%frac(iunit) * Tctl%DATAH ) !m/seconds! 
+         temp = StorWater%ReturnIrrig(iunit) / ( TUnit%area(iunit) * TUnit%frac(iunit) * Tctl%DATAH ) !m/seconds!
          Trunoff%qsub(iunit,nt_nliq) = Trunoff%qsub(iunit,nt_nliq) + temp
          StorWater%ReturnIrrig(iunit) = 0._r8
       end do

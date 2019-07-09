@@ -36,7 +36,8 @@ module RtmTimeManager
       is_new_year,              &! return true on new year
       is_new_month,             &! return true on new month
       is_new_day,               &! return true on new day
-      is_restart                 ! return true if this is a restart run
+      is_restart,               &! return true if this is a restart run
+      get_water_week             ! return the water week (1 - 52, with 1st October as beginning of week 1) based on month and day
 
 ! Private module data
 
@@ -62,7 +63,7 @@ module RtmTimeManager
    type(ESMF_Calendar), save  :: &
         tm_cal       ! calendar
    type(ESMF_Clock), save :: &
-        tm_clock     ! model clock   
+        tm_clock     ! model clock
    integer, save ::&                ! Data required to restart time manager:
       rst_nstep     = uninit_int,  &! current step number
       rst_step_days = uninit_int,  &! days component of timestep size
@@ -147,7 +148,7 @@ subroutine timemgr_init( dtime_in )
   dtime = real(dtime_in)
   call timemgr_spmdbcast( )
 
-  ! Initalize calendar 
+  ! Initalize calendar
   call init_calendar()
 
   ! Initalize start date.
@@ -191,7 +192,7 @@ subroutine timemgr_init( dtime_in )
      call shr_sys_abort (sub//': Must specify stop_ymd or nelapse')
   end if
 
-  ! Error check 
+  ! Error check
   if ( stop_date <= start_date ) then
      write(iulog,*)sub, ': stop date must be specified later than start date: '
      call ESMF_TimeGet( start_date, yy=yr, mm=mon, dd=day, s=tod )
@@ -215,7 +216,7 @@ subroutine timemgr_init( dtime_in )
   else
      ref_date = start_date
   end if
-     
+
   ! Initialize clock
   call init_clock( start_date, ref_date, curr_date, stop_date )
 
@@ -325,7 +326,7 @@ end function TimeGetymd
 
 subroutine timemgr_restart(ncid, flag)
 
-  ! Read/Write information needed on restart to a netcdf file. 
+  ! Read/Write information needed on restart to a netcdf file.
   !
   type(file_desc_t), intent(inout) :: ncid  ! netcdf id
   character(len=*) , intent(in) :: flag     ! 'read' or 'write'
@@ -396,7 +397,7 @@ subroutine timemgr_restart(ncid, flag)
      rst_ref_ymd   = TimeGetymd( ref_date,   tod=rst_ref_tod   )
      rst_curr_ymd  = TimeGetymd( curr_date,  tod=rst_curr_tod  )
   end if
-  
+
   varname = 'timemgr_rst_step_sec'
   if (flag == 'define') then
      call ncd_defvar(ncid=ncid, varname=varname, xtype=ncd_int,  &
@@ -512,28 +513,28 @@ subroutine timemgr_restart(ncid, flag)
 
      ! Restart the ESMF time manager using the synclock for ending date.
      call timemgr_spmdbcast( )
-     
+
      ! Initialize calendar from restart info
      call init_calendar()
-     
+
      ! Initialize the timestep from restart info
      dtime = rst_step_sec
-     
+
      ! Initialize start date from restart info
      start_date = TimeSetymd( rst_start_ymd, rst_start_tod, "start_date" )
-     
+
      ! Initialize current date from restart info
      curr_date = TimeSetymd( rst_curr_ymd, rst_curr_tod, "curr_date" )
-     
+
      ! Initialize stop date from sync clock or namelist input
      stop_date = TimeSetymd( 99991231, stop_tod, "stop_date" )
-     
+
      call ESMF_TimeIntervalSet( step_size, s=dtime, rc=rc )
      call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting step_size')
-     
+
      call ESMF_TimeIntervalSet( day_step_size, d=1, rc=rc )
      call chkrc(rc, sub//': error return from ESMF_TimeIntervalSet: setting day_step_size')
-     
+
      if    ( stop_ymd /= uninit_int ) then
         current = TimeSetymd( stop_ymd, stop_tod, "stop_date" )
         if ( current < stop_date ) stop_date = current
@@ -550,7 +551,7 @@ subroutine timemgr_restart(ncid, flag)
      if ( .not. run_length_specified ) then
         call shr_sys_abort (sub//': Must specify stop_ymd or nelapse')
      end if
-     
+
      ! Error check
      if ( stop_date <= start_date ) then
         write(iulog,*)sub, ': stop date must be specified later than start date: '
@@ -568,16 +569,16 @@ subroutine timemgr_restart(ncid, flag)
         write(iulog,*) ' Stop date    (yr, mon, day, tod): ', yr, mon, day, tod
         call shr_sys_abort
      end if
-     
+
      ! Initialize ref date from restart info
      ref_date = TimeSetymd( rst_ref_ymd, rst_ref_tod, "ref_date" )
-     
-     ! Initialize clock 
+
+     ! Initialize clock
      call init_clock( start_date, ref_date, curr_date, stop_date )
-     
+
      ! Set flag that this is the first timestep of the restart run.
      tm_first_restart_step = .true.
-     
+
      ! Print configuration summary to log file (stdout).
      if (masterproc) call timemgr_print()
 
@@ -763,17 +764,17 @@ end subroutine get_clock
 integer function get_step_size()
 
   ! Return the step size in seconds.
-  
+
   character(len=*), parameter :: sub = 'rtm::get_step_size'
   type(ESMF_TimeInterval) :: step_size       ! timestep size
   integer :: rc
-  
+
   call ESMF_ClockGet(tm_clock, timeStep=step_size, rc=rc)
   call chkrc(rc, sub//': error return from ESMF_ClockGet')
 
   call ESMF_TimeIntervalGet(step_size, s=get_step_size, rc=rc)
   call chkrc(rc, sub//': error return from ESMF_ClockTimeIntervalGet')
-  
+
 end function get_step_size
 
 !=========================================================================================
@@ -800,7 +801,7 @@ subroutine get_curr_date(yr, mon, day, tod, offset)
   !-----------------------------------------------------------------------------------------
   ! Return date components valid at end of current timestep with an optional
   ! offset (positive or negative) in seconds.
-  
+
   integer, intent(out) ::&
       yr,    &! year
       mon,   &! month
@@ -808,7 +809,7 @@ subroutine get_curr_date(yr, mon, day, tod, offset)
       tod     ! time of day (seconds past 0Z)
 
    integer, optional, intent(in) :: offset  ! Offset from current time in seconds.
-                                            ! Positive for future times, negative 
+                                            ! Positive for future times, negative
                                             ! for previous times.
 
    character(len=*), parameter :: sub = 'rtm::get_curr_date'
@@ -865,6 +866,50 @@ subroutine get_prev_date(yr, mon, day, tod)
 end subroutine get_prev_date
 
 !=========================================================================================
+
+subroutine get_water_week(water_week, mon, day)
+
+  INTEGER, intent(in) :: mon, day
+  INTEGER, intent(out) :: water_week
+  INTEGER :: i
+  INTEGER, DIMENSION(1:366) :: m, d, ww
+
+  ! set up three indices of length 366 defining...
+  ! month...
+  m = (/ (10, I = 1, 31), (11, I = 1, 30), (12, I = 1, 31), &
+  (1, I = 1, 31), (2, I = 1, 29), (3, I = 1, 31), &
+  (4, I = 1, 30), (5, I = 1, 31), (6, I = 1, 30), &
+  (7, I = 1, 31), (8, I = 1, 31), (9, I = 1, 30) /)
+  ! ... day
+  d = (/ (I, I = 1, 31), (I, I = 1, 30),  (I, I = 1, 31), &
+  (I, I = 1, 31), (I, I = 1, 29), (I, I = 1, 31), &
+  (I, I = 1, 30), (I, I = 1, 31), (I, I = 1, 30), &
+  (I, I = 1, 31), (I, I = 1, 31), (I, I = 1, 30) /)
+  ! ... and corresponding water week
+  ww = (/ (1, I = 1, 7), (2, I = 1, 7), (3, I = 1, 7), (4, I = 1, 7), (5, I = 1, 7), &
+  (6, I = 1, 7), (7, I = 1, 7), (8, I = 1, 7), (9, I = 1, 7), (10, I = 1, 7), &
+  (11, I = 1, 7), (12, I = 1, 7), (13, I = 1, 7), (14, I = 1, 7), (15, I = 1, 7), &
+  (16, I = 1, 7), (17, I = 1, 7), (18, I = 1, 7), (19, I = 1, 7), (20, I = 1, 7), &
+  (21, I = 1, 7), (22, I = 1, 8), (23, I = 1, 7), (24, I = 1, 7), (25, I = 1, 7), &
+  (26, I = 1, 7), (27, I = 1, 7), (28, I = 1, 7), (29, I = 1, 7), (30, I = 1, 7), &
+  (31, I = 1, 7), (32, I = 1, 7), (33, I = 1, 7), (34, I = 1, 7), (35, I = 1, 7), &
+  (36, I = 1, 7), (37, I = 1, 7), (38, I = 1, 7), (39, I = 1, 7), (40, I = 1, 7), &
+  (41, I = 1, 7), (42, I = 1, 7), (43, I = 1, 7), (44, I = 1, 7), (45, I = 1, 7), &
+  (46, I = 1, 7), (47, I = 1, 7), (48, I = 1, 7), (49, I = 1, 7), (50, I = 1, 7), &
+  (51, I = 1, 7), (52, I = 1, 8) /)
+
+  ! determine current water week by finding the index that contains current month and day
+  do i = 1,366
+    if (m(i)==mon .and. d(i)==day) then
+      water_week = ww(i)
+    end if
+  end do
+
+end subroutine get_water_week
+
+!=========================================================================================
+
+
 
 subroutine get_start_date(yr, mon, day, tod)
 
@@ -988,7 +1033,7 @@ function get_calendar()
 end function get_calendar
 
 !=========================================================================================
- 
+
 function is_end_curr_day()
 
    ! Return true if current timestep is last timestep in current day.
@@ -1087,14 +1132,14 @@ function to_upper(str)
   integer :: i                ! Index
   integer :: aseq             ! ascii collating sequence
   character(len=1) :: ctmp    ! Character temporary
-  
+
   do i = 1, len(str)
      ctmp = str(i:i)
      aseq = iachar(ctmp)
      if ( aseq >= 97  .and.  aseq <= 122 ) ctmp = achar(aseq - 32)
      to_upper(i:i) = ctmp
   end do
-  
+
 end function to_upper
 
 !=========================================================================================

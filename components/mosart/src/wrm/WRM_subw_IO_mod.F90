@@ -1,7 +1,7 @@
 !
 MODULE WRM_subw_IO_mod
 ! Description: module to provide interface between WRM and other CLM components
-! 
+!
 ! Developed by Nathalie Voisin 2/1/2010
 ! REVISION HISTORY:
 !-----------------------------------------------------------------------
@@ -18,10 +18,10 @@ MODULE WRM_subw_IO_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
-  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater, & 
+  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater, &
                              gsMap_wg, gsMap_wd, sMatP_g2d, sMatP_d2g, &
                              aVect_wg, aVect_wd
-  use WRM_modules   , only : RegulationRelease, WRM_storage_targets
+  use WRM_modules   , only : RegulationRelease, WRM_storage_targets, release_from_policy
   use WRM_start_op_year, only : WRM_init_StOp_FC
   use mct_mod
   use netcdf
@@ -48,7 +48,7 @@ MODULE WRM_subw_IO_mod
 !-----------------------------------------------------------------------
   contains
 !-----------------------------------------------------------------------
-  
+
   subroutine WRM_init
      ! !DESCRIPTION: initilization of WRM model
      implicit none
@@ -244,7 +244,7 @@ MODULE WRM_subw_IO_mod
      !-------------------
 
      allocate(WRMUnit%INVicell(begr:endr))
-     WRMUnit%INVicell =-99 
+     WRMUnit%INVicell =-99
      allocate(WRMUnit%icell(ctlsubwWRM%localNumDam))
      WRMUnit%icell = 0
      allocate(WRMUnit%damID(ctlSubwWRM%localNumDam))
@@ -523,6 +523,8 @@ MODULE WRM_subw_IO_mod
      WRMUnit%MaxStorTarget = 0._r8
      allocate (WRMUnit%StorageCalibFlag(ctlSubwWRM%localNumDam))
      WRMUnit%StorageCalibFlag = 0
+     allocate (WRMUnit%release_policy_param(ctlSubwWRM%localNumDam,13))
+     WRMUnit%release_policy_param = 0._r8
 
      allocate (WRMUnit%INVc(ctlSubwWRM%localNumDam))
      WRMUnit%INVc = 0._r8
@@ -604,7 +606,6 @@ MODULE WRM_subw_IO_mod
      StorWater%FCrelease = 0._r8
      allocate (StorWater%pot_evap(begr:endr))
      StorWater%pot_evap=0._r8
-
      !call WRM_readDemand()  ! initialize demand0
 
      ier = pio_inq_varid (ncid, name='RUNOFF_CAP'   , vardesc=vardesc)
@@ -714,6 +715,16 @@ MODULE WRM_subw_IO_mod
 !        WRMUnit%MeanMthFlow = WRMUnit%MeanMthFlow * 1.6_r8
 ! end not okay
 
+         !--- read mean monthly flow data
+         do mth = 1,12
+            ier = pio_inq_varid (ncid, name='release_policy_param', vardesc=vardesc)
+            frame = mth
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%release_policy_param(:,mth), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+
         do idam = 1,ctlSubwWRM%LocalNumDam
            WRMUnit%MeanMthFlow(idam,13) = sum(WRMUnit%MeanMthFlow(idam,1:12))/12.0_r8
         enddo
@@ -733,7 +744,7 @@ MODULE WRM_subw_IO_mod
         enddo
         if (masterproc) write(iulog,FORMR) trim(subname),' MeanMthDemand avg',minval(WRMUnit%MeanMthDemand(:,13)),maxval(WRMUnit%MeanMthDemand(:,13))
 
-        !--- initialize constant monthly pre-release based on longterm mean flow and demand (Biemans 2011) 
+        !--- initialize constant monthly pre-release based on longterm mean flow and demand (Biemans 2011)
 
         do idam=1,ctlSubwWRM%LocalNumDam
            do mth=1,12
@@ -745,11 +756,11 @@ MODULE WRM_subw_IO_mod
                  !TEST
                  !StorWater%pre_release(idam,mth) = WRMUnit%MeanMthDemand(idam,mth)/10._r8 + 9._r8/10._r8*WRMUnit%MeanMthFlow(idam,13)*WRMUnit%MeanMthDemand(idam,mth)/WRMUnit%MeanMthDemand(idam, 13)*.5_r8
               end do
-           else 
+           else
               do mth=1,12
                  if ( (WRMUnit%MeanMthFlow(idam,13) + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13))>0 ) then
                     StorWater%pre_release(idam, mth) = WRMUnit%MeanMthFlow(idam,13) + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13)
-                 endif 
+                 endif
                  ! test 2
                  !StorWater%pre_release(idam, mth) = WRMUnit%MeanMthFlow(idam,13)*0.5_r8 + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13)
                  !TEST use pseudo regulated flow
@@ -759,7 +770,7 @@ MODULE WRM_subw_IO_mod
 
            !--- initialize storage in each reservoir - arbitrary 90%
 
-           StorWater%storage(idam) = 0.9_r8 * WRMUnit%StorCap(idam)   
+           StorWater%storage(idam) = 0.9_r8 * WRMUnit%StorCap(idam)
            if (WRMUnit%StorageCalibFlag(idam).eq.1) then
               StorWater%storage(idam)  = WRMUnit%StorTarget(idam,13)
            endif
@@ -773,7 +784,7 @@ MODULE WRM_subw_IO_mod
         end do
 
 !NV
-           if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jan',minval(StorWater%pre_release(:,1)),maxval(StorWater%pre_release(:,1)) 
+           if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jan',minval(StorWater%pre_release(:,1)),maxval(StorWater%pre_release(:,1))
 
            if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Apr', minval(StorWater%pre_release(:,4)),maxval(StorWater%pre_release(:,4))
            if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jul',minval(StorWater%pre_release(:,7)),maxval(StorWater%pre_release(:,7))
@@ -798,12 +809,12 @@ MODULE WRM_subw_IO_mod
 !
 !           do ng = 1,WRMUnit%dam_Ndepend(idam)
 !              call split(stemp,' ',stmp1)
-!              call str2num(stmp1, ctlSubwWRM%localNumDam, ierror) 
+!              call str2num(stmp1, ctlSubwWRM%localNumDam, ierror)
 !!need additional check due to regionalization, need to remove non existing grid cell NV
 !              if (  WRMUnit%INVisubw(ctlSubwWRM%localNumDam) .lt. 1 ) then
 !                 WRMUnit%dam_Ndepend(idam) = WRMUnit%dam_Ndepend(idam) - 1
 !              else
-!                 WRMUnit%dam_depend(idam,ng) = nd 
+!                 WRMUnit%dam_depend(idam,ng) = nd
 !              endif
 !           end do
 
@@ -843,9 +854,9 @@ MODULE WRM_subw_IO_mod
      ! check
      write(iulog,*) subname, "Done with WM init ..."
      !write(iulog,*) subname, WRMUnit%DamName(59), WRMUnit%Surfarea(59)
-     !write(iulog,*) subname,WRMUnit%isDam(1), WRMUnit%icell(1) 
+     !write(iulog,*) subname,WRMUnit%isDam(1), WRMUnit%icell(1)
      !write(iulog,*) subname, WRMUnit%dam_Ndepend(1), WRMUnit%dam_depend(1,2)
-     !write(iulog,*) subname, "sub = 49",  TUnit%icell(49, 1),WRMUnit%subw_Ndepend(49),  WRMUnit%subw_depend(49,1) 
+     !write(iulog,*) subname, "sub = 49",  TUnit%icell(49, 1),WRMUnit%subw_Ndepend(49),  WRMUnit%subw_depend(49,1)
   end subroutine WRM_init
 
 !-----------------------------------------------------------------------
@@ -870,7 +881,7 @@ MODULE WRM_subw_IO_mod
 
         call get_curr_date(yr, mon, day, tod)
         write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
-    
+
         write(strYear,'(I4.4)') yr
         write(strMonth,'(I2.2)') mon
         fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
@@ -915,12 +926,13 @@ MODULE WRM_subw_IO_mod
            WRMUnit%StorMthStOp(idam) = StorWater%storage(idam)
     end if
      enddo
-     call RegulationRelease()
-     write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)
-     write(iulog,*) 'start Op mon, storage ', WRMUnit%MthStOp(80),WRMUnit%StorMthStOp(80)
-     write(iulog,*)  'storage, release pre targets ',StorWater%storage(80), StorWater%release(80)
-     call WRM_storage_targets()
-     write(iulog,*) 'Coulee targets ',StorWater%release(80)
+     call release_from_policy()
+     !!call RegulationRelease()
+     !!write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)
+     !!write(iulog,*) 'start Op mon, storage ', WRMUnit%MthStOp(80),WRMUnit%StorMthStOp(80)
+     !!write(iulog,*)  'storage, release pre targets ',StorWater%storage(80), StorWater%release(80)
+     !!call WRM_storage_targets()
+     !!write(iulog,*) 'Coulee targets ',StorWater%release(80)
 
   end subroutine WRM_computeRelease
 

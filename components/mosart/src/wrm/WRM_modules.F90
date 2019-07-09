@@ -1,7 +1,7 @@
 !
 MODULE WRM_modules
-! Description: core code of the WRM. 
-! 
+! Description: core code of the WRM.
+!
 ! Developed by Nathalie Voisin Feb 2012
 ! REVISION HISTORY:
 !-----------------------------------------------------------------------
@@ -13,7 +13,7 @@ MODULE WRM_modules
   use RtmVar         , only : iulog, barrier_timers
   use RtmSpmd        , only : iam, mpicom_rof, mastertask, masterproc, &
                               MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
-  use RtmTimeManager , only : get_curr_date
+  use RtmTimeManager , only : get_curr_date, get_prev_date, get_water_week
 #if (1 == 0)
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel, hillsloperouting, &
@@ -27,7 +27,7 @@ MODULE WRM_modules
   use rof_cpl_indices, only : nt_nliq
   use mct_mod
   use perf_mod       , only : t_startf, t_stopf
-     
+
   implicit none
   private
 
@@ -35,7 +35,7 @@ MODULE WRM_modules
 
 ! !PUBLIC MEMBER FUNCTIONS:
 #if (1 == 0)
-  public Euler_WRM  
+  public Euler_WRM
 #endif
   public irrigationExtraction
   public irrigationExtractionSubNetwork
@@ -44,7 +44,8 @@ MODULE WRM_modules
   public Regulation
   public ExtractionRegulatedFlow
   public WRM_storage_targets
-                                           
+  public release_from_policy
+
 !-----------------------------------------------------------------------
   contains
 !-----------------------------------------------------------------------
@@ -199,7 +200,7 @@ MODULE WRM_modules
 
      ! !DESCRIPTION: subnetwork channel routing irrigation extraction
 
-     implicit none    
+     implicit none
      integer, intent(in) :: iunit
      real(r8), intent(in) :: theDeltaT
      real(r8) :: flow_vol      ! flow in cubic meter rather than cms
@@ -214,7 +215,7 @@ MODULE WRM_modules
 
      flow_vol = Trunoff%erlateral(iunit,nt_nliq) * TheDeltaT
 
-     if ( flow_vol >= StorWater%demand(iunit) ) then 
+     if ( flow_vol >= StorWater%demand(iunit) ) then
         StorWater%supply(iunit)= StorWater%supply(iunit) + StorWater%demand(iunit)
         flow_vol = flow_vol - StorWater%demand(iunit)
         StorWater%demand(iunit)= 0._r8
@@ -222,7 +223,7 @@ MODULE WRM_modules
         StorWater%supply(iunit)= StorWater%supply(iunit) + flow_vol
         StorWater%demand(iunit)= StorWater%demand(iunit) - flow_vol
         flow_vol = 0._r8
-     end if 
+     end if
 ! dwt is not updated because extraction is taken from water getting out of subnetwork channel routing only
 ! flow is updated by demand/supply and converted back to m3/2 (by Tian)
 
@@ -230,7 +231,7 @@ MODULE WRM_modules
 
      if (check_local_budget) then
         budget = budget - (Trunoff%erlateral(iunit,nt_nliq)*TheDeltaT + StorWater%supply(iunit))
-        if (budget > 0.001_r8) then   ! in m3 
+        if (budget > 0.001_r8) then   ! in m3
            write(iulog,'(2a,i8,g20.12)') subname,' budget ',iunit,budget
            call shr_sys_abort(subname//' ERROR in budget')
          endif
@@ -275,15 +276,15 @@ MODULE WRM_modules
         write(iulog,*) ' subnetwork supply = m3', iunit, StorWater%supply(iunit)
         write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
      endif     ! debug (N. Sun)
-        
-  
+
+
      !Trunoff%etin(iunit,nt_nliq) = flow_vol / (TheDeltaT)
-     Trunoff%wt(iunit,nt_nliq) = flow_vol 
+     Trunoff%wt(iunit,nt_nliq) = flow_vol
 
      if (check_local_budget) then
         !budget = budget - (Trunoff%etin(iunit,nt_nliq)*TheDeltaT + StorWater%supply(iunit))
         budget = budget - (Trunoff%wt(iunit,nt_nliq) + StorWater%supply(iunit))
-        if (budget > 0.001_r8) then   ! in m3 
+        if (budget > 0.001_r8) then   ! in m3
            write(iulog,'(2a,i8,g20.12)') subname,' budget ',iunit,budget
            call shr_sys_abort(subname//' ERROR in budget')
          endif
@@ -344,7 +345,7 @@ MODULE WRM_modules
 
      if (check_local_budget) then
         budget = budget - (Trunoff%wr(iunit,nt_nliq) + StorWater%supply(iunit))
-        if (budget > 0.001_r8) then   ! in m3 
+        if (budget > 0.001_r8) then   ! in m3
            write(iulog,'(2a,i8,g20.12)') subname,' budget ',iunit,budget
            call shr_sys_abort(subname//' ERROR in budget')
          endif
@@ -353,7 +354,7 @@ MODULE WRM_modules
   end subroutine irrigationExtractionMainChannel
 
 !-----------------------------------------------------------------------
-  
+
   subroutine RegulationRelease
 
      !! DESCRIPTION: computes the expected monthly release based on Biemans (2011)
@@ -378,19 +379,19 @@ MODULE WRM_modules
            factor = 0._r8
            k = WRMUnit%StorMthStOp(idam) / ( 0.85 * WRMUnit%StorCap(idam) )
 !NV add bells and whistle
-!           if ( (k .lt. 0.1_r8) .or. (k.gt.10) ) then 
+!           if ( (k .lt. 0.1_r8) .or. (k.gt.10) ) then
 !             k = 1._r8  ! should actually continue with an error message
 !           endif
            if ( WRMUnit%INVc(idam) .gt. 0.1_r8 ) then
               factor = (1._r8/(0.5_r8*WRMUnit%INVc(idam)))*(1._r8/(0.5_r8*WRMUnit%INVc(idam)))
            endif
-              
+
            if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
               !if ( (1._r8/WRMUnit%INVc(idam)) >= 0.5_r8 ) then
               if ( WRMUnit%INVc(idam) <= 2._r8 ) then
                  StorWater%release(idam) = k * Storwater%pre_release(idam,month)
               else
-                 StorWater%release(idam) = k * factor*Storwater%pre_release(idam,month) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam,month)  
+                 StorWater%release(idam) = k * factor*Storwater%pre_release(idam,month) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam,month)
               end if
            else
               if ( WRMUnit%INVc(idam) <= 2._r8 ) then
@@ -483,7 +484,7 @@ MODULE WRM_modules
               endif
 
               ! now need to make sure that it will fill up but issue with spilling  in certain hydro-climatic conditions
-              fill = 0._r8  
+              fill = 0._r8
               Nmth_fill = 0
               if ( WRMUnit%MthNdFC(idam) <= WRMUnit%MthStOP(idam) ) then
                  if ( month >= WRMUnit%MthNdFC(idam) .and. month < WRMUnit%MthStOp(idam) ) then
@@ -496,7 +497,7 @@ MODULE WRM_modules
                     ! does drop fill up the reservoir?
                     !if ( fill > drop .and. Nmth_fill > 0 ) then
                     !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13) + (fill - drop) / Nmth_fill
-                    !else  !need to fill this reservoir 
+                    !else  !need to fill this reservoir
                     if ( StorWater%release(idam) > WRMUnit%MeanMthFlow(idam, 13) ) then
                        StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
                     endif
@@ -530,7 +531,7 @@ MODULE WRM_modules
 
            !!additional constraint when both FC and irrigation, but targets not computer. Inn previous version, priority given to irrigation. It wiorks great of the US but not when flooding is in su,m,mer - does not allow for multiple season growth
            !if ( WRMUnit%use_FCon(idam) > 0 .and. WRMUnit%MthStFC(idam) .eq. 0) then
-  !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then 
+  !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
            !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
            !endif
         else !enforce the strage targets from altimetry
@@ -557,8 +558,8 @@ MODULE WRM_modules
            !endif
 
            ! end change in code
-           ! add constraints on releases 
-           StorWater%release(idam) = fill 
+           ! add constraints on releases
+           StorWater%release(idam) = fill
 !minimal constraint
            drop = 0.1_r8 * WRMUnit%MeanMthFlow(idam, month)
            StorWater%release(idam) = max(drop,fill)
@@ -567,7 +568,7 @@ MODULE WRM_modules
            !  drop = 0.5_r8*WRMUnit%MeanMthFlow(idam, 13)
            !else
            !  drop = 0.2_r8*WRMUnit%MeanMthFlow(idam, month)
-           !endif   
+           !endif
            !  if ( fill .lt. drop ) then
            !     StorWater%release(idam) = drop
            !  endif
@@ -577,7 +578,7 @@ MODULE WRM_modules
            !else
            !  drop = max(2._r8*WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam, month))
            !endif
-           !if ( fill .gt. drop) then 
+           !if ( fill .gt. drop) then
            !      StorWater%release(idam) = drop
            !endif
            !print*,"calibrate release ",idam, month,fill, drop, WRMUnit%StorCap(idam)
@@ -588,10 +589,30 @@ MODULE WRM_modules
   end subroutine WRM_storage_targets
 
 !-----------------------------------------------------------------------
+   subroutine release_from_policy()
 
+      ! DESCRIPTION: procedure which sets the release to equal half of stored water
+
+      implicit none
+      integer :: idam, yr, month, day, tod
+      character(len=*),parameter :: subname='(release_from_policy)'
+
+      call get_curr_date(yr, month, day, tod)
+
+      do idam=1,ctlSubwWRM%LocalNumDam
+
+         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param(idam, month) / 86400
+
+      end do
+
+
+   end subroutine release_from_policy
+
+
+!-----------------------------------------------------------------------
   subroutine Regulation(iunit, TheDeltaT)
 
-     !! DESCRIPTION: regulation of the flow from the reservoirs. The Regulation is applied to the flow entering the grid cell, i.e. the subw downstream of the reservoir. 
+     !! DESCRIPTION: regulation of the flow from the reservoirs. The Regulation is applied to the flow entering the grid cell, i.e. the subw downstream of the reservoir.
      ! !DESCRIPTION: CHANGE IN PLANS seems like erin get overwritten now play with erout
 
      implicit none
@@ -608,7 +629,7 @@ MODULE WRM_modules
      match = 0
      call get_curr_date(yr, month, day, tod)
 
-     damID = WRMUnit%INVicell(iunit) 
+     damID = WRMUnit%INVicell(iunit)
      isDam = WRMUnit%isDam(iunit)
 !d     write(iulog,*) subname,' tcx1 ',isDam,iam,damID
 
@@ -635,7 +656,7 @@ MODULE WRM_modules
         ! code calib 5
         !k = WRMUnit%StorMthStOp(damID) / ( 0.85 * WRMUnit%StorCap(damID) )
         !min_stor = max(k * WRMUnit%MinStorTarget(damID),0.1_r8 * WRMUnit%StorCap(damID)) ! allows interannual variation
-        ! end change in code 
+        ! end change in code
         max_stor = min(1.1_r8*WRMUnit%MaxStorTarget(damID),WRMUnit%StorCap(damID))
      endif
 
@@ -648,7 +669,7 @@ MODULE WRM_modules
         if ( flow_res<=(flow_vol-evap)) then
            StorWater%storage(damID) = StorWater%storage(damID) + flow_vol - flow_res - evap
         else if ( (flow_vol-evap)>=min_flow) then
-           StorWater%storage(damID) = StorWater%storage(damID) 
+           StorWater%storage(damID) = StorWater%storage(damID)
            flow_res = flow_vol - evap
            !print*, "WARNING  No regulation", flow_vol, min_flow, damID
         else
@@ -662,14 +683,14 @@ MODULE WRM_modules
            if (StorWater%storage(damID) < 0._r8) StorWater%storage(damID) = 0._r8
         endif
      else
-        StorWater%storage(damID) = StorWater%storage(damID) + flow_vol - flow_res - evap 
+        StorWater%storage(damID) = StorWater%storage(damID) + flow_vol - flow_res - evap
      end if
 
      Trunoff%erout(iunit,nt_nliq) = -flow_res / (theDeltaT)
 
      if (check_local_budget) then
         budget = StorWater%storage(damID)-stor_init + (Trunoff%erout(iunit,nt_nliq)*theDeltaT - flow_vol)
-        if (budget > 0.001_r8) then   ! in m3 
+        if (budget > 0.001_r8) then   ! in m3
            write(iulog,'(2a,i8,g20.12)') subname,' budget ',damID,budget
            write(iulog,'(2a,i8,2g20.12)') subname,' check stor',damID,stor_init,StorWater%storage(damID)
            write(iulog,'(2a,i8,2g20.12)') subname,' check flow',damID,flow_vol,Trunoff%erout(iunit,nt_nliq)*theDeltaT
@@ -691,7 +712,7 @@ MODULE WRM_modules
 
 
 !test NV
-     if ( damID .eq. 80) then 
+     if ( damID .eq. 80) then
        flow_vol = flow_vol /  theDeltaT
        flow_res = flow_res /  theDeltaT
        write(iulog,'(2a,i8,3f20.2)') subname,'check Coulee',damID,flow_vol,flow_res,StorWater%storage(damID)
@@ -724,7 +745,7 @@ MODULE WRM_modules
      !      prorated by the number of dams that can provide all the water.
      !   2. if any sum of dam fraction >= 1.0 for a gridcell, then provide full demand to
      !      gridcell prorated by the dam fraction of each dam.
-     !   3. if any sum of dam fraction < 1.0 for a gridcell, then provide fraction of 
+     !   3. if any sum of dam fraction < 1.0 for a gridcell, then provide fraction of
      !      demand to gridcell prorated by the dam fraction of each dam.
      ! - Once the iterative solution has converged, convert the residual flow_vol
      !   back into main channel flow.
@@ -769,7 +790,7 @@ MODULE WRM_modules
      allocate(dam_uptake(ctlSubwWRM%NDam))
      allocate(dam_uptake_sum(ctlSubwWRM%NDam))
      allocate(fracsum(begr:endr))
-     allocate(flow_vol(ctlSubwWRM%LocalNumDam)) 
+     allocate(flow_vol(ctlSubwWRM%LocalNumDam))
 
      !---------------------------
      ! compute the flow_vol based on main channel flow, erout
@@ -909,7 +930,7 @@ MODULE WRM_modules
         !    prorated by the number of dams that can provide all the water.
         ! 2. if any sum of dam fraction >= 1.0 for a gridcell, then provide full demand to
         !    gridcell prorated by the dam fraction of each dam.
-        ! 3. if any sum of dam fraction < 1.0 for a gridcell, then provide fraction of 
+        ! 3. if any sum of dam fraction < 1.0 for a gridcell, then provide fraction of
         !    demand to gridcell prorated by the dam fraction of each dam.
         !
         ! dam_uptake is the amount of water removed from the dam, it's a global array.
@@ -949,7 +970,7 @@ MODULE WRM_modules
         ! 2nd or 3rd case.  To start, compute the sum of the dam fraction for
         ! all dams that the gridcell depends on, fracsum.
         ! iflag = 0 or 1 (if fracsum at a gridcell is greater than 1)
-        ! iflagm is synchronized across all tasks, if any iflag = 1 then 
+        ! iflagm is synchronized across all tasks, if any iflag = 1 then
         !    iflagm=1 on all tasks
         !---------------------------
 
@@ -1045,7 +1066,7 @@ MODULE WRM_modules
 !     called at least once or twice
 !   Could add some relaxation to case2 and 3.  For those cases, maybe instead of
 !     converting all demand, convert maybe 50% or 80% or 90% on each iteration.
-!     That will require extra iterations for convergence, but will probably 
+!     That will require extra iterations for convergence, but will probably
 !     provide a smoother and "fairer" distribution of water to gridcells.
 !---------------------------
 
@@ -1164,7 +1185,7 @@ MODULE WRM_modules
 
 !!!!#if (1 == 0)
      demand = 0._r8
-     supply = 0._r8 
+     supply = 0._r8
 
      damID = WRMUnit%INVicell(iunit)   ! dam index for this gridcell
      if ( damID > ctlSubwWRM%NDam .OR. damID <= 0 ) then
@@ -1174,10 +1195,10 @@ MODULE WRM_modules
      flow_vol = -Trunoff%erout(iunit,nt_nliq) * theDeltaT
      min_flow = 0.1_r8 * WRMUnit%MeanMthFlow(damID, month) * theDeltaT
      !min_flow=10
-            
+
      if ( (flow_vol .le. min_flow) .OR. ( WRMUnit%use_Irrig(damID)  .eq. 0  ) .OR. (flow_vol.lt.0.1_r8) ) then
         !if ( (flow_vol .le. min_flow) ) then
-           !print*,"No extraction from regulated flow permitted ", month, damID 
+           !print*,"No extraction from regulated flow permitted ", month, damID
      else
 
         do idam = 1,WRMUnit%dam_Ndepend(damID)    ! dam dependency counter
@@ -1215,12 +1236,12 @@ MODULE WRM_modules
 
         if ( (flow_vol - min_flow) >= demand ) then
            supply = demand
-        else 
+        else
            if ( flow_vol >= min_flow ) then
               supply = flow_vol - min_flow
            end if
         end if
- 
+
         if ( supply .eq. 0._r8  .and. demand > 0._r8) then
            print*, "no regulation, no extraction ",flow_vol, min_flow, supply, demand
         end if
@@ -1229,12 +1250,12 @@ MODULE WRM_modules
         !  print*, supply, demand, min_flow, flow_vol
         !  stop
         !end if
-                  
+
 ! SECOND LOOP
         do idam = 1,WRMUnit%dam_Ndepend(damID)
            idepend = WRMUnit%INVisubw(WRMUnit%dam_depend(damID,idam))
            ! pro rated supply
-           if ( idepend > 0 .and. demand > 0._r8 .and. WRMUnit%TotStorCapDepend(idepend) > 0.1_r8 .and. WRMUnit%MeanMthFlow(damID, 13) >= 0.001_r8)  then 
+           if ( idepend > 0 .and. demand > 0._r8 .and. WRMUnit%TotStorCapDepend(idepend) > 0.1_r8 .and. WRMUnit%MeanMthFlow(damID, 13) >= 0.001_r8)  then
               !StorWater%demand(idepend)= StorWater%demand(idepend) - (supply/demand * StorWater%demand(idepend) / WRMUnit%subw_Ndepend(idepend))
               !StorWater%supply(idepend)= StorWater%supply(idepend) + (supply/demand * StorWater%demand(idepend) / WRMUnit%subw_Ndepend(idepend))
               !StorWater%demand(idepend)= StorWater%demand(idepend) - (supply/demand * StorWater%demand(idepend) * WRMUnit%StorCap(damID) / WRMUnit%TotStorCapDepend(idepend))
@@ -1263,7 +1284,7 @@ MODULE WRM_modules
               else if ( StorWater%demand(idepend) .lt. 0._r8 ) then
                  print*,"Error demand in first loop", StorWater%demand(idepend), supply/demand
                  stop
-              end if  
+              end if
            end if
         end do
 

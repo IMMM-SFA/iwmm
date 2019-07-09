@@ -1,7 +1,7 @@
 !
 MODULE WRM_type_mod
 ! Description: module for public data structure
-! 
+!
 ! Developed by Nathalie Voisin 01/31/2012
 ! REVISION HISTORY:
 !-----------------------------------------------------------------------
@@ -39,11 +39,11 @@ MODULE WRM_type_mod
      character(len=350) :: outPath          ! the path of the output file(s)
      character(len=350) :: damListFile      ! name of the file containing Dam list
      integer, pointer :: out_ID(:)          ! the indices of the outlet subbasins whether the stations are located
-     character(len=80), pointer :: out_name(:)  ! the name of the outlets  
+     character(len=80), pointer :: out_name(:)  ! the name of the outlets
      character(len=80) :: curOutlet         ! the name of the current outlet
      character(len=256) :: DemandVariableName      ! the variable from external demand file
   end type WRMcontrol_subw
-  
+
      ! --- Topographic and geometric properties, applicable for both grid- and subbasin-based representations
      ! --- nd=number of dams, b:e=begr:endr
   type WRMspatialunit
@@ -69,7 +69,8 @@ MODULE WRM_type_mod
      real(r8), pointer :: Length(:)         ! (nd) Length of the reservoir
      real(r8), pointer :: Depth(:)          ! (nd) depth of the reservoir
      real(r8), pointer :: MeanMthFlow(:,:)  ! (nd,13) long term mean monthly flow
-     real(r8), pointer :: INVc(:)           ! (nd) inverse of c of Biemans 2011 ands Hanasaki 2006 RUnoff/Capacity 
+	 real(r8), pointer :: release_policy_param(:,:)  ! (nd,13) release policy parameter
+     real(r8), pointer :: INVc(:)           ! (nd) inverse of c of Biemans 2011 ands Hanasaki 2006 RUnoff/Capacity
      real(r8), pointer :: TotStorCapDepend(:) ! (b:e) sum of the reservoir capacities each subw depends on
      real(r8), pointer :: TotInflowDepend(:)  ! (b:e) sum of the total inflow to dependen reservoir each subw depends on
      real(r8), pointer :: StorTarget(:,:)     ! (nd,13) monthly storage target to be enforced if non zero
@@ -78,7 +79,7 @@ MODULE WRM_type_mod
      real(r8), pointer :: MaxStorTarget(:)  ! (nd)
 
      integer , pointer :: YEAR(:)           ! (nd) year dam was constructed and operationnal
-     integer , pointer :: use_Irrig(:)      ! (nd) reservoir purpose irrigation 
+     integer , pointer :: use_Irrig(:)      ! (nd) reservoir purpose irrigation
      integer , pointer :: use_Elec(:)       ! (nd) hydropower
      integer , pointer :: use_FCon(:)       ! (nd) flood control
      integer , pointer :: use_Supp(:)       ! (nd) water supply
@@ -94,7 +95,7 @@ MODULE WRM_type_mod
      ! flood control
      integer , pointer :: MthStFC(:)        ! (nd) month showing the strat of the flood control
      integer , pointer :: MthNdFC(:)        ! (nd) month showing the stop of the flood control
-     integer , pointer :: MthFCtrack(:)     ! (nd) track if within FC or not                
+     integer , pointer :: MthFCtrack(:)     ! (nd) track if within FC or not
   end type WRMspatialunit
 
   ! status and flux variables for liquid water
@@ -131,12 +132,12 @@ MODULE WRM_type_mod
 
   ! parameters to be calibrated. Ideally, these parameters are supposed to be uniform for one region
   !type WRMparameter
-  !end type WRMparameter 
+  !end type WRMparameter
 
   type (WRMcontrol_subw), public :: ctlSubwWRM
   type (WRMspatialunit) , public :: WRMUnit
   type (WRMwater)       , public :: StorWater
   !type (WRMparameter)  , public :: WRMpara
 
-  
+
 end MODULE WRM_type_mod
