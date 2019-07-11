@@ -70,6 +70,7 @@ MODULE WRM_type_mod
      real(r8), pointer :: Depth(:)          ! (nd) depth of the reservoir
      real(r8), pointer :: MeanMthFlow(:,:)  ! (nd,13) long term mean monthly flow
 	 real(r8), pointer :: release_policy_param(:,:)  ! (nd,13) release policy parameter
+	 real(r8), pointer :: release_policy_param_weekly(:,:)  ! (nd,52) release policy parameter
      real(r8), pointer :: INVc(:)           ! (nd) inverse of c of Biemans 2011 ands Hanasaki 2006 RUnoff/Capacity
      real(r8), pointer :: TotStorCapDepend(:) ! (b:e) sum of the reservoir capacities each subw depends on
      real(r8), pointer :: TotInflowDepend(:)  ! (b:e) sum of the total inflow to dependen reservoir each subw depends on
@@ -122,6 +123,8 @@ MODULE WRM_type_mod
 
      real(r8), pointer :: storage(:)        ! (nd) storage in the reservoir units
      real(r8), pointer :: storageG(:)       ! (b:e) same as storage on gridcells
+	 real(r8), pointer :: inflow(:)			!
+	 real(r8), pointer :: inflowG(:)		!
      real(r8), pointer :: pre_release(:,:)  ! (nd,13) pre-release without the interannual fluctutation
      real(r8), pointer :: release(:)        ! (nd) pre-release with the interannual fluctutation
      real(r8), pointer :: releaseG(:)       ! (b:e) same as release on gridcells

@@ -15,12 +15,12 @@ module RtmHistFlds
 #ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 #endif
-  use rof_cpl_indices, only : nt_rtm, rtm_tracers  
+  use rof_cpl_indices, only : nt_rtm, rtm_tracers
 
   implicit none
 !
 ! !PUBLIC MEMBER FUNCTIONS:
-  public :: RtmHistFldsInit 
+  public :: RtmHistFldsInit
   public :: RtmHistFldsSet
 !
 !------------------------------------------------------------------------
@@ -164,7 +164,7 @@ contains
          ptr_rof=StorWater%Supply, default='active')
       !call RtmHistAddfld (fname='WRM_SUPPLY_FRACTION', units='none',  &
       !   avgflag='A', long_name='WRM supply fraction relative to demand ', &
-      !   ptr_rof=StorWater%SupplyFrac, default='active')                                                                                                                               
+      !   ptr_rof=StorWater%SupplyFrac, default='active')
 
       call RtmHistAddfld (fname='WRM_DEMAND', units='m3/s',  &
          avgflag='A', long_name='WRM new demand after supply: same as deficit ', &
@@ -181,6 +181,10 @@ contains
       call RtmHistAddfld (fname='WRM_STORAGE', units='m3',  &
          avgflag='A', long_name='WRM storage ', &
          ptr_rof=StorWater%storageG, default='active')
+
+	 call RtmHistAddfld (fname='WRM_INFLOW', units='m3/s',  &
+		avgflag='A', long_name='WRM inflow ', &
+		ptr_rof=StorWater%inflowG, default='active')
     endif
 #endif
 
@@ -192,7 +196,7 @@ contains
       call RtmHistAddfld (fname='FLOODPLAIN_DEPTH', units='m',  &
          avgflag='A', long_name='MOSART floodplain water depth', &
          ptr_rof=rtmCTL%inundhf, default='active')
-        !!!!!!!!!!! added by Tian Dec 2017 
+        !!!!!!!!!!! added by Tian Dec 2017
       call RtmHistAddfld (fname='FLOODPLAIN_FRACTION', units='none',  &
          avgflag='A', long_name='MOSART floodplain water area fraction', &
          ptr_rof=rtmCTL%inundff, default='active')
@@ -264,9 +268,11 @@ contains
 #ifdef INCLUDE_WRM
     if (wrmflag) then
        StorWater%storageG = 0._r8
+	   StorWater%inflowG = 0._r8
        do idam = 1, ctlSubwWRM%localNumDam
           ig = WRMUnit%icell(idam)
           StorWater%storageG(ig) = StorWater%storage(idam)
+		  StorWater%inflowG(ig) = StorWater%inflow(idam)
        enddo
     endif
 #endif

@@ -78,8 +78,10 @@ MODULE MOSART_physics_mod
          if (ctlSubwWRM%ExternalDemandFlag > 0) then
           call WRM_readDemand()
          end if
-         call WRM_computeRelease() !! about regulation
+         !call WRM_computeRelease() !! about regulation
        end if
+
+       call WRM_computeRelease()
 
         if (ctlSubwWRM%ExtractionFlag > 0) then
          do iunit=rtmCTL%begr,rtmCTL%endr

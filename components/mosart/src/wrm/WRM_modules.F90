@@ -594,17 +594,17 @@ MODULE WRM_modules
       ! DESCRIPTION: procedure which sets the release to equal half of stored water
 
       implicit none
-      integer :: idam, yr, month, day, tod
+      integer :: idam, yr, month, day, tod, water_week
       character(len=*),parameter :: subname='(release_from_policy)'
 
       call get_curr_date(yr, month, day, tod)
+      call get_water_week(water_week, month, day)
 
       do idam=1,ctlSubwWRM%LocalNumDam
 
-         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param(idam, month) / 86400
-
+         !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param(idam, month) / 86400
+         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
       end do
-
 
    end subroutine release_from_policy
 
@@ -645,6 +645,7 @@ MODULE WRM_modules
 
      stor_init = StorWater%storage(damID)
      flow_vol = -Trunoff%erout(iunit,nt_nliq) * theDeltaT
+     StorWater%inflow(damID) = -Trunoff%erout(iunit,nt_nliq)
      flow_res = StorWater%release(damID) * theDeltaT
      evap = StorWater%pot_evap(iunit) * theDeltaT * WRMUnit%SurfArea(damID) * 1000000._r8 ! potential evaporation in the grid cell of the reservoir
      min_flow = 0.1_r8 * WRMUnit%MeanMthFlow(damID, month) * theDeltaT

@@ -867,9 +867,9 @@ end subroutine get_prev_date
 
 !=========================================================================================
 
-subroutine get_water_week(water_week, mon, day)
+subroutine get_water_week(water_week, month, day)
 
-  INTEGER, intent(in) :: mon, day
+  INTEGER, intent(in) :: month, day
   INTEGER, intent(out) :: water_week
   INTEGER :: i
   INTEGER, DIMENSION(1:366) :: m, d, ww
@@ -900,7 +900,7 @@ subroutine get_water_week(water_week, mon, day)
 
   ! determine current water week by finding the index that contains current month and day
   do i = 1,366
-    if (m(i)==mon .and. d(i)==day) then
+    if (m(i)==month .and. d(i)==day) then
       water_week = ww(i)
     end if
   end do

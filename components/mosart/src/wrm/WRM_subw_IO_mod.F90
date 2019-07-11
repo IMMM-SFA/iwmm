@@ -53,7 +53,7 @@ MODULE WRM_subw_IO_mod
      ! !DESCRIPTION: initilization of WRM model
      implicit none
 
-     integer :: nr, nd, ng, mth        ! local loop indices
+     integer :: nr, nd, ng, mth, ww        ! local loop indices
      integer :: cnt, idam, ntotal, cntw, cntg
      integer :: begr, endr, maxnumdependentgrid, lsize, gsize, lsized, gsized, ssize, dimsize
      integer :: iunit
@@ -525,6 +525,8 @@ MODULE WRM_subw_IO_mod
      WRMUnit%StorageCalibFlag = 0
      allocate (WRMUnit%release_policy_param(ctlSubwWRM%localNumDam,13))
      WRMUnit%release_policy_param = 0._r8
+     allocate (WRMUnit%release_policy_param_weekly(ctlSubwWRM%localNumDam,53))
+     WRMUnit%release_policy_param_weekly = 0._r8
 
      allocate (WRMUnit%INVc(ctlSubwWRM%localNumDam))
      WRMUnit%INVc = 0._r8
@@ -574,6 +576,8 @@ MODULE WRM_subw_IO_mod
      StorWater%releaseG=0._r8
      allocate (WRMUnit%StorMthStOpG(begr:endr))
      WRMUnit%StorMthStOpG = 0
+     allocate (StorWater%inflowG(begr:endr))
+     StorWater%inflowG=0._r8
 
      allocate (StorWater%WithDemIrrig(begr:endr))
      StorWater%WithDemIrrig=0._r8
@@ -602,6 +606,8 @@ MODULE WRM_subw_IO_mod
      StorWater%storage = 0._r8
      allocate (StorWater%release(ctlSubwWRM%localNumDam))
      StorWater%release = 0._r8
+     allocate (StorWater%inflow(ctlSubwWRM%localNumDam))
+     StorWater%inflow = 0._r8
      allocate (StorWater%FCrelease(ctlSubwWRM%localNumDam))
      StorWater%FCrelease = 0._r8
      allocate (StorWater%pot_evap(begr:endr))
@@ -715,12 +721,21 @@ MODULE WRM_subw_IO_mod
 !        WRMUnit%MeanMthFlow = WRMUnit%MeanMthFlow * 1.6_r8
 ! end not okay
 
-         !--- read mean monthly flow data
+         !--- read monthly policy parameter
          do mth = 1,12
             ier = pio_inq_varid (ncid, name='release_policy_param', vardesc=vardesc)
             frame = mth
             call pio_setframe(ncid,vardesc,frame)
             call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%release_policy_param(:,mth), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='release_policy_param_weekly', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%release_policy_param_weekly(:,ww), ier)
             call shr_sys_flush(iulog)
          enddo
 
