@@ -8,15 +8,15 @@
 Values to use by default for creation of MOSART model namelists.
 The element names are the same as the corresponding namelist
 variables.  Values that depend on the model configuration use
-attributes to express the dependency.  
+attributes to express the dependency.
 
 The default filenames are given relative to the root directory
-for the CLM data in the CESM distribution 
+for the CLM data in the CESM distribution
 -->
 
 <!-- Default mosart namelist -->
 
-<delt_mosart>3600</delt_mosart> 
+<delt_mosart>3600</delt_mosart>
 <ice_runoff>.true.</ice_runoff>
 <wrmflag>.false.</wrmflag>
 <inundflag>.false.</inundflag>
@@ -25,10 +25,10 @@ for the CLM data in the CESM distribution
 <DLevelH2R>5</DLevelH2R>
 <DLevelR>3</DLevelR>
 
-<decomp_option>'roundrobin'</decomp_option> 
-<smat_option>'Xonly'</smat_option> 
-<rtmhist_mfilt>30</rtmhist_mfilt> 
-<rtmhist_nhtfrq>0</rtmhist_nhtfrq> 
+<decomp_option>'roundrobin'</decomp_option>
+<smat_option>'Xonly'</smat_option>
+<rtmhist_mfilt>30</rtmhist_mfilt>
+<rtmhist_nhtfrq>0</rtmhist_nhtfrq>
 <rtmhist_ndens>2</rtmhist_ndens>
 
 <!-- River Transport Model river routing file (relative to {csmdata}) -->
@@ -49,6 +49,8 @@ for the CLM data in the CESM distribution
 <GroundWaterFlag>0</GroundWaterFlag>
 <ExternalDemandFlag>0</ExternalDemandFlag>
 <DemandVariableName>cons_total</DemandVariableName>
+<InflowForecastFlag>0</InflowForecastFlag>
+<InflowForecastFile>inflow_forecast.nc</InflowForecastFile>
 
 <!-- inund -->
 <OPT_inund>1</OPT_inund>
