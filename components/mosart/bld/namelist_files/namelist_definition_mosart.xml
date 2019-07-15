@@ -8,58 +8,58 @@
 <!-- MOSART Namelist -->
 <!-- ========================================================================================  -->
 
-<entry id="coupling_period" 
-       type="integer" 
+<entry id="coupling_period"
+       type="integer"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 MOSART coupling period (sec).
 Default: 10800
 Can ONLY be set by modifying the value of the xml variable ROF_NCPL in env_run.xml.
 </entry>
 
-<entry id="delt_mosart" 
-       type="integer" 
+<entry id="delt_mosart"
+       type="integer"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 MOSART time step (sec).
 Default: 3600
 Internal mosart timestep, will be adjusted down to be integer multiple of coupling_period if necessary
 </entry>
 
-<entry id="RoutingMethod" 
-       type="integer" 
+<entry id="RoutingMethod"
+       type="integer"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 MOSART routing method.
 Default: 1
 Routing Method, 1=KW, 4=DW
 </entry>
 
-<entry id="DLevelH2R" 
-       type="integer" 
+<entry id="DLevelH2R"
+       type="integer"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 MOSART subtimestep count relative to delt_mosart
 Default: 5
-Internal mosart subtimestep, will be used to compute 
+Internal mosart subtimestep, will be used to compute
 </entry>
 
-<entry id="DLevelR" 
-       type="integer" 
+<entry id="DLevelR"
+       type="integer"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 MOSART subtimestep count relative to delt_mosart
 Default: 3
 Internal mosart subtimestep, will be used to compute
 </entry>
 
-<entry id="ice_runoff" 
-       type="logical" 
+<entry id="ice_runoff"
+       type="logical"
        category="mosart"
        group="mosart_inparm">
 Default: .true.
@@ -78,179 +78,179 @@ Default: ACTIVE
 If the value rtm_mode is NULL, then rof_present will be set to false at runtime
 </entry>
 
-<entry id="wrmflag" 
-       type="logical" 
+<entry id="wrmflag"
+       type="logical"
        category="mosart"
        group="mosart_inparm">
 Default: .false.
 If .true., water management model will be turned on.
 </entry>
 
-<entry id="inundflag" 
-       type="logical" 
+<entry id="inundflag"
+       type="logical"
        category="mosart"
        group="mosart_inparm">
 Default: .false.
 If .true., inundation model will be turned on.
 </entry>
 
-<entry id="do_rtm" 
-       type="logical" 
+<entry id="do_rtm"
+       type="logical"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 If .true., turn on mosart river routing
 Default: .true.
 If the value of the xml variable ROF GRID in env_build.xml is set to 'null', then
 the MOSART build-namelist will set do_mosart to .false.
 If do_mosart is set to .false., then MOSART will send a flag of rof_prognostic = .false.
-back to the coupler on initialization. 
+back to the coupler on initialization.
 </entry>
 
-<entry id="do_rtmflood" 
-       type="logical" 
+<entry id="do_rtmflood"
+       type="logical"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 If .true., turn on mosart flooding back to clm
 Default: .false.
 Note that mosart flood is not supported in CESM1.1
 </entry>
 
-<entry id="barrier_timers" 
-       type="logical" 
+<entry id="barrier_timers"
+       type="logical"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 If .true., turn on barriers around some timers
 Default: .false.
 </entry>
 
-<entry id="decomp_option" 
-       type="char*32" 
+<entry id="decomp_option"
+       type="char*32"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="basin,1d,roundrobin" >
 Decomposition Option for mosart
 Default: 'basin'
 </entry>
 
-<entry id="smat_option" 
-       type="char*32" 
+<entry id="smat_option"
+       type="char*32"
        category="mosart"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="opt,Xonly,Yonly" >
 sparse matrix multiply Option for mosart
 Default: 'opt'
 </entry>
 
-<entry id="finidat_rtm" 
-       type="char*256" 
+<entry id="finidat_rtm"
+       type="char*256"
        category="mosart"
-       input_pathname="abs" 
-       group="mosart_inparm" 
+       input_pathname="abs"
+       group="mosart_inparm"
        valid_values="" >
-Full pathname of initial mosart file 
+Full pathname of initial mosart file
 Default: ' '
 </entry>
 
-<entry id="nrevsn_rtm" 
-       type="char*256" 
+<entry id="nrevsn_rtm"
+       type="char*256"
        category="mosart"
-       input_pathname="abs" 
-       group="mosart_inparm" 
+       input_pathname="abs"
+       group="mosart_inparm"
        valid_values="" >
 Full pathname of master restart file for a branch run. (only used if RUN_TYPE=branch)
 (Set with xml variables RUN_REFCASE and RUN_REFDATE in env_run.xml)
 </entry>
 
-<entry id="frivinp_rtm" 
-       type="char*256" 
+<entry id="frivinp_rtm"
+       type="char*256"
        category="mosart"
-       input_pathname="abs" 
-       group="mosart_inparm" 
+       input_pathname="abs"
+       group="mosart_inparm"
        valid_values="" >
 Full pathname of input datafile for MOSART.
 </entry>
 
-<entry id="rtmhist_fexcl1" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fexcl1"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to exclude from history tape series 1.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_fexcl2" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fexcl2"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to exclude from history tape series  2.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_fexcl3" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fexcl3"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to exclude from history tape series  3.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_fincl1" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fincl1"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to add to history tape series  1.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_fincl2" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fincl2"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to add to history tape series  2.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_fincl3" 
-       type="char*34(1000)" 
+<entry id="rtmhist_fincl3"
+       type="char*34(1000)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Fields to add to history tape series  3.
 Default: ' '
 </entry>
 
-<entry id="rtmhist_mfilt" 
-       type="integer(6)" 
+<entry id="rtmhist_mfilt"
+       type="integer(6)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="" >
 Per tape series  maximum number of time samples.
 Default: 1,30,30
 </entry>
 
-<entry id="rtmhist_ndens" 
-       type="integer(6)" 
+<entry id="rtmhist_ndens"
+       type="integer(6)"
        category="history"
-       group="mosart_inparm" 
+       group="mosart_inparm"
        valid_values="1,2" >
-Per tape series  history file density (i.e. output precision) 
+Per tape series  history file density (i.e. output precision)
     1=double precision
     2=single precision
 <default>Default: 2,2,2</default>
 </entry>
 
-<entry id="rtmhist_nhtfrq" 
+<entry id="rtmhist_nhtfrq"
        type="integer(6)" category="history"
        group="mosart_inparm" valid_values="" >
-Per tape series history write frequency. 
+Per tape series history write frequency.
   positive means in time steps
   0=monthly
   negative means hours
@@ -262,104 +262,119 @@ Per tape series history write frequency.
 <!-- WRM Namelist -->
 <!-- ========================================================================================  -->
 
-<entry id="paraFile" 
-       type="char*256" 
+<entry id="paraFile"
+       type="char*256"
        category="wrm"
-       group="wrm_inparm" 
-       input_pathname="abs" 
+       group="wrm_inparm"
+       input_pathname="abs"
        valid_values="" >
 WRM input file
 </entry>
 
-<entry id="demandPath" 
-       type="char*256" 
+<entry id="demandPath"
+       type="char*256"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 WRM water demand dataset
 </entry>
 
-<entry id="ExtractionFlag" 
-       type="integer" 
+<entry id="ExtractionFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Extraction Flag, 0 = false
 </entry>
 
-<entry id="ExtractionMainChannelFlag" 
-       type="integer" 
+<entry id="ExtractionMainChannelFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Extraction Main Channel Flag, 0 = false
 </entry>
 
-<entry id="RegulationFlag" 
-       type="integer" 
+<entry id="RegulationFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Regulation Flag, 0 = false
 </entry>
 
-<entry id="ReturnFlowFlag" 
-       type="integer" 
+<entry id="ReturnFlowFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Return Flow Flag, 0 = false
 </entry>
 
-<entry id="TotalDemandFlag" 
-       type="integer" 
+<entry id="TotalDemandFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Total Demand Flag, 0 = false
 </entry>
 
-<entry id="GroundWaterFlag" 
-       type="integer" 
+<entry id="GroundWaterFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Ground Water Flag, 0 = false
 </entry>
 
-<entry id="ExternalDemandFlag" 
-       type="integer" 
+<entry id="ExternalDemandFlag"
+       type="integer"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 External Demand Flag, 0 = false
 </entry>
 
-<entry id="DemandVariableName" 
-       type="char*256" 
+<entry id="DemandVariableName"
+       type="char*256"
        category="wrm"
-       group="wrm_inparm" 
+       group="wrm_inparm"
        valid_values="" >
 Demand variable from external file
 </entry>
 
+<entry id="InflowForecastFlag"
+       type="integer"
+       category="wrm"
+       group="wrm_inparm"
+       valid_values="" >
+Inflow forecast use flag, 0 = false
+</entry>
+
+<entry id="InflowForecastFile" 
+       type="char*256"
+       category="wrm"
+       group="wrm_inparm"
+       valid_values="" >
+Inflow forecast file path
+</entry>
 <!-- ========================================================================================  -->
 <!-- Inundation Namelist -->
 <!-- ========================================================================================  -->
 
-<entry id="OPT_inund" 
-       type="integer" 
+<entry id="OPT_inund"
+       type="integer"
        category="inund"
-       group="inund_inparm" 
+       group="inund_inparm"
        valid_values="" >
 Options for inundation scheme, 0=off, 1=on
 Default: 2
 </entry>
 
-<entry id="OPT_trueDW" 
-       type="integer" 
+<entry id="OPT_trueDW"
+       type="integer"
        category="inund"
-       group="inund_inparm" 
+       group="inund_inparm"
        valid_values="" >
 Options for diffusion wave channel routing method, 1 -- True diffusion wave method for channel routing, 2 -- False diffusion wave method: use riverbed slope as the surrogate for water surface slope
 Default: 2

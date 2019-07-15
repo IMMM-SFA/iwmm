@@ -1,10 +1,10 @@
 !----------------------------------------------------------------------------------
-! Users should add all user specific namelist changes below in the form of 
-! namelist_var = new_namelist_value 
+! Users should add all user specific namelist changes below in the form of
+! namelist_var = new_namelist_value
 ! NOTE: namelist variable coupling_period CAN ONLY be changed by modifying the value
 !       of the xml variable ROF_NCPL in env_run.xml
 ! NOTE: if the xml variable ROF GRID in env_build.xml is set to 'null', then
-!        the RTM build-namelist will set do_rtm to .false. - and will ignore 
+!        the RTM build-namelist will set do_rtm to .false. - and will ignore
 !        any change below
 !----------------------------------------------------------------------------------
 
@@ -50,3 +50,10 @@ demandvariablename = 'totalDemand'
 ! set the path to a file defining the reservoir parameters
 !----------------------------------------------------------------------------------
 parafile = '/pic/projects/im3/iwmm/input_data/runoff/US_reservoir_8th_NLDAS3_updated_CERF_Livneh_naturalflow.nc'
+!parafile = '/pic/projects/im3/wm/Sean/wm_res_params/US_reservoir_8th_NLDAS_release_policy.nc'
+
+!----------------------------------------------------------------------------------
+! set the flag and file for inflow forecasts
+!----------------------------------------------------------------------------------
+InflowForecastFlag = 0
+InflowForecastFile = '/pic/projects/im3/wm/Sean/wm_res_params/iwmm_inflow_forecasts_1980_2011.nc'
