@@ -13,7 +13,7 @@ MODULE WRM_subw_IO_mod
   use RtmVar        , only : iulog, inst_suffix, smat_option
   use RtmFileUtils  , only : getfil, getavu, relavu
   use RtmIO         , only : pio_subsystem, ncd_pio_openfile, ncd_pio_closefile
-  use RtmTimeManager, only : get_curr_date
+  use RtmTimeManager, only : get_curr_date, get_nstep
   use rof_cpl_indices, only : nt_rtm
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
@@ -73,15 +73,18 @@ MODULE WRM_subw_IO_mod
      logical           :: lexist               ! File exists
      type(mct_sMat)    :: sMat                 ! temporary sparse matrix, needed for sMatP
      character(len=256):: nlfilename_wrm
+     integer :: day_of_simulation
 
-     character(len=350) :: paraFile, demandPath, DemandVariableName
+     character(len=350) :: paraFile, demandPath, DemandVariableName, InflowForecastFile
      integer :: ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
-        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
+        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag, &
+        InflowForecastFlag
 
      namelist /wrm_inparm/  &
         paraFile, demandPath, DemandVariableName, &
         ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
-        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
+        ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag, &
+        InflowForecastFlag, InflowForecastFile
 
      character(len=*),parameter :: subname='(WRM_init)'
 
@@ -131,6 +134,8 @@ MODULE WRM_subw_IO_mod
      call mpi_bcast(TotalDemandFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(GroundWaterFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExternalDemandFlag,  1, MPI_INTEGER, 0, mpicom_rof, ier)
+     call mpi_bcast(InflowForecastFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
+     call mpi_bcast(InflowForecastFile, len(InflowForecastFile), MPI_CHARACTER, 0, mpicom_rof, ier)
 
      ctlSubwWRM%paraFile = paraFile
      ctlSubwWRM%demandPath = demandPath
@@ -142,6 +147,8 @@ MODULE WRM_subw_IO_mod
      ctlSubwWRM%GroundWaterFlag = GroundWaterFlag
      ctlSubwWRM%ExternalDemandFlag = ExternalDemandFlag
      ctlSubwWRM%DemandVariableName = DemandVariableName
+     ctlSubwWRM%InflowForecastFlag = InflowForecastFlag
+     ctlSubwWRM%InflowForecastFile = InflowForecastFile
 
      if (masterproc) then
         write(iulog,*) subname," paraFile        = ",trim(ctlSubwWRM%paraFile)
@@ -154,6 +161,8 @@ MODULE WRM_subw_IO_mod
         write(iulog,*) subname," TotalDemandFlag = ",ctlSubwWRM%TotalDemandFlag
         write(iulog,*) subname," GroundWaterFlag = ",ctlSubwWRM%GroundWaterFlag
         write(iulog,*) subname," ExternalDemandFlag = ",ctlSubwWRM%ExternalDemandFlag
+        write(iulog,*) subname," InflowForecastFlag = ",ctlSubwWRM%InflowForecastFlag
+        write(iulog,*) subname," InflowForecastFile = ",ctlSubwWRM%InflowForecastFile
      endif
 
      !-------------------
@@ -528,6 +537,9 @@ MODULE WRM_subw_IO_mod
      allocate (WRMUnit%release_policy_param_weekly(ctlSubwWRM%localNumDam,53))
      WRMUnit%release_policy_param_weekly = 0._r8
 
+     allocate (WRMUnit%inflow_forecast(ctlSubwWRM%localNumDam,11316))
+     WRMUnit%inflow_forecast = 0._r8
+
      allocate (WRMUnit%INVc(ctlSubwWRM%localNumDam))
      WRMUnit%INVc = 0._r8
      allocate (WRMUnit%use_Irrig(ctlSubwWRM%localNumDam))
@@ -864,7 +876,26 @@ MODULE WRM_subw_IO_mod
 
      end if !Regulation Flag
 
+     !call ncd_pio_closefile(ncid)
+
+
+     ! - INFLOW FORECASTS-
+
+     call ncd_pio_openfile(ncid, trim(ctlSubwWRM%InflowForecastFile), 0)
+
+     do day_of_simulation = 1,11315
+        ier = pio_inq_varid (ncid, name='inflow_forecast', vardesc=vardesc)
+        frame = day_of_simulation
+        call pio_setframe(ncid,vardesc,frame)
+        call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%inflow_forecast(:,day_of_simulation), ier)
+        call shr_sys_flush(iulog)
+     enddo
+
      call ncd_pio_closefile(ncid)
+
+     write(iulog,*) subname, WRMUnit%inflow_forecast(1,1), WRMUnit%inflow_forecast(1,2), WRMUnit%inflow_forecast(2,1)
+     write(iulog,*) subname, WRMUnit%release_policy_param_weekly(1,1), WRMUnit%release_policy_param_weekly(1,2), WRMUnit%release_policy_param_weekly(2,2)
+     ! --------
 
      ! check
      write(iulog,*) subname, "Done with WM init ..."
@@ -927,15 +958,40 @@ MODULE WRM_subw_IO_mod
   end subroutine WRM_readDemand
 
 !-----------------------------------------------------------------------
+!subroutine WRM_readInflowForecasts()
+   ! DESCRIPTION: read inflow forecasts for all dams on given day
+!   implicit none
+!   type(file_desc_t):: ncid       ! netcdf file
+!   type(var_desc_t) :: vardesc    ! netCDF variable description
+
+!   call ncd_pio_openfile(ncid, trim(ctlSubwWRM%InflowForecastFile), 0)
+
+!   do day_of_simulation = 1,11315
+!      ier = pio_inq_varid (ncid, name='inflow_forecast', vardesc=vardesc)
+!      frame = day_of_simulation
+!      call pio_setframe(ncid,vardesc,frame)
+!      call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%inflow_forecasts(:,day_of_simulation), ier)
+!      !call shr_sys_flush(iulog)
+!   enddo
+!
+!end subroutine WRM_readInflowForecasts
+
+!-----------------------------------------------------------------------
 
   subroutine WRM_computeRelease()
      implicit none
-     integer :: yr, mon, day, tod
+     integer :: yr, mon, day, tod, day_of_simulation
      integer :: idam
      character(len=*),parameter :: subname = '(WRM_computeRelease)'
 
      call get_curr_date(yr, mon, day, tod)
      write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
+
+     day_of_simulation = get_nstep()
+     write(iulog,*) subname,' wtf ',day_of_simulation
+
+
+
      do idam=1,ctlSubwWRM%localNumDam
         if ( mon .eq. WRMUnit%MthStOp(idam)) then
            WRMUnit%StorMthStOp(idam) = StorWater%storage(idam)

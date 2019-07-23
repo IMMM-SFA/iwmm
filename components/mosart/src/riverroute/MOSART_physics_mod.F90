@@ -17,7 +17,7 @@ MODULE MOSART_physics_mod
   use RunoffMod     , only : Tctl, TUnit, TRunoff, TPara, rtmCTL, &
                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm
   use RtmSpmd       , only : masterproc, mpicom_rof, iam
-  use RtmTimeManager, only : get_curr_date, is_new_month
+  use RtmTimeManager, only : get_curr_date, is_new_month, is_new_day
 #ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
   use WRM_modules   , only : irrigationExtractionSubNetwork, &
@@ -81,7 +81,13 @@ MODULE MOSART_physics_mod
          !call WRM_computeRelease() !! about regulation
        end if
 
-       call WRM_computeRelease()
+       if ( is_new_day() ) then
+
+          call WRM_computeRelease()
+
+      end if
+
+
 
         if (ctlSubwWRM%ExtractionFlag > 0) then
          do iunit=rtmCTL%begr,rtmCTL%endr

@@ -13,7 +13,7 @@ MODULE WRM_modules
   use RtmVar         , only : iulog, barrier_timers
   use RtmSpmd        , only : iam, mpicom_rof, mastertask, masterproc, &
                               MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
-  use RtmTimeManager , only : get_curr_date, get_prev_date, get_water_week
+  use RtmTimeManager , only : get_curr_date, get_prev_date, get_water_week, get_nstep, get_step_size
 #if (1 == 0)
   use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
                                  updatestate_mainchannel, hillsloperouting, &
@@ -594,16 +594,36 @@ MODULE WRM_modules
       ! DESCRIPTION: procedure which sets the release to equal half of stored water
 
       implicit none
-      integer :: idam, yr, month, day, tod, water_week
+      integer :: idam, yr, month, day, tod, water_week, day_of_simulation, current_time_step, step_size, steps_per_day
       character(len=*),parameter :: subname='(release_from_policy)'
 
       call get_curr_date(yr, month, day, tod)
       call get_water_week(water_week, month, day)
 
+      current_time_step = get_nstep()
+      step_size = get_step_size()
+
+      steps_per_day = 86400 / step_size
+
+      if (current_time_step .eq. 0) then
+         day_of_simulation = 1
+      else
+         day_of_simulation = (current_time_step + steps_per_day - 1) / steps_per_day
+      endif
+
+      !write(iulog,*) 'DAY OF SIMULATION: ', day_of_simulation
+      write(iulog,*) subname,' !!day_of_simulation!! ',day_of_simulation,steps_per_day
+
       do idam=1,ctlSubwWRM%LocalNumDam
 
-         !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param(idam, month) / 86400
-         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
+         !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
+
+         ! test 3a (input flows are zeros)
+         !StorWater%release(idam) = (StorWater%storage(idam) / 86400) + WRMUnit%inflow_forecasts(idam, day_of_simulation)
+
+         ! test 3b (input flows are random multiliers between 0 and 1)
+         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%inflow_forecast(idam, day_of_simulation) / 86400
+
       end do
 
    end subroutine release_from_policy
