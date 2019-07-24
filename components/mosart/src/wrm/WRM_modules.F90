@@ -370,56 +370,63 @@ MODULE WRM_modules
 
      do idam=1,ctlSubwWRM%LocalNumDam
 
-        !if ( WRMUnit%use_FCon(idam) > 0 .or. WRMUnit%use_Supp(idam) > 0) then
-           StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,13)
-        !endif
-        ! prioity to irrigation and other use since storage targets for FC
-        !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
-           k = 1._r8
-           factor = 0._r8
-           k = WRMUnit%StorMthStOp(idam) / ( 0.85 * WRMUnit%StorCap(idam) )
-!NV add bells and whistle
-!           if ( (k .lt. 0.1_r8) .or. (k.gt.10) ) then
-!             k = 1._r8  ! should actually continue with an error message
-!           endif
-           if ( WRMUnit%INVc(idam) .gt. 0.1_r8 ) then
-              factor = (1._r8/(0.5_r8*WRMUnit%INVc(idam)))*(1._r8/(0.5_r8*WRMUnit%INVc(idam)))
-           endif
+        if ( WRMUnit%StorCap(idam) .lt. 5000000000 ) then
 
-           if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
-              !if ( (1._r8/WRMUnit%INVc(idam)) >= 0.5_r8 ) then
-              if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-                 StorWater%release(idam) = k * Storwater%pre_release(idam,month)
-              else
-                 StorWater%release(idam) = k * factor*Storwater%pre_release(idam,month) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam,month)
-              end if
-           else
-              if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-                 StorWater%release(idam) = k * WRMUnit%MeanMthFlow(idam, 13)
-              else
-                 StorWater%release(idam) = k * factor*WRMUnit%MeanMthFlow(idam, 13) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam, month)
-              endif
-           !else
-           !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,month)
+           !if ( WRMUnit%use_FCon(idam) > 0 .or. WRMUnit%use_Supp(idam) > 0) then
+             StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,13)
            !endif
-           ! Run-on-the-river flow
-           !if ( WRMUnit%use_FCon(idam) .eq. 0 .and.  WRMUnit%use_Irrig(idam).eq.0 .and. WRMUnit%use_Elec(idam) > 0 ) then
-           !  StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,month)
-           end if
-! PRIORITY TO INTEGRATION
-!          if ( WRMUnit%use_FCon(idam) > 0 ) then
-!             StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,13)
-!          endif
+           ! prioity to irrigation and other use since storage targets for FC
+           !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
+             k = 1._r8
+             factor = 0._r8
+             k = WRMUnit%StorMthStOp(idam) / ( 0.85 * WRMUnit%StorCap(idam) )
+   !NV add bells and whistle
+   !           if ( (k .lt. 0.1_r8) .or. (k.gt.10) ) then
+   !             k = 1._r8  ! should actually continue with an error message
+   !           endif
+             if ( WRMUnit%INVc(idam) .gt. 0.1_r8 ) then
+                 factor = (1._r8/(0.5_r8*WRMUnit%INVc(idam)))*(1._r8/(0.5_r8*WRMUnit%INVc(idam)))
+             endif
 
-!       endif
+             if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
+                 !if ( (1._r8/WRMUnit%INVc(idam)) >= 0.5_r8 ) then
+                 if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+                    StorWater%release(idam) = k * Storwater%pre_release(idam,month)
+                 else
+                    StorWater%release(idam) = k * factor*Storwater%pre_release(idam,month) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam,month)
+                 end if
+             else
+                 if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+                    StorWater%release(idam) = k * WRMUnit%MeanMthFlow(idam, 13)
+                 else
+                    StorWater%release(idam) = k * factor*WRMUnit%MeanMthFlow(idam, 13) + (1._r8-factor) * WRMUnit%MeanMthFlow(idam, month)
+                 endif
+             !else
+             !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,month)
+             !endif
+             ! Run-on-the-river flow
+             !if ( WRMUnit%use_FCon(idam) .eq. 0 .and.  WRMUnit%use_Irrig(idam).eq.0 .and. WRMUnit%use_Elec(idam) > 0 ) then
+             !  StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,month)
+             end if
+   ! PRIORITY TO INTEGRATION
+   !          if ( WRMUnit%use_FCon(idam) > 0 ) then
+   !             StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,13)
+   !          endif
 
-       !NV checks
-       if ( idam .eq. 80) then
-       write(iulog,*) 'Regulation release',idam,month,StorWater%release(idam)
-       write(iulog,*) k,factor, Storwater%pre_release(idam,month)
-       write(iulog,*) 'flows', WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13)
-       write(iulog,*) 'storages',StorWater%storage(idam)
-       endif
+   !       endif
+
+          !NV checks
+          !if ( idam .eq. 80) then
+          !write(iulog,*) 'Regulation release',idam,month,StorWater%release(idam)
+          !write(iulog,*) k,factor, Storwater%pre_release(idam,month)
+          !write(iulog,*) 'flows', WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13)
+          !write(iulog,*) 'storages',StorWater%storage(idam)
+
+        endif
+
+
+
+       !endif
      end do
 
   end subroutine RegulationRelease
@@ -442,148 +449,155 @@ MODULE WRM_modules
 
      do idam=1,ctlSubwWRM%LocalNumDam
 
-        drop = 0
-        Nmth = 0
-        if (WRMUnit%StorageCalibFlag(idam).eq.0) then
-           if ( WRMUnit%use_FCon(idam) > 0 .and. WRMUnit%MthStFC(idam) > 0) then ! in the context of FC has priority
-              ! modify release in order to maintain a certain storage level
-              if ( WRMUnit%MthStFC(idam) <= WRMUnit%MthNdFC(idam) ) then
-                 do mth = 1,12
-                    if ( mth >= WRMUnit%MthStFC(idam) .and. mth < WRMUnit%MthNdFC(idam)) then
-                       if ( WRMUnit%MeanMthFlow(idam, mth) >= WRMUnit%MeanMthFlow(idam, 13) ) then
-                          drop = drop + 0._r8
-                       else
-                          drop = drop + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
-                       endif
-                       Nmth = Nmth + 1
-                    endif
-                 enddo
-              else if ( WRMUnit%MthStFC(idam) > WRMUnit%MthNdFC(idam) ) then
-                 do mth =1,12
-                    if (mth >= WRMUnit%MthStFC(idam) .or. mth < WRMUnit%MthNdFC(idam)) then
-                       if ( WRMUnit%MeanMthFlow(idam, mth) >= WRMUnit%MeanMthFlow(idam, 13) ) then
-                          drop = drop + 0._r8
-                       else
-                          drop = drop + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
-                       endif
-                       Nmth = Nmth + 1
-                    endif
-                 enddo
-              endif
+        if ( WRMUnit%StorCap(idam) .lt. 5000000000 ) then
 
-              if ( Nmth > 0 ) then
+           drop = 0
+           Nmth = 0
+           if (WRMUnit%StorageCalibFlag(idam).eq.0) then
+             if ( WRMUnit%use_FCon(idam) > 0 .and. WRMUnit%MthStFC(idam) > 0) then ! in the context of FC has priority
+                 ! modify release in order to maintain a certain storage level
                  if ( WRMUnit%MthStFC(idam) <= WRMUnit%MthNdFC(idam) ) then
-                    if ( month >= WRMUnit%MthStFC(idam) .and. month < WRMUnit%MthNdFC(idam)) then
-                       StorWater%release(idam) = StorWater%release(idam) + drop/Nmth
-                    endif
+                    do mth = 1,12
+                       if ( mth >= WRMUnit%MthStFC(idam) .and. mth < WRMUnit%MthNdFC(idam)) then
+                          if ( WRMUnit%MeanMthFlow(idam, mth) >= WRMUnit%MeanMthFlow(idam, 13) ) then
+                             drop = drop + 0._r8
+                          else
+                             drop = drop + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
+                          endif
+                          Nmth = Nmth + 1
+                       endif
+                    enddo
                  else if ( WRMUnit%MthStFC(idam) > WRMUnit%MthNdFC(idam) ) then
-                    if ( month >= WRMUnit%MthStFC(idam) .or. month < WRMUnit%MthNdFC(idam)) then
-                       StorWater%release(idam) = StorWater%release(idam) + drop/Nmth
+                    do mth =1,12
+                       if (mth >= WRMUnit%MthStFC(idam) .or. mth < WRMUnit%MthNdFC(idam)) then
+                          if ( WRMUnit%MeanMthFlow(idam, mth) >= WRMUnit%MeanMthFlow(idam, 13) ) then
+                             drop = drop + 0._r8
+                          else
+                             drop = drop + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
+                          endif
+                          Nmth = Nmth + 1
+                       endif
+                    enddo
+                 endif
+
+                 if ( Nmth > 0 ) then
+                    if ( WRMUnit%MthStFC(idam) <= WRMUnit%MthNdFC(idam) ) then
+                       if ( month >= WRMUnit%MthStFC(idam) .and. month < WRMUnit%MthNdFC(idam)) then
+                          StorWater%release(idam) = StorWater%release(idam) + drop/Nmth
+                       endif
+                    else if ( WRMUnit%MthStFC(idam) > WRMUnit%MthNdFC(idam) ) then
+                       if ( month >= WRMUnit%MthStFC(idam) .or. month < WRMUnit%MthNdFC(idam)) then
+                          StorWater%release(idam) = StorWater%release(idam) + drop/Nmth
+                       endif
                     endif
                  endif
-              endif
 
-              ! now need to make sure that it will fill up but issue with spilling  in certain hydro-climatic conditions
-              fill = 0._r8
-              Nmth_fill = 0
-              if ( WRMUnit%MthNdFC(idam) <= WRMUnit%MthStOP(idam) ) then
-                 if ( month >= WRMUnit%MthNdFC(idam) .and. month < WRMUnit%MthStOp(idam) ) then
-                    do mth = WRMUnit%MthNdFC(idam), WRMUnit%MthStOP(idam)
-                       if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
-                          fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
-                          Nmth_fill = Nmth_fill + 1
+                 ! now need to make sure that it will fill up but issue with spilling  in certain hydro-climatic conditions
+                 fill = 0._r8
+                 Nmth_fill = 0
+                 if ( WRMUnit%MthNdFC(idam) <= WRMUnit%MthStOP(idam) ) then
+                    if ( month >= WRMUnit%MthNdFC(idam) .and. month < WRMUnit%MthStOp(idam) ) then
+                       do mth = WRMUnit%MthNdFC(idam), WRMUnit%MthStOP(idam)
+                          if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
+                             fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
+                             Nmth_fill = Nmth_fill + 1
+                          endif
+                       end do
+                       ! does drop fill up the reservoir?
+                       !if ( fill > drop .and. Nmth_fill > 0 ) then
+                       !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13) + (fill - drop) / Nmth_fill
+                       !else  !need to fill this reservoir
+                       if ( StorWater%release(idam) > WRMUnit%MeanMthFlow(idam, 13) ) then
+                          StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
                        endif
-                    end do
-                    ! does drop fill up the reservoir?
-                    !if ( fill > drop .and. Nmth_fill > 0 ) then
-                    !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13) + (fill - drop) / Nmth_fill
-                    !else  !need to fill this reservoir
-                    if ( StorWater%release(idam) > WRMUnit%MeanMthFlow(idam, 13) ) then
-                       StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
-                    endif
-                    !endif
-                 end if
-              else if ( WRMUnit%MthNdFC(idam) > WRMUnit%MthStOP(idam) ) then
-                 if ( month >= WRMUnit%MthNdFC(idam) .or. month < WRMUnit%MthStOp(idam)) then
-                    do mth = WRMUnit%MthNdFC(idam), 12
-                       if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
-                          fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
-                          Nmth_fill = Nmth_fill + 1
+                       !endif
+                    end if
+                 else if ( WRMUnit%MthNdFC(idam) > WRMUnit%MthStOP(idam) ) then
+                    if ( month >= WRMUnit%MthNdFC(idam) .or. month < WRMUnit%MthStOp(idam)) then
+                       do mth = WRMUnit%MthNdFC(idam), 12
+                          if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
+                             fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
+                             Nmth_fill = Nmth_fill + 1
+                          endif
+                       end do
+                       do mth = 1, WRMUnit%MthStOP(idam)
+                          if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
+                             fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
+                             Nmth_fill = Nmth_fill + 1
+                          endif
+                       end do
+                       ! does drop fill up the reservoir?
+                       !if ( fill > drop .and. Nmth_fill > 0 ) then
+                       !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13) + (fill - drop) / Nmth_fill
+                       !else  !need to fill this reservoir
+                       if ( StorWater%release(idam) > WRMUnit%MeanMthFlow(idam, 13) ) then
+                          StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
                        endif
-                    end do
-                    do mth = 1, WRMUnit%MthStOP(idam)
-                       if ( WRMUnit%MeanMthFlow(idam, mth) > WRMUnit%MeanMthFlow(idam, 13) ) then
-                          fill = fill + abs(WRMUnit%MeanMthFlow(idam, 13) - WRMUnit%MeanMthFlow(idam, mth))
-                          Nmth_fill = Nmth_fill + 1
-                       endif
-                    end do
-                    ! does drop fill up the reservoir?
-                    !if ( fill > drop .and. Nmth_fill > 0 ) then
-                    !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13) + (fill - drop) / Nmth_fill
-                    !else  !need to fill this reservoir
-                    if ( StorWater%release(idam) > WRMUnit%MeanMthFlow(idam, 13) ) then
-                       StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
-                    endif
-                    !endif
-                 end if
-              endif
+                       !endif
+                    end if
+                 endif
+             endif
+
+             !!additional constraint when both FC and irrigation, but targets not computer. Inn previous version, priority given to irrigation. It wiorks great of the US but not when flooding is in su,m,mer - does not allow for multiple season growth
+             !if ( WRMUnit%use_FCon(idam) > 0 .and. WRMUnit%MthStFC(idam) .eq. 0) then
+     !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
+             !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
+             !endif
+           else !enforce the strage targets from altimetry
+             !calib4 code
+             !fill = WRMUnit%MeanMthFlow(idam, month) + (StorWater%storage(idam)-WRMUnit%StorTarget(idam,month))/86400/30._r8
+             mth = month+1
+             if (mth>12) then
+                 mth = 1
+             endif
+             fill = (StorWater%storage(idam)-WRMUnit%StorTarget(idam,mth))/86400/30._r8
+             !! for very large reservoir, keep releasing the annual mean monthly flow
+             if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+                 !fill = WRMUnit%MeanMthFlow(idam, 13) + (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
+                 !fill = StorWater%release(idam) + (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
+                 !fill = (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
+                 fill = (StorWater%storage(idam)-WRMUnit%StorTarget(idam,mth))/86400/30._r8
+             endif
+             !calib5 code
+             !diff = StorWater%storage(idam) - WRMUnit%StorTarget(idam,month)
+             !fill = WRMUnit%MeanMthFlow(idam, month) + (2*diff)/86400/30._r8
+             ! for very large reservoir, keep releasing the annual mean monthly flow
+             !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+             !  fill = WRMUnit%MeanMthFlow(idam, 13) + (2*diff)/86400/30._r8
+             !endif
+
+             ! end change in code
+             ! add constraints on releases
+             StorWater%release(idam) = fill
+   !minimal constraint
+             drop = 0.1_r8 * WRMUnit%MeanMthFlow(idam, month)
+             StorWater%release(idam) = max(drop,fill)
+   !constraint option
+             !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+             !  drop = 0.5_r8*WRMUnit%MeanMthFlow(idam, 13)
+             !else
+             !  drop = 0.2_r8*WRMUnit%MeanMthFlow(idam, month)
+             !endif
+             !  if ( fill .lt. drop ) then
+             !     StorWater%release(idam) = drop
+             !  endif
+
+             !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
+             !  drop = max(1.5_r8*WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam, month))
+             !else
+             !  drop = max(2._r8*WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam, month))
+             !endif
+             !if ( fill .gt. drop) then
+             !      StorWater%release(idam) = drop
+             !endif
+             !print*,"calibrate release ",idam, month,fill, drop, WRMUnit%StorCap(idam)
+             !print*,WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13),StorWater%storage(idam),WRMUnit%StorTarget(idam,month)
            endif
 
-           !!additional constraint when both FC and irrigation, but targets not computer. Inn previous version, priority given to irrigation. It wiorks great of the US but not when flooding is in su,m,mer - does not allow for multiple season growth
-           !if ( WRMUnit%use_FCon(idam) > 0 .and. WRMUnit%MthStFC(idam) .eq. 0) then
-  !if ( WRMUnit%use_Elec(idam) > 0 .or. WRMUnit%use_Irrig(idam) >0) then
-           !   StorWater%release(idam) = WRMUnit%MeanMthFlow(idam, 13)
-           !endif
-        else !enforce the strage targets from altimetry
-           !calib4 code
-           !fill = WRMUnit%MeanMthFlow(idam, month) + (StorWater%storage(idam)-WRMUnit%StorTarget(idam,month))/86400/30._r8
-           mth = month+1
-           if (mth>12) then
-              mth = 1
-           endif
-           fill = (StorWater%storage(idam)-WRMUnit%StorTarget(idam,mth))/86400/30._r8
-           !! for very large reservoir, keep releasing the annual mean monthly flow
-           if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-              !fill = WRMUnit%MeanMthFlow(idam, 13) + (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
-              !fill = StorWater%release(idam) + (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
-              !fill = (WRMUnit%StorTarget(idam,13)-WRMUnit%StorTarget(idam,month))/86400/30._r8
-              fill = (StorWater%storage(idam)-WRMUnit%StorTarget(idam,mth))/86400/30._r8
-           endif
-           !calib5 code
-           !diff = StorWater%storage(idam) - WRMUnit%StorTarget(idam,month)
-           !fill = WRMUnit%MeanMthFlow(idam, month) + (2*diff)/86400/30._r8
-           ! for very large reservoir, keep releasing the annual mean monthly flow
-           !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-           !  fill = WRMUnit%MeanMthFlow(idam, 13) + (2*diff)/86400/30._r8
-           !endif
-
-           ! end change in code
-           ! add constraints on releases
-           StorWater%release(idam) = fill
-!minimal constraint
-           drop = 0.1_r8 * WRMUnit%MeanMthFlow(idam, month)
-           StorWater%release(idam) = max(drop,fill)
-!constraint option
-           !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-           !  drop = 0.5_r8*WRMUnit%MeanMthFlow(idam, 13)
-           !else
-           !  drop = 0.2_r8*WRMUnit%MeanMthFlow(idam, month)
-           !endif
-           !  if ( fill .lt. drop ) then
-           !     StorWater%release(idam) = drop
-           !  endif
-
-           !if ( WRMUnit%INVc(idam) <= 2._r8 ) then
-           !  drop = max(1.5_r8*WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam, month))
-           !else
-           !  drop = max(2._r8*WRMUnit%MeanMthFlow(idam,13), WRMUnit%MeanMthFlow(idam, month))
-           !endif
-           !if ( fill .gt. drop) then
-           !      StorWater%release(idam) = drop
-           !endif
-           !print*,"calibrate release ",idam, month,fill, drop, WRMUnit%StorCap(idam)
-           !print*,WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13),StorWater%storage(idam),WRMUnit%StorTarget(idam,month)
         endif
+
+
+
      end do
 
   end subroutine WRM_storage_targets
@@ -616,13 +630,19 @@ MODULE WRM_modules
 
       do idam=1,ctlSubwWRM%LocalNumDam
 
-         !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
+         if ( WRMUnit%StorCap(idam) .gt. 5000000000 ) then
 
-         ! test 3a (input flows are zeros)
-         !StorWater%release(idam) = (StorWater%storage(idam) / 86400) + WRMUnit%inflow_forecasts(idam, day_of_simulation)
+            !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
 
-         ! test 3b (input flows are random multiliers between 0 and 1)
-         StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%inflow_forecast(idam, day_of_simulation) / 86400
+            ! test 3a (input flows are zeros)
+            !StorWater%release(idam) = (StorWater%storage(idam) / 86400) + WRMUnit%inflow_forecasts(idam, day_of_simulation)
+
+            ! test 3b (input flows are random multiliers between 0 and 1)
+            StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%inflow_forecast(idam, day_of_simulation) / 86400
+
+         endif
+
+
 
       end do
 
