@@ -536,6 +536,16 @@ MODULE WRM_subw_IO_mod
      WRMUnit%release_policy_param = 0._r8
      allocate (WRMUnit%release_policy_param_weekly(ctlSubwWRM%localNumDam,53))
      WRMUnit%release_policy_param_weekly = 0._r8
+     allocate (WRMUnit%p1_xforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p1_xforecast = 0._r8
+     allocate (WRMUnit%p2_xforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p2_xforecast = 0._r8
+     allocate (WRMUnit%p3_xforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p3_xforecast = 0._r8
+     allocate (WRMUnit%p4_xforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p4_xforecast = 0._r8
+
+
 
      allocate (WRMUnit%inflow_forecast(ctlSubwWRM%localNumDam,11316))
      WRMUnit%inflow_forecast = 0._r8
@@ -751,6 +761,42 @@ MODULE WRM_subw_IO_mod
             call shr_sys_flush(iulog)
          enddo
 
+         !--- read weekly policy parameter p1
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p1_xforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p1_xforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p2
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p2_xforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p2_xforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p3
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p3_xforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p3_xforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p4
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p4_xforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p4_xforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
 
         do idam = 1,ctlSubwWRM%LocalNumDam
            WRMUnit%MeanMthFlow(idam,13) = sum(WRMUnit%MeanMthFlow(idam,1:12))/12.0_r8
@@ -893,8 +939,8 @@ MODULE WRM_subw_IO_mod
 
      call ncd_pio_closefile(ncid)
 
-     write(iulog,*) subname, WRMUnit%inflow_forecast(1,1), WRMUnit%inflow_forecast(1,2), WRMUnit%inflow_forecast(2,1)
-     write(iulog,*) subname, WRMUnit%release_policy_param_weekly(1,1), WRMUnit%release_policy_param_weekly(1,2), WRMUnit%release_policy_param_weekly(2,2)
+     !write(iulog,*) subname, WRMUnit%inflow_forecast(1,1), WRMUnit%inflow_forecast(1,2), WRMUnit%inflow_forecast(2,1)
+     !write(iulog,*) subname, WRMUnit%release_policy_param_weekly(1,1), WRMUnit%release_policy_param_weekly(1,2), WRMUnit%release_policy_param_weekly(2,2)
      ! --------
 
      ! check

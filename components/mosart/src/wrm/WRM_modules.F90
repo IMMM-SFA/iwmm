@@ -360,17 +360,18 @@ MODULE WRM_modules
      !! DESCRIPTION: computes the expected monthly release based on Biemans (2011)
 
      implicit none
-     integer :: idam, yr, month, day, tod
+     integer :: idam, yr, month, day, tod, water_week
      real(r8) :: factor, k
      character(len=*),parameter :: subname='(RegulationRelease)'
 
      k = 1.0_r8
 
      call get_curr_date(yr, month, day, tod)
+     call get_water_week(water_week, month, day)
 
      do idam=1,ctlSubwWRM%LocalNumDam
 
-        if ( WRMUnit%StorCap(idam) .lt. 5000000000 ) then
+        if ( WRMUnit%p1_xforecast(idam, water_week) .eq. 0 ) then
 
            !if ( WRMUnit%use_FCon(idam) > 0 .or. WRMUnit%use_Supp(idam) > 0) then
              StorWater%release(idam) = WRMUnit%MeanMthFlow(idam,13)
@@ -439,17 +440,18 @@ MODULE WRM_modules
      ! NOT TO BE RUN IN EULER
 
      implicit none
-     integer :: idam, yr, month, day, tod
+     integer :: idam, yr, month, day, tod, water_week
      integer nio,ierror                 ! unit number of a file, flag number of IO status
      integer :: mth, Nmth, Nmth_fill       ! number of sign change
      real(r8) :: drop, fill, diff
      character(len=*),parameter :: subname='(WRM_storage_targets)'
 
      call get_curr_date(yr, month, day, tod)
+     call get_water_week(water_week, month, day)
 
      do idam=1,ctlSubwWRM%LocalNumDam
 
-        if ( WRMUnit%StorCap(idam) .lt. 5000000000 ) then
+        if ( WRMUnit%p1_xforecast(idam, water_week) .eq. 0 ) then
 
            drop = 0
            Nmth = 0
@@ -608,11 +610,16 @@ MODULE WRM_modules
       ! DESCRIPTION: procedure which sets the release to equal half of stored water
 
       implicit none
-      integer :: idam, yr, month, day, tod, water_week, day_of_simulation, current_time_step, step_size, steps_per_day
+      integer :: idam, yr, month, day, tod, water_week, day_of_simulation, &
+      current_time_step, step_size, steps_per_day
+
+      real(r8) :: p1, p2, p3, p4, water_availability
+
       character(len=*),parameter :: subname='(release_from_policy)'
 
       call get_curr_date(yr, month, day, tod)
       call get_water_week(water_week, month, day)
+
 
       current_time_step = get_nstep()
       step_size = get_step_size()
@@ -626,23 +633,35 @@ MODULE WRM_modules
       endif
 
       !write(iulog,*) 'DAY OF SIMULATION: ', day_of_simulation
-      write(iulog,*) subname,' !!day_of_simulation!! ',day_of_simulation,steps_per_day
+      !write(iulog,*) subname,' !!day_of_simulation!! ',day_of_simulation,steps_per_day
 
       do idam=1,ctlSubwWRM%LocalNumDam
 
-         if ( WRMUnit%StorCap(idam) .gt. 5000000000 ) then
+         p1 = WRMUnit%p1_xforecast(idam, water_week)
+         p2 = WRMUnit%p2_xforecast(idam, water_week)
+         p3 = WRMUnit%p3_xforecast(idam, water_week)
+         p4 = WRMUnit%p4_xforecast(idam, water_week)
 
-            !StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%release_policy_param_weekly(idam, water_week) / 86400
+         ! parameter 1 is the slope (must be > 0) on dams with release policies....
+         ! ... so p1 > 0 selects for dams with polcies (p1 = 0 defines dams without release policies)
 
-            ! test 3a (input flows are zeros)
-            !StorWater%release(idam) = (StorWater%storage(idam) / 86400) + WRMUnit%inflow_forecasts(idam, day_of_simulation)
+         if ( p1 .gt. 0 ) then
 
-            ! test 3b (input flows are random multiliers between 0 and 1)
-            StorWater%release(idam) = StorWater%storage(idam) * WRMUnit%inflow_forecast(idam, day_of_simulation) / 86400
+            water_availability = (StorWater%storage(idam) + (WRMUnit%inflow_forecast(idam, day_of_simulation) * 86400)) * 1e-6
+
+            write(iulog,*) subname,' !!release_parameters!! ',idam, p1, p2, p3, p4, water_availability
+
+            ! get water release in m3/s
+
+            if ( (water_availability) .le. p4) then
+               ! supplies the weekly release in Mm3 - needs to be converted to m3/s
+               StorWater%release(idam) = ((water_availability * p1) + (p3 - (p1 * p4))) * 1e6 / (7 * 86400)
+            else
+               ! supplies the weekly release in Mm3 - needs to be converted to m3/s
+               StorWater%release(idam) = ((water_availability * p2) + (p3 - (p2 * p4))) * 1e6 / (7 * 86400)
+            endif
 
          endif
-
-
 
       end do
 
