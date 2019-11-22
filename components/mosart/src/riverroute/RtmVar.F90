@@ -31,6 +31,7 @@ module RtmVar
   logical, public :: inundflag = .false.               ! inundation model flag
   logical, public :: sediflag = .false.                ! sediment model flag
   logical, public :: heatflag = .false.                ! heat model flag
+  logical, public :: thermpflag = .false.              ! thermal plant model flag
   logical, public :: noland = .false.                  ! true => no valid land points -- do NOT run
   character(len=32) , public :: decomp_option          ! decomp option
   character(len=32) , public :: smat_option            ! smatrix multiply option (opt, Xonly, Yonly)

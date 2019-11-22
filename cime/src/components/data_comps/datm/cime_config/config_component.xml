@@ -10,18 +10,20 @@
        This file may have atm desc entries.
   -->
   <description modifier_mode="1">
-    <desc atm="DATM[%QIA][%WISOQIA][%CRU][%CRUv7][%GSWP3v1][%NLDAS2][%CPLHIST][%1PT][%NYF][%IAF][%JRA]"> Data driven ATM </desc>
+    <desc atm="DATM[%QIA][%WISOQIA][%CRU][%CRUv7][%GSWP3v1][%NLDAS][%NLDAS2][%CPLHIST][%1PT][%NYF][%IAF][%JRA][%HEAT]"> Data driven ATM </desc>
     <desc option="QIA"> QIAN data set </desc>
     <desc option="WISOQIA">QIAN with water isotopes</desc>
     <desc option="CRU"> CRUNCEP data set </desc>
     <desc option="CRUv7"> CLM CRU NCEP v7 data set </desc>
     <desc option="GSWP3v1"> GSWP3v1 data set </desc>
+    <desc option="NLDAS"> NLDAS data set </desc>
     <desc option="NLDAS2"> NLDAS2 regional 0.125 degree data set over the U.S. (25-53N, 235-293E). WARNING: Garbage data will be produced for runs extending beyond this regional domain. </desc>
     <desc option="CPLHIST"> Coupler hist data set (in this mode, it is strongly recommended that the model domain and the coupler history forcing are on the same domain)</desc>
     <desc option="1PT">single point tower site data set </desc>
     <desc option="NYF">COREv2 normal year forcing</desc>
     <desc option="IAF">COREv2 interannual forcing</desc>
     <desc option="JRA">interannual JRA55 forcing</desc>
+    <desc option="HEAT">mosart coupling with additional DATM and DLND coupling on NLDAS regional 0.125 degree grid </desc>
   </description>
 
   <entry id="COMP_ATM">
@@ -35,13 +37,13 @@
 
   <entry id="DATM_MODE">
     <type>char</type>
-    <valid_values>CORE2_NYF,CORE2_IAF,CLM_QIAN,CLM_QIAN_WISO,CLM1PT,CLMCRUNCEP,CLMCRUNCEPv7,CLMGSWP3v1,CLMNLDAS2,CPLHIST,CORE_IAF_JRA</valid_values>
+    <valid_values>CORE2_NYF,CORE2_IAF,CLM_QIAN,CLM_QIAN_WISO,CLM1PT,CLMCRUNCEP,CLMCRUNCEPv7,CLMGSWP3v1,CLMNLDAS,CLMNLDAS2,CPLHIST,CORE_IAF_JRA,HEAT</valid_values>
     <default_value>CORE2_NYF</default_value>
     <group>run_component_datm</group>
     <file>env_run.xml</file>
     <desc>Mode for data atmosphere component.
       CORE2_NYF (CORE2 normal year forcing) are modes used in forcing prognostic ocean/sea-ice components.
-      CLM_QIAN, CLMCRUNCEP, CLMCRUNCEPv7, CLMGSWP3v1, CLMNLDAS2 and CLM1PT are modes using observational data for forcing prognostic land components.
+      HEAT, CLM_QIAN, CLMCRUNCEP, CLMCRUNCEPv7, CLMGSWP3v1, CLMNLDAS, CLMNLDAS2 and CLM1PT are modes using observational data for forcing prognostic land components.
       WARNING for CLMNLDAS2: This is a regional forcing dataset over the U.S. (25-53N, 235-293E). Garbage data will be produced for runs extending beyond this regional domain. </desc>
     <values match="last">
       <value compset="%NYF">CORE2_NYF</value>
@@ -52,6 +54,8 @@
       <value compset="%CRU">CLMCRUNCEP</value>
       <value compset="%CRUv7">CLMCRUNCEPv7</value>
       <value compset="%GSWP3v1">CLMGSWP3v1</value>
+      <value compset="%HEAT">HEAT</value>
+      <value compset="%NLDAS">CLMNLDAS</value>
       <value compset="%NLDAS2">CLMNLDAS2</value>
       <value compset="%1PT">CLM1PT</value>
       <value compset="%CPLHIST">CPLHIST</value>
@@ -165,6 +169,9 @@
       would be appropriate in transient runs where the model calendar is
       setup to span the same year range as the forcing data.
     </desc>
+    <values>
+      <value compset="DATM%HEAT">$DATM_CPLHIST_YR_START</value>
+    </values>
   </entry>
 
   <entry id="DATM_CPLHIST_YR_START">
@@ -174,6 +181,9 @@
     <group>run_component_datm</group>
     <file>env_run.xml</file>
     <desc>starting year to loop data over (only used when DATM_MODE is CPLHIST)</desc>
+    <values>
+      <value compset="DATM%HEAT">1950</value>
+    </values>
   </entry>
 
   <entry id="DATM_CPLHIST_YR_END">
@@ -183,6 +193,9 @@
     <group>run_component_datm</group>
     <file>env_run.xml</file>
     <desc>ending year to loop data over (only used when DATM_MODE is CPLHIST)</desc>
+    <values>
+      <value compset="DATM%HEAT">2011</value>
+    </values>
   </entry>
 
   <entry id="DATM_CLMNCEP_YR_ALIGN">
@@ -211,6 +224,7 @@
       <value compset="2003.*_DATM">$DATM_CLMNCEP_YR_START</value>
       <value compset="2010.*_DATM">$DATM_CLMNCEP_YR_START</value>
       <value compset="4804.*_DATM">$DATM_CLMNCEP_YR_START</value>
+      <value compset=".*DATM%HEAT.*">1950</value>
     </values>
     <group>run_component_datm</group>
     <file>env_run.xml</file>
@@ -253,6 +267,7 @@
       <value compset="2000.*_DATM%NLDAS2">1980</value>
       <value compset="2010.*_DATM%NLDAS2">2005</value>
       <value compset="2003.*_DATM%NLDAS2">2002</value>
+      <value compset=".*DATM%HEAT.*">1950</value>
     </values>
     <group>run_component_datm</group>
     <file>env_run.xml</file>
@@ -295,6 +310,7 @@
       <value   compset="2000.*_DATM%NLDAS2">2018</value>
       <value   compset="2010.*_DATM%NLDAS2">2014</value>
       <value   compset="2003.*_DATM%NLDAS2">2003</value>
+      <value   compset=".*DATM%HEAT.*">2011</value>
     </values>
     <group>run_component_datm</group>
     <file>env_run.xml</file>

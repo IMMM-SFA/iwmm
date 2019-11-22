@@ -1355,7 +1355,7 @@
 
   <entry id="ATM2LND_FMAPNAME">
     <type>char</type>
-    <default_value>idmap</default_value>
+    <default_value>idmap_ignore</default_value>
     <group>run_domain</group>
     <file>env_run.xml</file>
     <desc>atm2lnd flux mapping file</desc>
@@ -1372,7 +1372,7 @@
 
   <entry id="ATM2LND_SMAPNAME">
     <type>char</type>
-    <default_value>idmap</default_value>
+    <default_value>idmap_ignore</default_value>
     <group>run_domain</group>
     <file>env_run.xml</file>
     <desc>atm2lnd state mapping file</desc>

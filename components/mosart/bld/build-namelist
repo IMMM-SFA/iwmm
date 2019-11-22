@@ -311,8 +311,9 @@ else {
     add_default($nl, 'smat_option');
     add_default($nl, 'wrmflag');
     add_default($nl, 'inundflag');
-	add_default($nl, 'sediflag');
+    add_default($nl, 'sediflag');
     add_default($nl, 'heatflag');
+    add_default($nl, 'thermpflag');
     add_default($nl, 'frivinp_rtm' , 'rof_grid'=>$ROF_GRID );
     add_default($nl, 'ice_runoff'  , 'lnd_grid'=>$LND_GRID );
     add_default($nl, 'rtmhist_mfilt');
@@ -358,6 +359,9 @@ else {
     add_default($nl, 'npt_elevProf');
     add_default($nl, 'threshold_slpRatio');
 
+    add_default($nl, 'ExternalThermFlag'); 
+    add_default($nl, 'thermPath');
+
 }
 
 #-----------------------------------------------------------------------------------------------
@@ -371,7 +375,7 @@ $definition->validate($nl);
 my $note = "";
 
 # mosart_in
-my @groups = qw(mosart_inparm wrm_inparm inund_inparm);
+my @groups = qw(mosart_inparm wrm_inparm inund_inparm thermp_inparm);
 my $outfile = "./mosart_in";
 $nl->write($outfile, 'groups'=>\@groups, 'note'=>"$note" );
 if ($print>=2) { print "Writing mosart namelist to $outfile $eol"; }

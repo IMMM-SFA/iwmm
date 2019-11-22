@@ -11,7 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag
+  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, thermpflag
 !#ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 !#endif
@@ -218,9 +218,43 @@ contains
            avgflag='A', long_name='Water temperature of tributary channels', &
            ptr_rof=rtmCTL%templand_Ttrib_nt1)
     
-      call RtmHistAddfld (fname='TEMP_CHANR', units='Kelvin',  &
-           avgflag='A', long_name='Water temperature of main channels', &
-           ptr_rof=rtmCTL%templand_Tchanr_nt1)         
+      call RtmHistAddfld (fname='ATM_TAIR', units='Kelvin',  &
+           avgflag='A', long_name='Atmospheric temperature', &
+           ptr_rof=rtmCTL%forc_tair)
+		   
+      call RtmHistAddfld (fname='ATM_PBOT', units='Pa',  &
+           avgflag='A', long_name='Atmospheric pressure', &
+           ptr_rof=rtmCTL%forc_pbot)
+		   
+      call RtmHistAddfld (fname='ATM_VP', units='Pa',  &
+           avgflag='A', long_name='Atmospheric vapor pressure', &
+           ptr_rof=rtmCTL%forc_vp)
+		   
+	  call RtmHistAddfld (fname='ATM_WIND', units='m/s',  &
+           avgflag='A', long_name='Wind speed', &
+           ptr_rof=rtmCTL%forc_wind)
+	
+      call RtmHistAddfld (fname='ATM_LWRAD', units='m2/s',  &
+           avgflag='A', long_name='Downward infrared (longwave) radiation', &
+           ptr_rof=rtmCTL%forc_lwrad)
+		   
+      call RtmHistAddfld (fname='ATM_SWRAD', units='m2/s',  &
+           avgflag='A', long_name='Atmospheric incident solar (shortwave) radiation', &
+           ptr_rof=rtmCTL%forc_swrad)
+		   
+		   
+      if (thermpflag) then
+        call RtmHistAddfld (fname='QTHERM', units='m3/s',  &
+           avgflag='A', long_name='Thermal discharge from thermo-electric power plants', &
+           ptr_rof=rtmCTL%Qp_nt1)		
+        call RtmHistAddfld (fname='TTHERM', units='Kelvin',  &
+           avgflag='A', long_name='Water temperature of thermal effluent', &
+           ptr_rof=rtmCTL%Tp_nt1)	
+        call RtmHistAddfld (fname='THERM_WDEMAND', units='%',  &
+           avgflag='A', long_name='Percent of TEPP met water demand', &
+           ptr_rof=rtmCTL%metThermDem)	
+      
+      end if
     end if     
     ! Print masterlist of history fields
 
@@ -234,7 +268,7 @@ contains
 
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
-    ! Set mosart history fields as 1d poitner arrays
+    ! Set mosart history fields as 1d pointer arrays
     !
     implicit none
     integer :: idam, ig
@@ -304,6 +338,13 @@ contains
       rtmCTL%templand_Ttrib_nt2(:) = rtmCTL%templand_Ttrib(:)
       rtmCTL%templand_Tchanr_nt1(:) = rtmCTL%templand_Tchanr(:)
       rtmCTL%templand_Tchanr_nt2(:) = rtmCTL%templand_Tchanr(:)
+	  
+      if (thermpflag) then  
+        rtmCTL%Qp_nt1(:) = rtmCTL%avgQp(:,1)
+        rtmCTL%Qp_nt2(:) = rtmCTL%avgQp(:,2)
+        rtmCTL%Tp_nt1(:) = rtmCTL%avgTp(:)
+        rtmCTL%Tp_nt2(:) = rtmCTL%avgTp(:)
+      end if
     end if
     
   end subroutine RtmHistFldsSet

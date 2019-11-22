@@ -1886,7 +1886,7 @@
     <COMPILERS>intel,pgi,nag</COMPILERS>
     <MPILIBS>mvapich2,openmpi,intelmpi,mvapich</MPILIBS>
     <CIME_OUTPUT_ROOT>/pic/scratch/$USER</CIME_OUTPUT_ROOT>
-    <DIN_LOC_ROOT>/pic/projects/climate/csmdata/</DIN_LOC_ROOT>
+    <DIN_LOC_ROOT>/pic/projects/im3/iwmm/</DIN_LOC_ROOT>
     <DIN_LOC_ROOT_CLMFORC>/pic/projects/climate/csmdata/atm/datm7</DIN_LOC_ROOT_CLMFORC>
     <DOUT_S_ROOT>/pic/scratch/$USER/archive/$CASE</DOUT_S_ROOT>
     <BASELINE_ROOT>/pic/projects/climate/acme_baselines/$COMPILER</BASELINE_ROOT>

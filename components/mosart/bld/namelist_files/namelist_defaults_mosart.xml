@@ -22,6 +22,7 @@ for the CLM data in the CESM distribution
 <inundflag>.false.</inundflag>
 <sediflag>.false.</sediflag>
 <heatflag>.false.</heatflag>
+<thermpflag>.false.</thermpflag>
 <barrier_timers>.false.</barrier_timers>
 <RoutingMethod>1</RoutingMethod>
 <DLevelH2R>5</DLevelH2R>
@@ -37,12 +38,12 @@ for the CLM data in the CESM distribution
 
 <frivinp_rtm rof_grid="r0125" >rof/mosart/MOSART_global_8th_20180211c.nc</frivinp_rtm>
 <frivinp_rtm rof_grid="r05" >rof/mosart/MOSART_global_half_20180721a.nc</frivinp_rtm>
-<frivinp_rtm rof_grid="NLDAS" >rof/mosart/MOSART_NLDAS_8th.nc</frivinp_rtm>
+<frivinp_rtm rof_grid="NLDAS" >input_data/runoff/MOSART_NLDAS_8th_20160426.nc</frivinp_rtm>
 
 <!-- WRM -->
 
-<paraFile rof_grid="NLDAS" >rof/mosart/US_reservoir_8th_NLDAS3_c20161220_updated_20170314.nc</paraFile>
-<demandPath rof_grid="NLDAS" >/pic/scratch/vois549/wm_data/NLDAS2_GCAM_water_demand_</demandPath> 
+<paraFile rof_grid="NLDAS" >input_data/runoff/US_reservoir_8th_NLDAS3_updated_CERF_Livneh_naturalflow.nc</paraFile>
+<demandPath rof_grid="NLDAS" >input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_</demandPath> 
 <ExtractionFlag>1</ExtractionFlag>
 <ExtractionMainChannelFlag>1</ExtractionMainChannelFlag>
 <RegulationFlag>1</RegulationFlag>
@@ -68,5 +69,9 @@ for the CLM data in the CESM distribution
 <OPT_elevProf>2</OPT_elevProf>
 <npt_elevProf>11</npt_elevProf>
 <threshold_slpRatio>10.0</threshold_slpRatio>
+
+<!-- thermal effluent -->
+<ExternalThermFlag>1</ExternalThermFlag>
+<thermPath rof_grid="NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/TEPP/</thermPath>
 
 </namelist_defaults>

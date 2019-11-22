@@ -110,6 +110,14 @@ Default: .false.
 If .true., heat model will be turned on.
 </entry>
 
+<entry id="thermpflag" 
+       type="logical" 
+       category="mosart"
+       group="mosart_inparm">
+Default: .false.
+If .true., thermal plant model will be turned on.
+</entry>
+
 <entry id="do_rtm" 
        type="logical" 
        category="mosart"
@@ -498,5 +506,24 @@ Threshold of the ratio of the lowest section's slope to the second lowest sectio
 Default: 10.0
 </entry>
 
+<!-- ========================================================================================  -->
+<!-- Thermal plant Namelist -->
+<!-- ========================================================================================  -->
+<entry id="ExternalThermFlag" 
+       type="integer" 
+       category="mosart"
+       group="thermp_inparm" 
+       valid_values="" >
+External Therm Flag, 0 = false, 1 = true
+Default: 1
+</entry>
+
+<entry id="thermPath" 
+       type="char*350" 
+       category="mosart"
+       group="thermp_inparm" 
+       valid_values="" >
+Thermal effluent dataset
+</entry>
 
 </namelist_definition>

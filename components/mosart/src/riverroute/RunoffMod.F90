@@ -11,7 +11,7 @@ module RunoffMod
 ! !USES:
   use shr_kind_mod, only : r8 => shr_kind_r8
   use mct_mod
-  use RtmVar         , only : iulog, spval, heatflag
+  use RtmVar         , only : iulog, spval, heatflag, thermpflag
   use rof_cpl_indices, only : nt_rtm
 
 ! !PUBLIC TYPES:
@@ -91,6 +91,14 @@ module RunoffMod
      real(r8), pointer :: qgwl(:,:)        ! coupler glacier/wetland/lake forcing [m3/s]
      real(r8), pointer :: qdto(:,:)        ! coupler diret-to-ocean forcing [m3/s]
      real(r8), pointer :: qdem(:,:)        ! coupler total demand diagnostic [m3/s]
+     real(r8), pointer :: Qp(:,:)          ! coupler thermal discharge (m3/s)
+     real(r8), pointer :: Tp(:)            ! coupler thermal effluent tempeature (K)
+	 real(r8), pointer :: forc_tair(:)     ! atmospheric temperature (Kelvin)
+	 real(r8), pointer :: forc_pbot(:)     ! atmospheric pressure (Pa)
+	 real(r8), pointer :: forc_vp(:)       ! atmospheric vapor pressure (Pa)
+	 real(r8), pointer :: forc_wind(:)     ! atmospheric wind speed (m/s)
+	 real(r8), pointer :: forc_lwrad(:)    ! downward infrared (longwave) radiation (W/m**2)
+	 real(r8), pointer :: forc_swrad(:)    ! atmospheric incident solar (shortwave) radiation (W/m**2)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -136,12 +144,22 @@ module RunoffMod
      real(r8), pointer :: templand_Tqsub_nt2(:)
      real(r8), pointer :: templand_Ttrib_nt2(:)
      real(r8), pointer :: templand_Tchanr_nt2(:)
+	 
+     ! thermal effluent variables (N.Sun)
+     real(r8), pointer :: avgQp(:,:) 		! average Qp over subcycle [m3/s]
+     real(r8), pointer :: avgTp(:)
+     real(r8), pointer :: Qp_nt1(:)
+     real(r8), pointer :: Qp_nt2(:)
+     real(r8), pointer :: Tp_nt1(:)
+     real(r8), pointer :: Tp_nt2(:)
+	 real(r8), pointer :: metThermDem(:)	! met water demand from TEPP [%]
+	 
      
   end type runoff_flow
 
   
   !== Hongyi
-  ! constrol information 
+  ! control information 
   public :: Tcontrol
   type Tcontrol
      integer  :: NSTART           ! the # of the time step to start the routing. Previous NSTART - 1 steps will be passed over.
@@ -208,6 +226,11 @@ module RunoffMod
      !real(r8) :: e_eprof_std(12) = (/ 0.0_r8, 15.0_r8, 35.0_r8, 60.0_r8, 90.0_r8, 125.0_r8, 165.0_r8, 205.0_r8, 245.0_r8, 285.0_r8, 325.0_r8, 10000.0_r8 /)
 
 !#endif   
+     ! --------------------------------- 
+     ! The following parameters are for the thermp option :
+     ! --------------------------------- 
+     integer :: ExternalThermFlag      ! Options for reading external thermal effluent data
+     character(len=350) :: thermPath   ! the path to the file storing thermal effluent discharge and temperature
   end type Tcontrol
   
   ! --- Topographic and geometric properties, applicable for both grid- and subbasin-based representations
@@ -321,6 +344,7 @@ module RunoffMod
      real(r8), pointer :: tarea(:,:)   ! area of channel water surface, [m2]
      real(r8), pointer :: wt(:,:)      ! storage of surface water, [m3]
      real(r8), pointer :: dwt(:,:)     ! change of water storage, [m3]
+     real(r8), pointer :: wt_last(:,:) ! storage of surface water at last time step, [m3]
      real(r8), pointer :: yt(:,:)      ! water depth, [m]
      real(r8), pointer :: mt(:,:)      ! cross section area, [m2]
      real(r8), pointer :: rt(:,:)      ! hydraulic radii, [m]
@@ -338,6 +362,7 @@ module RunoffMod
      real(r8), pointer :: rarea(:,:)   ! area of channel water surface, [m2] 
      real(r8), pointer :: wr(:,:)      ! storage of surface water, [m3]
      real(r8), pointer :: dwr(:,:)     ! change of water storage, [m3]
+     real(r8), pointer :: wr_last(:,:) ! storage of surface water at last time step, [m3]
      real(r8), pointer :: yr(:,:)      ! water depth. [m]
      real(r8), pointer :: mr(:,:)      ! cross section area, [m2]
      real(r8), pointer :: rr(:,:)      ! hydraulic radius, [m]
@@ -370,6 +395,10 @@ module RunoffMod
      real(r8), pointer :: k3(:,:)
      real(r8), pointer :: k4(:,:)
    
+     
+     ! thermal discharge from thermo-electric power plant 
+     !! fluxes
+     real(r8), pointer :: Qp(:,:)       ! outflow from thermo-electric plant, [m3/s]
 !#ifdef INCLUDE_INUND
     !real(r8), pointer :: wr_ini(:)     ! Channel water volume at beginning of step (m^3).
     !real(r8), pointer :: yr_ini(:)     ! Channel water depth at beginning of step (m).
@@ -410,6 +439,10 @@ module RunoffMod
       real(r8), pointer :: forc_lwrad(:)  ! downward infrared (longwave) radiation (W/m**2)
       real(r8), pointer :: forc_solar(:)  ! atmospheric incident solar (shortwave) radiation (W/m**2)
       
+       ! thermal effluent from thermo-electric power plant 
+      !! states
+      real(r8), pointer :: Tp(:)          ! temperature of thermal effluent, [K]
+           
       ! hillsloope
       !! states
       real(r8), pointer :: Tqsur(:)       ! temperature of surface runoff, [K]
@@ -419,7 +452,7 @@ module RunoffMod
       
       ! subnetwork channel
       !! states
-      real(r8), pointer :: Tt(:)            ! temperature of subnetwork water, [K]
+      real(r8), pointer :: Tt(:)          ! temperature of subnetwork water, [K]
       !! fluxes
       !real(r8), pointer :: Ha_t(:)       ! advective heat flux through the subnetwork, [Watt]
       real(r8), pointer :: Ha_h2t(:)      ! advective heat flux from hillslope into the subnetwork, [Watt]
@@ -432,6 +465,7 @@ module RunoffMod
       real(r8), pointer :: Hc_t(:)        ! conductive heat flux at the streambed, [Watt]
       real(r8), pointer :: deltaH_t(:)    ! net heat exchange with surroundings, [J]
       real(r8), pointer :: deltaM_t(:)    ! net heat change due to inflow, [J]
+                                                                                                               
 
       ! main channel
       !! states
@@ -440,9 +474,10 @@ module RunoffMod
       !real(r8), pointer :: Ha_r(:)       ! advective heat flux through the main channel, [Watt]
       real(r8), pointer :: Ha_rin(:)      ! advective heat flux from upstream into the main channel, [Watt]
       real(r8), pointer :: Ha_rout(:)     ! advective heat flux to downstream channel, [Watt]
-      real(r8), pointer :: Ha_eroutUp(:) ! outflow sum of upstream gridcells, instantaneous (Watt)
-      real(r8), pointer :: Ha_eroutUp_avg(:) ! outflow sum of upstream gridcells, average [Watt]
+      real(r8), pointer :: Ha_eroutUp(:)  ! advective heat flux sum of outflow from upstream gridcells, instantaneous (Watt)
+      real(r8), pointer :: Ha_eroutUp_avg(:) ! advective heat flux sum of outflow from upstream gridcells, average [Watt] 
       real(r8), pointer :: Ha_erlat_avg(:) ! erlateral average [Watt]
+      real(r8), pointer :: Ha_p2r(:)      ! advective heat flux from point-source thermal effluent into the main channel, [Watt]  
       real(r8), pointer :: Hs_r(:)        ! net solar short-wave radiation, [Watt]
       real(r8), pointer :: Hl_r(:)        ! net solar long-wave radiation, [Watt]
       real(r8), pointer :: He_r(:)        ! flux of latent heat, [Watt]
@@ -450,7 +485,7 @@ module RunoffMod
       real(r8), pointer :: Hc_r(:)        ! conductive heat flux at the streambed, [Watt]
       real(r8), pointer :: deltaH_r(:)    ! net heat exchange with surroundings, [J]
       real(r8), pointer :: deltaM_r(:)    ! net heat change due to inflow, [J]
-
+      real(r8), pointer :: metdemand_r(:)   ! percent of met water demand by thermoelectric power plants, (0-1)
       real(r8), pointer :: Tt_avg(:)      ! average temperature of subnetwork channel water, [K], for output purpose
       real(r8), pointer :: Tr_avg(:)      ! average temperature of main channel water, [K], for output purpose
       
@@ -569,12 +604,12 @@ contains
     rtmCTL%inundhf(:)      = 0._r8
     rtmCTL%inundff(:)      = 0._r8
     rtmCTL%inundffunit(:)  = 0._r8
-    rtmCTL%qsur(:,:)       = 0._r8
-    rtmCTL%qsub(:,:)       = 0._r8
-    rtmCTL%qgwl(:,:)       = 0._r8
-    rtmCTL%qdto(:,:)       = 0._r8
-    rtmCTL%qdem(:,:)       = 0._r8
-    
+    rtmCTL%qsur(:,:)        = 0._r8
+    rtmCTL%qsub(:,:)        = 0._r8
+    rtmCTL%qgwl(:,:)        = 0._r8
+    rtmCTL%qdto(:,:)        = 0._r8
+    rtmCTL%qdem(:,:)        = 0._r8
+
     if (heatflag) then
       allocate(rtmCTL%Tqsur(begr:endr),                 &
                rtmCTL%Tqsub(begr:endr),                 &
@@ -593,20 +628,51 @@ contains
                rtmCTL%templand_Tqsub_nt2(begr:endr),    &
                rtmCTL%templand_Ttrib_nt2(begr:endr),    &
                rtmCTL%templand_Tchanr_nt2(begr:endr),   &
+			   rtmCTL%forc_tair(begr:endr),   &
+			   rtmCTL%forc_pbot(begr:endr),   &
+			   rtmCTL%forc_vp(begr:endr),   &
+			   rtmCTL%forc_wind(begr:endr),   &
+			   rtmCTL%forc_lwrad(begr:endr),   &
+			   rtmCTL%forc_swrad(begr:endr),   &
                stat=ier)
       if (ier /= 0) then
-         write(iulog,*)'Rtmini ERROR allocation of runoff local arrays'
+         write(iulog,*)'Rtmini ERROR allocation of runoff heat arrays'
          call shr_sys_abort
       end if
-      
       rtmCTL%Tqsur(:)        = 273.15_r8
-      rtmCTL%Tqsub(:)        = 273.15_r8
+      rtmCTL%Tqsub(:)        = 273.15_r8                                        
       rtmCTL%templand_Tqsur(:)  = spval
       rtmCTL%templand_Tqsub(:)  = spval
       rtmCTL%templand_Ttrib(:)  = spval
       rtmCTL%templand_Tchanr(:) = spval
-      
-    end if
+	  rtmCTL%forc_tair(:) = spval
+	  rtmCTL%forc_pbot(:) = spval
+	  rtmCTL%forc_vp(:) = spval
+	  rtmCTL%forc_wind(:) = spval
+	  rtmCTL%forc_lwrad(:) = spval
+	  rtmCTL%forc_swrad(:) = spval
+
+      if (thermpflag) then
+        allocate(rtmCTL%Qp(begr:endr,nt_rtm),     &
+               rtmCTL%avgQp(begr:endr,nt_rtm),    &
+               rtmCTL%Qp_nt1(begr:endr),          &
+               rtmCTL%Qp_nt2(begr:endr),          &
+               rtmCTL%Tp(begr:endr),              &
+               rtmCTL%avgTp(begr:endr),           &
+               rtmCTL%Tp_nt1(begr:endr),          &
+               rtmCTL%Tp_nt2(begr:endr),          &  
+			   rtmCTL%metThermDem(begr:endr),     &  
+               stat=ier)
+        if (ier /= 0) then
+          write(iulog,*)'Rtmini ERROR allocation of arrays related to thermp module'
+          call shr_sys_abort
+        end if
+        rtmCTL%Tp(:)       	 	= 273.15_r8 
+        rtmCTL%avgQp(:,:)   	= spval
+ 	    rtmCTL%avgTp(:)     	= spval
+		rtmCTL%metThermDem(:)   = spval
+      end if
+  end if      
 
   end subroutine RunoffInit
 

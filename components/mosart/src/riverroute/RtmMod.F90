@@ -19,7 +19,8 @@ module RtmMod
                                frivinp_rtm, finidat_rtm, nrevsn_rtm, &
                                nsrContinue, nsrBranch, nsrStartup, nsrest, &
                                inst_index, inst_suffix, inst_name, wrmflag, inundflag, &
-                               smat_option, decomp_option, barrier_timers, heatflag, sediflag
+                               smat_option, decomp_option, barrier_timers, heatflag, &
+                               sediflag, thermpflag
   use RtmFileUtils    , only : getfil, getavu, relavu
   use RtmTimeManager  , only : timemgr_init, get_nstep, get_curr_date, advance_timestep
   use RtmHistFlds     , only : RtmHistFldsInit, RtmHistFldsSet 
@@ -31,7 +32,7 @@ module RtmMod
                                max_tapes, max_namlen
   use RtmRestFile     , only : RtmRestTimeManager, RtmRestGetFile, RtmRestFileRead, &
                                RtmRestFileWrite, RtmRestFileName
-  use RunoffMod       , only : RunoffInit, rtmCTL, Tctl, Tunit, TRunoff, Tpara, Theat, &
+  use RunoffMod       , only : RunoffInit, rtmCTL, Tctl, Tunit, TRunoff, Tpara, THeat, &
                                gsmap_r, &
                                SMatP_dnstrm, avsrc_dnstrm, avdst_dnstrm, &
                                SMatP_upstrm, avsrc_upstrm, avdst_upstrm, &
@@ -240,6 +241,9 @@ contains
     real(r8) :: hydrR                         ! Hydraulic radius (= wet A / wet P) (m).
     real(r8) :: v_chnl                        ! Channel flow velocity (m/s).#endif
 !#endif
+
+    character(len=350) :: thermPath
+    integer            :: ExternalThermFlag										   
 !-----------------------------------------------------------------------
 
     !-------------------------------------------------------
@@ -253,17 +257,22 @@ contains
          rtmhist_fexcl1,  rtmhist_fexcl2, rtmhist_fexcl3, &
          rtmhist_avgflag_pertape, decomp_option, wrmflag, &
          inundflag, smat_option, delt_mosart, barrier_timers, &
-         RoutingMethod, DLevelH2R, DLevelR, sediflag, heatflag
+         RoutingMethod, DLevelH2R, DLevelR, sediflag, &
+         heatflag, thermpflag
 
 !#ifdef INCLUDE_INUND
-if (inundflag) then
-    namelist /inund_inparm / opt_inund, &
-         opt_truedw, opt_calcnr, nr_max, nr_min, &
-         nr_uniform, rdepth_max, rdepth_min, rwidth_max, rwidth_min, &
-         rslp_assume, minl_tribrouting, opt_elevprof, npt_elevprof, &
-         threshold_slpratio
-endif
+    if (inundflag) then
+        namelist /inund_inparm / opt_inund, &
+             opt_truedw, opt_calcnr, nr_max, nr_min, &
+             nr_uniform, rdepth_max, rdepth_min, rwidth_max, rwidth_min, &
+             rslp_assume, minl_tribrouting, opt_elevprof, npt_elevprof, &
+             threshold_slpratio
+    endif
 !#endif
+
+    if (heatflag .and. thermpflag) then
+        namelist /thermp_inparm / ExternalThermFlag, thermPath
+    endif		 
 
     ! Preset values
     do_rtm      = .true.
@@ -273,6 +282,7 @@ endif
     inundflag   = .false.
     sediflag    = .false.
     heatflag    = .false.
+    thermpflag  = .false.
     barrier_timers = .false.
     finidat_rtm = ' '
     nrevsn_rtm  = ' '
@@ -300,6 +310,9 @@ endif
     npt_elevProf = 11             
     threshold_slpRatio = 10.0_r8  
 
+    ! thermp options
+    ExternalThermFlag = 0
+	
     nlfilename_rof = "mosart_in" // trim(inst_suffix)
     inquire (file = trim(nlfilename_rof), exist = lexist)
     if ( .not. lexist ) then
@@ -307,6 +320,7 @@ endif
             //trim(nlfilename_rof)
        call shr_sys_abort(trim(subname)//' ERROR nlfilename_rof does not exist')
     end if
+	
     if (masterproc) then
        unitn = getavu()
        write(iulog,*) 'Read in mosart_inparm namelist from: ', trim(nlfilename_rof)
@@ -321,19 +335,34 @@ endif
        call relavu( unitn )
 !#ifdef INCLUDE_INUND
        if (inundflag) then
-       unitn = getavu()
-       write(iulog,*) 'Read in inund_inparm namelist from: ', trim(nlfilename_rof)
-       open( unitn, file=trim(nlfilename_rof), status='old' )
-       ier = 1
-       do while ( ier /= 0 )
-          read(unitn, inund_inparm, iostat=ier)
-          if (ier < 0) then
-             call shr_sys_abort( subname//' encountered end-of-file on inund_inparm read' )
-          endif
-       end do
-       call relavu( unitn )
-       end if
+           unitn = getavu()
+           write(iulog,*) 'Read in inund_inparm namelist from: ', trim(nlfilename_rof)
+           open(unitn, file=trim(nlfilename_rof), status='old' )
+           ier = 1
+           do while ( ier /= 0 )
+              read(unitn, inund_inparm, iostat=ier)
+              if (ier < 0) then
+                 call shr_sys_abort( subname//' encountered end-of-file on inund_inparm read' )
+              endif
+           end do
+           call relavu( unitn )
+	     end if
 !#endif
+
+       if (heatflag .and. thermpflag) then
+          unitn = getavu()
+          write(iulog,*) subname,' Read in thermp_inparm namelist from: ', trim(nlfilename_rof)
+          open(unitn, file=trim(nlfilename_rof), status='old' )
+          ier = 1
+          do while ( ier /= 0 )
+             read(unitn, thermp_inparm, iostat=ier)
+             if (ier < 0) then
+                call shr_sys_abort( subname//' encountered end-of-file on thermp_inparm read' )
+             endif
+          end do
+          call relavu( unitn )
+       endif			
+	 
     end if
 
     call mpi_bcast (coupling_period,   1, MPI_INTEGER, 0, mpicom_rof, ier)
@@ -355,6 +384,7 @@ endif
     call mpi_bcast (sediflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (heatflag,       1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (inundflag,      1, MPI_LOGICAL, 0, mpicom_rof, ier)
+    call mpi_bcast (thermpflag,     1, MPI_LOGICAL, 0, mpicom_rof, ier)
     call mpi_bcast (barrier_timers, 1, MPI_LOGICAL, 0, mpicom_rof, ier)
 
     call mpi_bcast (rtmhist_nhtfrq, size(rtmhist_nhtfrq), MPI_INTEGER,   0, mpicom_rof, ier)
@@ -390,6 +420,11 @@ endif
  end if
 !#endif
 
+    if (heatflag .and. thermpflag) then
+        call mpi_bcast (ExternalThermFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
+        call mpi_bcast(thermPath ,len(thermPath), MPI_CHARACTER, 0, mpicom_rof, ier)
+    endif		 
+
     runtyp(:)               = 'missing'
     runtyp(nsrStartup  + 1) = 'initial'
     runtyp(nsrContinue + 1) = 'restart'
@@ -401,23 +436,29 @@ endif
 
 !#ifdef INCLUDE_INUND
     if (inundflag) then
-    Tctl%OPT_inund = OPT_inund     !
-    Tctl%OPT_trueDW = OPT_trueDW   ! diffusion wave method
-    Tctl%OPT_calcNr = OPT_calcNr   ! method to calculate channel Manning
-    Tctl%nr_max = nr_max           ! Max Manning coefficient
-    Tctl%nr_min = nr_min           ! Min Manning coefficient
-    Tctl%nr_uniform = nr_uniform   ! uniform Manning for all channels
-    Tctl%rdepth_max = rdepth_max   ! Max channel depth
-    Tctl%rdepth_min = rdepth_min   ! Min channel depth
-    Tctl%rwidth_max = rwidth_max   ! Max channel width
-    Tctl%rwidth_min = rwidth_min   ! Min channel width
-    Tctl%rslp_assume = rslp_assume ! assumed riverbed slope if input slope<=0
-    Tctl%minL_tribRouting = minL_tribRouting
-    Tctl%OPT_elevProf = OPT_elevProf
-    Tctl%npt_elevProf = npt_elevProf
-    Tctl%threshold_slpRatio = threshold_slpRatio
+      Tctl%OPT_inund = OPT_inund     !
+      Tctl%OPT_trueDW = OPT_trueDW   ! diffusion wave method
+      Tctl%OPT_calcNr = OPT_calcNr   ! method to calculate channel Manning
+      Tctl%nr_max = nr_max           ! Max Manning coefficient
+      Tctl%nr_min = nr_min           ! Min Manning coefficient
+      Tctl%nr_uniform = nr_uniform   ! uniform Manning for all channels
+      Tctl%rdepth_max = rdepth_max   ! Max channel depth
+      Tctl%rdepth_min = rdepth_min   ! Min channel depth
+      Tctl%rwidth_max = rwidth_max   ! Max channel width
+      Tctl%rwidth_min = rwidth_min   ! Min channel width
+      Tctl%rslp_assume = rslp_assume ! assumed riverbed slope if input slope<=0
+      Tctl%minL_tribRouting = minL_tribRouting
+      Tctl%OPT_elevProf = OPT_elevProf
+      Tctl%npt_elevProf = npt_elevProf
+      Tctl%threshold_slpRatio = threshold_slpRatio
     end if
 !#endif
+    if (heatflag .and. thermpflag) then
+        Tctl%ExternalThermFlag = ExternalThermFlag ! read thermal discharge data from external input
+        Tctl%thermPath = thermPath
+        ! debug (N. Sun)
+        write(iulog,*) subname," path to thermal effluent data  = ",trim(Tctl%thermPath)
+    endif																						
 
     if (masterproc) then
        write(iulog,*) 'define run:'
@@ -431,8 +472,9 @@ endif
        write(iulog,*) '   smat_option           = ',trim(smat_option)
        write(iulog,*) '   wrmflag               = ',wrmflag
        write(iulog,*) '   inundflag             = ',inundflag
-       write(iulog,*) '   sediflag              = ',inundflag
-       write(iulog,*) '   heatflag              = ',inundflag
+       write(iulog,*) '   sediflag              = ',sediflag
+       write(iulog,*) '   heatflag              = ',heatflag
+       write(iulog,*) '   thermpflag            = ',thermpflag
        write(iulog,*) '   barrier_timers        = ',barrier_timers
        write(iulog,*) '   RoutingMethod         = ',Tctl%RoutingMethod
        write(iulog,*) '   DLevelH2R             = ',Tctl%DLevelH2R
@@ -493,6 +535,11 @@ endif
        call shr_sys_abort( subname//' ERROR: wrmflag and inundflag both set' )
     endif
 
+    if (heatflag==0 .and. thermpflag==1) then
+       write(iulog,*) subname,' ERROR: MOSART heatflag must be true if thermpflag is true'
+       call shr_sys_abort( subname//' ERROR: heatflag is false and thermpflag is true' )
+    endif
+    
     if (coupling_period <= 0) then
        write(iulog,*) subname,' ERROR MOSART coupling_period invalid',coupling_period
        call shr_sys_abort( subname//' ERROR: coupling_period invalid' )
@@ -1139,33 +1186,33 @@ endif
     eroutup_avg(:,:) = 0._r8
     erlat_avg(:,:)   = 0._r8
 
-!#ifdef INCLUDE_INUND
- if (inundflag) then
-    ! If inundation scheme is turned on :
-    !if ( Tctl%OPT_inund .eq. 1 ) then
-      allocate ( fa_fp_cplPeriod(rtmCTL%begr : rtmCTL%endr), stat=ier )
-      if (ier /= 0) then
-        write(iulog, *) subname,' Allocation ERROR for "fa_fp_cplPeriod".'
-        call shr_sys_abort(subname//' Allocationt ERROR for "fa_fp_cplPeriod".')
-      end if
-      fa_fp_cplPeriod(:) = 0._r8
-    !end if
+    !#ifdef INCLUDE_INUND
+     if (inundflag) then
+        ! If inundation scheme is turned on :
+        !if ( Tctl%OPT_inund .eq. 1 ) then
+          allocate ( fa_fp_cplPeriod(rtmCTL%begr : rtmCTL%endr), stat=ier )
+          if (ier /= 0) then
+            write(iulog, *) subname,' Allocation ERROR for "fa_fp_cplPeriod".'
+            call shr_sys_abort(subname//' Allocationt ERROR for "fa_fp_cplPeriod".')
+          end if
+          fa_fp_cplPeriod(:) = 0._r8
+        !end if
 
-    allocate ( totalVelo_down(nt_rtm), &
-               totalVelo_up(nt_rtm), &
-               chnlNum_down(nt_rtm), &
-               chnlNum_up(nt_rtm), &
-               stat=ier )
-    if (ier /= 0) then
-      write(iulog, *) subname,' Allocation ERROR for velocity variables.'
-      call shr_sys_abort(subname//' Allocationt ERROR for velocity variables.')
-    end if
-    totalVelo_down(:) = 0._r8
-    totalVelo_up(:) = 0._r8
-    chnlNum_down(:) = 0
-    chnlNum_up(:) = 0
- end if
-!#endif
+        allocate ( totalVelo_down(nt_rtm), &
+                   totalVelo_up(nt_rtm), &
+                   chnlNum_down(nt_rtm), &
+                   chnlNum_up(nt_rtm), &
+                   stat=ier )
+        if (ier /= 0) then
+          write(iulog, *) subname,' Allocation ERROR for velocity variables.'
+          call shr_sys_abort(subname//' Allocationt ERROR for velocity variables.')
+        end if
+        totalVelo_down(:) = 0._r8
+        totalVelo_up(:) = 0._r8
+        chnlNum_down(:) = 0
+        chnlNum_up(:) = 0
+     end if
+    !#endif
 
     !-------------------------------------------------------
     ! Allocate runoff datatype 
@@ -1595,22 +1642,22 @@ endif
        TRunoff%wr   = rtmCTL%wr
        TRunoff%erout= rtmCTL%erout
 
-!#ifdef INCLUDE_INUND
- if (inundflag) then
-       ! If inundation scheme is turned on :
-       if ( Tctl%OPT_inund .eq. 1 ) then
-         !TRunoff%wf_ini(:) = rtmCTL%wf(:, 1)
-         ! Innudation floodplain water volume (m3)
-         TRunoff%wf_ini(:) = rtmCTL%inundwf(:)
-         ! Inundation floodplain water depth (m)
-         TRunoff%hf_ini(:) = rtmCTL%inundhf(:)
-         ! Inundation floodplain fraction      ! added by Tian
-         TRunoff%ff_ini(:) = rtmCTL%inundff(:)
-         ! Inundation flooded fraction      
-         TRunoff%ffunit_ini(:) = rtmCTL%inundffunit(:)
+      !#ifdef INCLUDE_INUND
+       if (inundflag) then
+             ! If inundation scheme is turned on :
+             if ( Tctl%OPT_inund .eq. 1 ) then
+               !TRunoff%wf_ini(:) = rtmCTL%wf(:, 1)
+               ! Innudation floodplain water volume (m3)
+               TRunoff%wf_ini(:) = rtmCTL%inundwf(:)
+               ! Inundation floodplain water depth (m)
+               TRunoff%hf_ini(:) = rtmCTL%inundhf(:)
+               ! Inundation floodplain fraction      ! added by Tian
+               TRunoff%ff_ini(:) = rtmCTL%inundff(:)
+               ! Inundation flooded fraction      
+               TRunoff%ffunit_ini(:) = rtmCTL%inundffunit(:)
+             end if
        end if
- end if
-!#endif
+      !#endif
 
     else
 !       do nt = 1,nt_rtm
@@ -1997,7 +2044,7 @@ endif
  end if
 !#endif
 
-    if(heatflag) then
+    if (heatflag) then
       rtmCTL%templand_Tqsur = spval
       rtmCTL%templand_Tqsub = spval
       rtmCTL%templand_Ttrib = spval
@@ -2008,10 +2055,33 @@ endif
               rtmCTL%templand_Tqsub(n) = 0._r8
               rtmCTL%templand_Ttrib(n) = 0._r8
               rtmCTL%templand_Tchanr(n) = 0._r8
+			  rtmCTL%forc_tair(n) = 0._r8
+			  rtmCTL%forc_pbot(n) = 0._r8
+			  rtmCTL%forc_vp(n) = 0._r8
+			  rtmCTL%forc_wind(n) = 0._r8
+			  rtmCTL%forc_lwrad(n) = 0._r8
+			  rtmCTL%forc_swrad(n) = 0._r8
           end if
       end do
+      
+      if (thermpflag) then	
+        rtmCTL%avgQp = spval ! thermal discharge from power plants
+        rtmCTL%avgTp = spval ! thermal discharge tempeature	
+		rtmCTL%metThermDem = spval; ! met water demand from TEPP 		
+        do nr = rtmCTL%begr,rtmCTL%endr														   
+           if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then												
+              rtmCTL%avgTp(nr) = 0._r8
+			  rtmCTL%metThermDem(nr) = 0._r8
+              do nt = 1,nt_rtm
+                 rtmCTL%avgQp(nr,nt) = 0._r8
+              end do
+           end if														
+        end do					
+      end if				  
     end if
-    
+						  
+									  
+	
     if (budget_check) then
        call t_startf('mosartr_budget')
        do nt = 1,nt_rtm
@@ -2064,7 +2134,7 @@ endif
        TRunoff%qsur(nr,nt) = rtmCTL%qsur(nr,nt)
        TRunoff%qsub(nr,nt) = rtmCTL%qsub(nr,nt)
        TRunoff%qgwl(nr,nt) = rtmCTL%qgwl(nr,nt)
-       TRunoff%qdem(nr,nt) = rtmCTL%qdem(nr,nt) !added by Yuna 1/29/2018
+       TRunoff%qdem(nr,nt) = rtmCTL%qdem(nr,nt) 
     enddo
     enddo
   
@@ -2174,8 +2244,8 @@ endif
 !#ifdef INCLUDE_INUND
      if (inundflag) then
           if ( rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3 ) then   ! 1--Land; 3--Basin outlet (downstream is ocean).
-          
-          else
+		  
+		  else
                 avsrc_direct%rAttr(nt,cnt) = avsrc_direct%rAttr(nt,cnt) + &
                 TRunoff%qsub(nr,nt) + &
                 TRunoff%qsur(nr,nt) + &
@@ -2356,69 +2426,84 @@ endif
 
 
 !#ifdef INCLUDE_INUND
-       if (inundflag) then
-           ! If 'budget_check' is true & inundation scheme is turned on :
-           if ( inundflag .and. budget_check .and. Tctl%OPT_inund .eq. 1 ) then
-    
-             do nt = 1, 1
-               do nr = rtmCTL%begr, rtmCTL%endr
-    
-                 !if (Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2) then     ! 1 -- Land; 2 -- Basin outlet.
-                 if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then    ! 1 -- Land; 3 -- Basin outlet.
-    
-                   ! Accumulate flow from main channel to floodplain (for all local grid cells and all sub-steps of coupling period):
-                   if ( TRunoff%se_rf(nr) .gt. 0._r8 ) then
-                     vol_chnl2fp = vol_chnl2fp + TRunoff%se_rf(nr)
-    
-                   ! Accumulate flow from floodplain to main channel (for all local grid cells and all sub-steps of coupling period):
-                   elseif ( TRunoff%se_rf(nr) .lt. 0._r8 ) then
-                     vol_fp2chnl = vol_fp2chnl - TRunoff%se_rf(nr)
-                   end if
-    
-                   ! Accumulate inundated floodplain area for all sub-steps of coupling period (for each land grid cell):
-                   fa_fp_cplPeriod(nr) = fa_fp_cplPeriod(nr) + TRunoff%fa_fp(nr)
-                 end if
-    
-               end do
-             end do
-           end if
-    
-           if ( budget_check ) then
-    
-             do nt = 1, nt_rtm
-               do nr = rtmCTL%begr, rtmCTL%endr
-    
-                 if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then    ! 1 -- Land; 3 -- Basin outlet.
-                 !if (Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2) then     ! 1 -- Land; 2 -- Basin outlet.
-    
-                   ! Flow velocity is downward or zero:
-                   if ( TRunoff%vr( nr, nt ) .ge. 0._r8 ) then
-                     totalVelo_down(nt) = totalVelo_down(nt) + TRunoff%vr( nr, nt )
-                     chnlNum_down(nt) = chnlNum_down(nt) + 1
-    
-                   ! Flow velocity is upward (is negative):
-                   else
-                     totalVelo_up(nt) = totalVelo_up(nt) + TRunoff%vr( nr, nt )
-                     chnlNum_up(nt) = chnlNum_up(nt) + 1
-                   end if
-    
-                 end if
-               end do
-             end do
-           end if
-       end if
-!#endif
-       if(heatflag) then
-         do n = rtmCTL%begr,rtmCTL%endr
-             if (rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3) then
-                 rtmCTL%templand_Tqsur(n) = rtmCTL%templand_Tqsur(n) + THeat%Tqsur(n)
-                 rtmCTL%templand_Tqsub(n) = rtmCTL%templand_Tqsub(n) + THeat%Tqsub(n)
-                 rtmCTL%templand_Ttrib(n) = rtmCTL%templand_Ttrib(n) + THeat%Tt_avg(n)
-                 rtmCTL%templand_Tchanr(n) = rtmCTL%templand_Tchanr(n) + THeat%Tr_avg(n)
+if (inundflag) then
+       ! If 'budget_check' is true & inundation scheme is turned on :
+       if ( inundflag .and. budget_check .and. Tctl%OPT_inund .eq. 1 ) then
+
+         do nt = 1, 1
+           do nr = rtmCTL%begr, rtmCTL%endr
+
+             !if (Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2) then     ! 1 -- Land; 2 -- Basin outlet.
+             if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then    ! 1 -- Land; 3 -- Basin outlet.
+
+               ! Accumulate flow from main channel to floodplain (for all local grid cells and all sub-steps of coupling period):
+               if ( TRunoff%se_rf(nr) .gt. 0._r8 ) then
+                 vol_chnl2fp = vol_chnl2fp + TRunoff%se_rf(nr)
+
+               ! Accumulate flow from floodplain to main channel (for all local grid cells and all sub-steps of coupling period):
+               elseif ( TRunoff%se_rf(nr) .lt. 0._r8 ) then
+                 vol_fp2chnl = vol_fp2chnl - TRunoff%se_rf(nr)
+               end if
+
+               ! Accumulate inundated floodplain area for all sub-steps of coupling period (for each land grid cell):
+               fa_fp_cplPeriod(nr) = fa_fp_cplPeriod(nr) + TRunoff%fa_fp(nr)
              end if
-         enddo
+
+           end do
+         end do
        end if
-       
+
+       if ( budget_check ) then
+
+         do nt = 1, nt_rtm
+           do nr = rtmCTL%begr, rtmCTL%endr
+
+             if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then    ! 1 -- Land; 3 -- Basin outlet.
+             !if (Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2) then     ! 1 -- Land; 2 -- Basin outlet.
+
+               ! Flow velocity is downward or zero:
+               if ( TRunoff%vr( nr, nt ) .ge. 0._r8 ) then
+                 totalVelo_down(nt) = totalVelo_down(nt) + TRunoff%vr( nr, nt )
+                 chnlNum_down(nt) = chnlNum_down(nt) + 1
+
+               ! Flow velocity is upward (is negative):
+               else
+                 totalVelo_up(nt) = totalVelo_up(nt) + TRunoff%vr( nr, nt )
+                 chnlNum_up(nt) = chnlNum_up(nt) + 1
+               end if
+
+             end if
+           end do
+         end do
+       end if
+    end if
+!#endif
+    ! average over subcycling
+    if (heatflag) then
+       do n = rtmCTL%begr,rtmCTL%endr
+          if (rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3) then
+             rtmCTL%templand_Tqsur(n) = rtmCTL%templand_Tqsur(n) + THeat%Tqsur(n)
+             rtmCTL%templand_Tqsub(n) = rtmCTL%templand_Tqsub(n) + THeat%Tqsub(n)
+             rtmCTL%templand_Ttrib(n) = rtmCTL%templand_Ttrib(n) + THeat%Tt_avg(n)
+             rtmCTL%templand_Tchanr(n) = rtmCTL%templand_Tchanr(n) + THeat%Tr_avg(n)
+			 
+			 rtmCTL%forc_tair(n) = rtmCTL%forc_tair(n) + THeat%forc_t(n)
+			 rtmCTL%forc_pbot(n) = rtmCTL%forc_pbot(n) + THeat%forc_pbot(n)
+			 rtmCTL%forc_vp(n) = rtmCTL%forc_vp(n) + THeat%forc_vp(n)
+			 rtmCTL%forc_wind(n) = rtmCTL%forc_wind(n) + THeat%forc_wind(n)
+			 rtmCTL%forc_lwrad(n) = rtmCTL%forc_lwrad(n) + THeat%forc_lwrad(n)
+			 rtmCTL%forc_swrad(n) = rtmCTL%forc_swrad(n) + THeat%forc_solar(n)
+			 
+             if (thermpflag) then
+                rtmCTL%avgTp(n) = rtmCTL%avgTp(n) + THeat%Tp(n)
+                rtmCTL%metThermDem(n) = rtmCTL%metThermDem(n) + THeat%metdemand_r(n)
+                do nt = 1, nt_rtm
+                   rtmCTL%avgQp(n,nt) = rtmCTL%avgQp(n,nt) + TRunoff%Qp(n,nt)
+                end do
+             end if	   
+          end if
+       enddo
+    end if! heatflag   
     enddo ! nsub
 
     !-----------------------------------
@@ -2434,10 +2519,10 @@ endif
     erlat_avg   = erlat_avg   / float(nsub)
 
 !#ifdef INCLUDE_INUND
-    if (inundflag) then
-        ! Mean inundated floodplain area for all sub-steps of coupling period (for each land grid cell):
-        fa_fp_cplPeriod = fa_fp_cplPeriod / float(nsub)
-    endif
+if (inundflag) then
+    ! Mean inundated floodplain area for all sub-steps of coupling period (for each land grid cell):
+    fa_fp_cplPeriod = fa_fp_cplPeriod / float(nsub)
+endif
 !#endif
 
     !-----------------------------------
@@ -2461,27 +2546,47 @@ endif
     end if
 
 !#endif
-
     if (heatflag) then
-      rtmCTL%Tqsur   = THeat%Tqsur
-      rtmCTL%Tqsub   = THeat%Tqsub
-      rtmCTL%Tt      = THeat%Tt
-      rtmCTL%Tr      = THeat%Tr
-      rtmCTL%Ha_rout   = THeat%Ha_rout
+         rtmCTL%Tqsur   = THeat%Tqsur
+		 rtmCTL%Tqsub   = THeat%Tqsub
+         rtmCTL%Tt      = THeat%Tt
+         rtmCTL%Tr      = THeat%Tr
+         rtmCTL%Ha_rout   = THeat%Ha_rout
     
-      do n = rtmCTL%begr,rtmCTL%endr
-         if(rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3) then
-            rtmCTL%templand_Tqsur(n) = rtmCTL%templand_Tqsur(n) / float(nsub)
-            rtmCTL%templand_Tqsub(n) = rtmCTL%templand_Tqsub(n) / float(nsub)
-            rtmCTL%templand_Ttrib(n) = rtmCTL%templand_Ttrib(n) / float(nsub)
-            rtmCTL%templand_Tchanr(n) = rtmCTL%templand_Tchanr(n) / float(nsub)
-         else
-            rtmCTL%templand_Tqsur(n) = spval
-            rtmCTL%templand_Tqsub(n) = spval
-            rtmCTL%templand_Ttrib(n) = spval
-            rtmCTL%templand_Tchanr(n) = spval
-         end if
-      end do
+       do n = rtmCTL%begr,rtmCTL%endr
+            if(rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3) then
+               rtmCTL%templand_Tqsur(n) = rtmCTL%templand_Tqsur(n) / float(nsub)
+               rtmCTL%templand_Tqsub(n) = rtmCTL%templand_Tqsub(n) / float(nsub)
+               rtmCTL%templand_Ttrib(n) = rtmCTL%templand_Ttrib(n) / float(nsub)
+               rtmCTL%templand_Tchanr(n) = rtmCTL%templand_Tchanr(n) / float(nsub)
+			   
+			   rtmCTL%forc_tair(n)  = rtmCTL%forc_tair(n)  / float(nsub)
+			   rtmCTL%forc_pbot(n)  = rtmCTL%forc_pbot(n)  / float(nsub)
+			   rtmCTL%forc_vp(n)    = rtmCTL%forc_vp(n)    / float(nsub)
+			   rtmCTL%forc_wind(n)  = rtmCTL%forc_wind(n)  / float(nsub)
+			   rtmCTL%forc_lwrad(n) = rtmCTL%forc_lwrad(n) / float(nsub)
+			   rtmCTL%forc_swrad(n) = rtmCTL%forc_swrad(n) / float(nsub)
+            else
+               rtmCTL%templand_Tqsur(n) = spval
+               rtmCTL%templand_Tqsub(n) = spval
+               rtmCTL%templand_Ttrib(n) = spval
+               rtmCTL%templand_Tchanr(n) = spval
+            end if
+        
+            if (thermpflag) then
+               rtmCTL%Tp(n) = THeat%Tp(n)
+               do nt = 1,nt_rtm
+                  rtmCTL%Qp(n,nt) = TRunoff%Qp(n,nt)
+               end do
+               if (rtmCTL%mask(n) .eq. 1 .or. rtmCTL%mask(n) .eq. 3) then 
+                  rtmCTL%avgTp(n) = rtmCTL%avgTp(n) / float(nsub)
+                  rtmCTL%metThermDem(n) = rtmCTL%metThermDem(n) / float(nsub)
+                  do nt = 1,nt_rtm
+                     rtmCTL%avgQp(n,nt) = rtmCTL%avgQp(n,nt) / float(nsub)
+                  end do
+               end if
+            end if
+       end do
     end if
 
     do nt = 1,nt_rtm
@@ -2564,14 +2669,14 @@ endif
              if (StorWater%supply(nr) > 0) then            
                StorWater%supply(nr) = StorWater%supply(nr)/delt_coupling               
              endif
-             
-              !!!!!!!!!!!!!!!!!!
+			 
+			  !!!!!!!!!!!!!!!!!!
             ! do iunit=rtmCTL%begr,rtmCTL%endr
-            !if (StorWater%demand0(nr) >0) then
+			!if (StorWater%demand0(nr) >0) then
              ! StorWater%SupplyFrac(nr) = StorWater%Supply(nr) / StorWater%demand0(nr)   ! calculate the supply percentage relative to demand0, Tian June 2018
-              !StorWater%SupplyFrac(nr) = StorWater%Supply(nr) / (StorWater%demand(nr) + StorWater%Supply(nr))  ! calculate the supply percentage relative to demand0, Tian June 2018
+			  !StorWater%SupplyFrac(nr) = StorWater%Supply(nr) / (StorWater%demand(nr) + StorWater%Supply(nr))  ! calculate the supply percentage relative to demand0, Tian June 2018
 
-              !write(iulog,*)'Tian get supply frac'
+			  !write(iulog,*)'Tian get supply frac'
               !write(iulog,*)'supply is ',StorWater%Supply(nr)
               !write(iulog,*)'demand0 is ',StorWater%demand0(nr)
               !write(iulog,*)'frac is ',StorWater%SupplyFrac(nr)
@@ -2588,126 +2693,126 @@ endif
 !#endif
 
 !#ifdef INCLUDE_INUND
-       if (inundflag) then
-           do nt = 1, nt_rtm
-             do nr = rtmCTL%begr, rtmCTL%endr
-               if (rtmCTL%mask(nr) .eq. 3) then        ! 3 -- Basin outlet (downstream is ocean).
-               !if ( Tunit%mask(nr) .eq. 2 ) then      ! 2 -- Basin outlet (downstream is ocean).
-                 ! Total streamflow (flow rate) from land to oceans (m^3/s):
-                 budget_terms(br_landOutflow, nt) = budget_terms(br_landOutflow, nt) + rtmCTL%runoff(nr, nt)
-               end if
-             end do
-           end do
-    
-           ! If inundation scheme is turned on :
-           if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
-    
-             ! Total volume of flows from main channels to floodplains (for all local grid cells and all sub-steps of coupling period) (m^3):
-             budget_terms(bv_chnl2fp, 1) = vol_chnl2fp
-    
-             ! Total volume of flows from floodplains to main channels (for all local grid cells and all sub-steps of coupling period) (m^3):
-             budget_terms(bv_fp2chnl, 1) = vol_fp2chnl
-    
-             do nr = rtmCTL%begr, rtmCTL%endr
-               if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then      ! 1 -- Land; 3 -- Basin outlet.
-               !if ( Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2 ) then     ! 1--Land; 2--Basin outlet (downstream is ocean).
-    
-                 ! Water volume over floodplains at coupling-period end:
-                 if ( Tctl%OPT_inund .eq. 1 ) then
-                    budget_terms(bv_fp_f, 1) = budget_terms(bv_fp_f, 1) + TRunoff%wf_ini(nr)
-                 endif
-    
-                 ! Sum up channel surface area:
-                 budget_terms(bi_mainChnlArea, 1) = budget_terms(bi_mainChnlArea, 1) + TUnit%area(nr) * TUnit%frac(nr) * TUnit%a_chnl(nr)
-    
-                 ! Sum up flooded area (including channel area):
-                 budget_terms(bi_floodedArea, 1) = budget_terms(bi_floodedArea, 1) + fa_fp_cplPeriod(nr) + TUnit%area(nr) * TUnit%frac(nr) * TUnit%a_chnl(nr)
-    
-                 ! Sum up land area:
-                 budget_terms(bi_landArea, 1) = budget_terms(bi_landArea, 1) + TUnit%area(nr) * TUnit%frac(nr)
-               end if
-             end do
+if (inundflag) then
+       do nt = 1, nt_rtm
+         do nr = rtmCTL%begr, rtmCTL%endr
+           if (rtmCTL%mask(nr) .eq. 3) then        ! 3 -- Basin outlet (downstream is ocean).
+           !if ( Tunit%mask(nr) .eq. 2 ) then      ! 2 -- Basin outlet (downstream is ocean).
+             ! Total streamflow (flow rate) from land to oceans (m^3/s):
+             budget_terms(br_landOutflow, nt) = budget_terms(br_landOutflow, nt) + rtmCTL%runoff(nr, nt)
            end if
-    
-           do nt = 1, nt_rtm
-             ! Total downward flow velocity (for all local grid cells and all sub-steps of coupling period) (m/s):
-             budget_terms(bVelo_downward, nt) = totalVelo_down(nt)
-    
-             ! Total upward flow velocity (for all local grid cells and all sub-steps of coupling period) (m/s):
-             budget_terms(bVelo_upward, nt) = totalVelo_up(nt)
-    
-             ! Total number of channels with downward flow velocities (for all local grid cells and all sub-steps of coupling period):
-             budget_terms(bVelo_downChnlNo, nt) = chnlNum_down(nt)
-    
-             ! Total number of channels with upward flow velocities (for all local grid cells and all sub-steps of coupling period):
-             budget_terms(bVelo_upChnlNo, nt) = chnlNum_up(nt)
-           end do
-    
-           !--- Debug: compare rtmCTL%mask() and Tunit%mask() ---
-           do nr = rtmCTL%begr, rtmCTL%endr
-             ! Tunit%mask() is land, but rtmCTL%mask() is not land :
-             if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .ne. 1 ) then
-               budget_terms(bmask_lndErr, 1) = budget_terms(bmask_lndErr, 1) + 1
-             end if
-    
-             ! Tunit%mask() is basin outlet, but rtmCTL%mask() is not basin outlet :
-             if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .ne. 3 ) then
-               budget_terms(bmask_outErr, 1) = budget_terms(bmask_outErr, 1) + 1
-             end if
-    
-             ! Tunit%mask() is ocean, but rtmCTL%mask() is not ocean :
-             if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .ne. 2 ) then
-               budget_terms(bmask_ocnErr, 1) = budget_terms(bmask_ocnErr, 1) + 1
-             end if
-    
-             ! Tunit%mask() is land, rtmCTL%mask() is land :
-             if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 1 ) then
-               budget_terms(bmask_uLndrLnd, 1) = budget_terms(bmask_uLndrLnd, 1) + 1
-             end if
-    
-             ! Tunit%mask() is land, rtmCTL%mask() is outlet :
-             if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 3 ) then
-               budget_terms(bmask_uLndrOut, 1) = budget_terms(bmask_uLndrOut, 1) + 1
-             end if
-    
-             ! Tunit%mask() is land, rtmCTL%mask() is ocean :
-             if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 2 ) then
-               budget_terms(bmask_uLndrOcn, 1) = budget_terms(bmask_uLndrOcn, 1) + 1
-             end if
-    
-             ! Tunit%mask() is outlet, rtmCTL%mask() is land :
-             if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 1 ) then
-               budget_terms(bmask_uOutrLnd, 1) = budget_terms(bmask_uOutrLnd, 1) + 1
-             end if
-    
-             ! Tunit%mask() is outlet, rtmCTL%mask() is outlet :
-             if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 3 ) then
-               budget_terms(bmask_uOutrOut, 1) = budget_terms(bmask_uOutrOut, 1) + 1
-             end if
-    
-             ! Tunit%mask() is outlet, rtmCTL%mask() is ocean :
-             if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 2 ) then
-               budget_terms(bmask_uOutrOcn, 1) = budget_terms(bmask_uOutrOcn, 1) + 1
-             end if
-    
-             ! Tunit%mask() is ocean, rtmCTL%mask() is land :
-             if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 1 ) then
-               budget_terms(bmask_uOcnrLnd, 1) = budget_terms(bmask_uOcnrLnd, 1) + 1
-             end if
-    
-             ! Tunit%mask() is ocean, rtmCTL%mask() is outlet :
-             if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 3 ) then
-               budget_terms(bmask_uOcnrOut, 1) = budget_terms(bmask_uOcnrOut, 1) + 1
-             end if
-    
-             ! Tunit%mask() is ocean, rtmCTL%mask() is ocean :
-             if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 2 ) then
-               budget_terms(bmask_uOcnrOcn, 1) = budget_terms(bmask_uOcnrOcn, 1) + 1
-             end if
-    
-           end do
-           !--- Debug ---
-       endif
+         end do
+       end do
+
+       ! If inundation scheme is turned on :
+       if (inundflag .and. Tctl%OPT_inund .eq. 1 ) then
+
+         ! Total volume of flows from main channels to floodplains (for all local grid cells and all sub-steps of coupling period) (m^3):
+         budget_terms(bv_chnl2fp, 1) = vol_chnl2fp
+
+         ! Total volume of flows from floodplains to main channels (for all local grid cells and all sub-steps of coupling period) (m^3):
+         budget_terms(bv_fp2chnl, 1) = vol_fp2chnl
+
+         do nr = rtmCTL%begr, rtmCTL%endr
+           if (rtmCTL%mask(nr) .eq. 1 .or. rtmCTL%mask(nr) .eq. 3) then      ! 1 -- Land; 3 -- Basin outlet.
+           !if ( Tunit%mask(nr) .eq. 1 .or. Tunit%mask(nr) .eq. 2 ) then     ! 1--Land; 2--Basin outlet (downstream is ocean).
+
+             ! Water volume over floodplains at coupling-period end:
+             if ( Tctl%OPT_inund .eq. 1 ) then
+                budget_terms(bv_fp_f, 1) = budget_terms(bv_fp_f, 1) + TRunoff%wf_ini(nr)
+             endif
+
+             ! Sum up channel surface area:
+             budget_terms(bi_mainChnlArea, 1) = budget_terms(bi_mainChnlArea, 1) + TUnit%area(nr) * TUnit%frac(nr) * TUnit%a_chnl(nr)
+
+             ! Sum up flooded area (including channel area):
+             budget_terms(bi_floodedArea, 1) = budget_terms(bi_floodedArea, 1) + fa_fp_cplPeriod(nr) + TUnit%area(nr) * TUnit%frac(nr) * TUnit%a_chnl(nr)
+
+             ! Sum up land area:
+             budget_terms(bi_landArea, 1) = budget_terms(bi_landArea, 1) + TUnit%area(nr) * TUnit%frac(nr)
+           end if
+         end do
+       end if
+
+       do nt = 1, nt_rtm
+         ! Total downward flow velocity (for all local grid cells and all sub-steps of coupling period) (m/s):
+         budget_terms(bVelo_downward, nt) = totalVelo_down(nt)
+
+         ! Total upward flow velocity (for all local grid cells and all sub-steps of coupling period) (m/s):
+         budget_terms(bVelo_upward, nt) = totalVelo_up(nt)
+
+         ! Total number of channels with downward flow velocities (for all local grid cells and all sub-steps of coupling period):
+         budget_terms(bVelo_downChnlNo, nt) = chnlNum_down(nt)
+
+         ! Total number of channels with upward flow velocities (for all local grid cells and all sub-steps of coupling period):
+         budget_terms(bVelo_upChnlNo, nt) = chnlNum_up(nt)
+       end do
+
+       !--- Debug: compare rtmCTL%mask() and Tunit%mask() ---
+       do nr = rtmCTL%begr, rtmCTL%endr
+         ! Tunit%mask() is land, but rtmCTL%mask() is not land :
+         if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .ne. 1 ) then
+           budget_terms(bmask_lndErr, 1) = budget_terms(bmask_lndErr, 1) + 1
+         end if
+
+         ! Tunit%mask() is basin outlet, but rtmCTL%mask() is not basin outlet :
+         if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .ne. 3 ) then
+           budget_terms(bmask_outErr, 1) = budget_terms(bmask_outErr, 1) + 1
+         end if
+
+         ! Tunit%mask() is ocean, but rtmCTL%mask() is not ocean :
+         if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .ne. 2 ) then
+           budget_terms(bmask_ocnErr, 1) = budget_terms(bmask_ocnErr, 1) + 1
+         end if
+
+         ! Tunit%mask() is land, rtmCTL%mask() is land :
+         if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 1 ) then
+           budget_terms(bmask_uLndrLnd, 1) = budget_terms(bmask_uLndrLnd, 1) + 1
+         end if
+
+         ! Tunit%mask() is land, rtmCTL%mask() is outlet :
+         if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 3 ) then
+           budget_terms(bmask_uLndrOut, 1) = budget_terms(bmask_uLndrOut, 1) + 1
+         end if
+
+         ! Tunit%mask() is land, rtmCTL%mask() is ocean :
+         if ( Tunit%mask(nr) .eq. 1 .and. rtmCTL%mask(nr) .eq. 2 ) then
+           budget_terms(bmask_uLndrOcn, 1) = budget_terms(bmask_uLndrOcn, 1) + 1
+         end if
+
+         ! Tunit%mask() is outlet, rtmCTL%mask() is land :
+         if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 1 ) then
+           budget_terms(bmask_uOutrLnd, 1) = budget_terms(bmask_uOutrLnd, 1) + 1
+         end if
+
+         ! Tunit%mask() is outlet, rtmCTL%mask() is outlet :
+         if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 3 ) then
+           budget_terms(bmask_uOutrOut, 1) = budget_terms(bmask_uOutrOut, 1) + 1
+         end if
+
+         ! Tunit%mask() is outlet, rtmCTL%mask() is ocean :
+         if ( Tunit%mask(nr) .eq. 2 .and. rtmCTL%mask(nr) .eq. 2 ) then
+           budget_terms(bmask_uOutrOcn, 1) = budget_terms(bmask_uOutrOcn, 1) + 1
+         end if
+
+         ! Tunit%mask() is ocean, rtmCTL%mask() is land :
+         if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 1 ) then
+           budget_terms(bmask_uOcnrLnd, 1) = budget_terms(bmask_uOcnrLnd, 1) + 1
+         end if
+
+         ! Tunit%mask() is ocean, rtmCTL%mask() is outlet :
+         if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 3 ) then
+           budget_terms(bmask_uOcnrOut, 1) = budget_terms(bmask_uOcnrOut, 1) + 1
+         end if
+
+         ! Tunit%mask() is ocean, rtmCTL%mask() is ocean :
+         if ( Tunit%mask(nr) .eq. 0 .and. rtmCTL%mask(nr) .eq. 2 ) then
+           budget_terms(bmask_uOcnrOcn, 1) = budget_terms(bmask_uOcnrOcn, 1) + 1
+         end if
+
+       end do
+       !--- Debug ---
+endif
 !#endif
 
        ! accumulate the budget total over the run to make sure it's decreasing on avg
@@ -3617,61 +3722,61 @@ endif
           allocate( TUnit%e_eprof_in2( 11, begr:endr ) )    
           ! --------------------------------- 
           ! (assign elevation values to TUnit%e_eprof_in2( :, : ) ). Tian Apr. 2018
-           
-          ier = pio_inq_varid(ncid, name='ele0', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(1,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele0 ',minval(TUnit%e_eprof_in2(1,:)),maxval(TUnit%e_eprof_in2(1,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele1', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(2,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele1 ',minval(TUnit%e_eprof_in2(2,:)),maxval(TUnit%e_eprof_in2(2,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele2', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(3,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele2 ',minval(TUnit%e_eprof_in2(3,:)),maxval(TUnit%e_eprof_in2(3,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele3', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(4,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele3 ',minval(TUnit%e_eprof_in2(4,:)),maxval(TUnit%e_eprof_in2(4,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele4', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(5,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele4 ',minval(TUnit%e_eprof_in2(5,:)),maxval(TUnit%e_eprof_in2(5,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele5', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(6,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele5 ',minval(TUnit%e_eprof_in2(6,:)),maxval(TUnit%e_eprof_in2(6,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele6', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(7,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele6 ',minval(TUnit%e_eprof_in2(7,:)),maxval(TUnit%e_eprof_in2(7,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele7', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(8,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele7 ',minval(TUnit%e_eprof_in2(8,:)),maxval(TUnit%e_eprof_in2(8,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele8', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(9,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele8 ',minval(TUnit%e_eprof_in2(9,:)),maxval(TUnit%e_eprof_in2(9,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele9', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(10,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele9 ',minval(TUnit%e_eprof_in2(10,:)),maxval(TUnit%e_eprof_in2(10,:))
-          call shr_sys_flush(iulog)
-          
-          ier = pio_inq_varid(ncid, name='ele10', vardesc=vardesc)
-          call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(11,:), ier)
-          if (masterproc) write(iulog,FORMR) trim(subname),' read ele10 ',minval(TUnit%e_eprof_in2(11,:)),maxval(TUnit%e_eprof_in2(11,:))
-          call shr_sys_flush(iulog)
+		   
+         ier = pio_inq_varid(ncid, name='ele0', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(1,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele0 ',minval(TUnit%e_eprof_in2(1,:)),maxval(TUnit%e_eprof_in2(1,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele1', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(2,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele1 ',minval(TUnit%e_eprof_in2(2,:)),maxval(TUnit%e_eprof_in2(2,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele2', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(3,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele2 ',minval(TUnit%e_eprof_in2(3,:)),maxval(TUnit%e_eprof_in2(3,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele3', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(4,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele3 ',minval(TUnit%e_eprof_in2(4,:)),maxval(TUnit%e_eprof_in2(4,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele4', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(5,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele4 ',minval(TUnit%e_eprof_in2(5,:)),maxval(TUnit%e_eprof_in2(5,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele5', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(6,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele5 ',minval(TUnit%e_eprof_in2(6,:)),maxval(TUnit%e_eprof_in2(6,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele6', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(7,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele6 ',minval(TUnit%e_eprof_in2(7,:)),maxval(TUnit%e_eprof_in2(7,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele7', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(8,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele7 ',minval(TUnit%e_eprof_in2(8,:)),maxval(TUnit%e_eprof_in2(8,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele8', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(9,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele8 ',minval(TUnit%e_eprof_in2(9,:)),maxval(TUnit%e_eprof_in2(9,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele9', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(10,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele9 ',minval(TUnit%e_eprof_in2(10,:)),maxval(TUnit%e_eprof_in2(10,:))
+         call shr_sys_flush(iulog)
+         
+         ier = pio_inq_varid(ncid, name='ele10', vardesc=vardesc)
+         call pio_read_darray(ncid, vardesc, iodesc_dbl, TUnit%e_eprof_in2(11,:), ier)
+         if (masterproc) write(iulog,FORMR) trim(subname),' read ele10 ',minval(TUnit%e_eprof_in2(11,:)),maxval(TUnit%e_eprof_in2(11,:))
+         call shr_sys_flush(iulog)
      
           ! --------------------------------- 
 
@@ -3724,7 +3829,7 @@ endif
 
      allocate (TRunoff%dwh(begr:endr,nt_rtm))
      TRunoff%dwh = 0._r8
-
+     
      allocate (TRunoff%yh(begr:endr,nt_rtm))
      TRunoff%yh = 0._r8
 
@@ -3751,6 +3856,9 @@ endif
 
      allocate (TRunoff%dwt(begr:endr,nt_rtm))
      TRunoff%dwt = 0._r8
+     
+     allocate (TRunoff%wt_last(begr:endr,nt_rtm))
+     TRunoff%wt_last = 0._r8
 
      allocate (TRunoff%yt(begr:endr,nt_rtm))
      TRunoff%yt = 0._r8
@@ -3784,6 +3892,9 @@ endif
 
      allocate (TRunoff%dwr(begr:endr,nt_rtm))
      TRunoff%dwr = 0._r8
+     
+     allocate (TRunoff%wr_last(begr:endr,nt_rtm))
+     TRunoff%wr_last = 0._r8
 
      allocate (TRunoff%yr(begr:endr,nt_rtm))
      TRunoff%yr = 0._r8
@@ -3910,7 +4021,7 @@ endif
      end if
 !#endif
      
-     if(heatflag) then
+	 if(heatflag) then
         ! initialize heat states and fluxes
         allocate (THeat%forc_t(begr:endr))
         THeat%forc_t = 273.15_r8
@@ -3985,6 +4096,17 @@ endif
         allocate (THeat%Tr_avg(begr:endr))
         THeat%Tr_avg = 273.15_r8
         
+        if (thermpflag) then
+          allocate (THeat%Tp(begr:endr))
+          THeat%Tp = 273.15_r8
+          allocate (THeat%Ha_p2r(begr:endr))
+          THeat%Ha_p2r = 0._r8
+          allocate (THeat%metdemand_r(begr:endr))
+          THeat%metdemand_r = 0._r8
+          allocate (TRunoff%Qp(begr:endr,nt_rtm))
+          TRunoff%Qp = 0._r8
+        end if        
+		
        ! read the parameters for mosart-heat
         if(endr >= begr) then
             allocate(TPara%t_alpha(begr:endr))    
@@ -3994,10 +4116,10 @@ endif
             allocate(TPara%t_gamma(begr:endr))
            TPara%t_gamma = 0.1576_r8
              allocate(TPara%t_mu(begr:endr))
-           TPara%t_mu = 0.5278_r8
+           TPara%t_mu = 0.5278_r8           
         end if
-     end if
-    
+    end if
+	
      call pio_freedecomp(ncid, iodesc_dbl)
      call pio_freedecomp(ncid, iodesc_int)
      call pio_closefile(ncid)
@@ -4065,9 +4187,9 @@ endif
 
         if (inundflag) then
 !#ifdef INCLUDE_INUND
-        if (inundflag) then
+if (inundflag) then
            TUnit%rslp(iunit) = Tctl%rslp_assume
-        endif
+endif
 !#endif
         else
            TUnit%rslp(iunit) = 0.0001_r8

@@ -917,7 +917,7 @@ contains
 
     if (rCode /= 0) then
        shr_string_listIsValid = .false.
-       if (s_loglev > 0) write(s_logunit,F00) "WARNING: invalid list = ",trim(list)
+       write(s_logunit,F00) "WARNING: invalid list = ",trim(list)
     endif
 
     if (present(rc)) rc = rCode

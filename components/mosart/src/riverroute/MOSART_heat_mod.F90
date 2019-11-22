@@ -5,15 +5,26 @@ MODULE MOSART_heat_mod
 ! Developed by Hongyi Li, 12/29/2015. 
 ! REVISION HISTORY:
 ! April 2019, migrated to E3SM
+! September 2019 (N. Sun),add modules that simulate thermal effulent effect from power plants
 !-----------------------------------------------------------------------
     
 ! !USES:
     use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
     use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
+    use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
     use shr_const_mod , only : cpliq => SHR_CONST_CPFW, denh2o => SHR_CONST_RHOFW, denice => SHR_CONST_RHOICE, sb => SHR_CONST_STEBOL
-    use RunoffMod , only : Tctl, TUnit, TRunoff, THeat, TPara
-    use RunoffMod , only : rtmCTL
+    use RtmVar        , only : iulog, thermpflag
+    use RtmIO         , only : pio_subsystem, ncd_pio_openfile, ncd_pio_closefile
+    use RtmTimeManager, only : get_curr_date
+    use RunoffMod     , only : Tctl, TUnit, TRunoff, THeat, TPara
+    use RunoffMod     , only : rtmCTL
     use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice
+	use RtmSpmd       , only : masterproc, mpicom_rof, iam 
+    use netcdf
+    use mct_mod
+    use pio
+    use perf_mod
+    
     implicit none
     real(r8), parameter :: TINYVALUE1 = 1.0e-14_r8  ! double precision variable has a significance of about 16 decimal digits
     real(r8), parameter :: Hthreshold = 0.05_r8  ! threshold value of channel water depth, if lower than this, headwater temp is calculated using the simplified formula, instead of heat balance equation
@@ -29,14 +40,19 @@ MODULE MOSART_heat_mod
         
         integer, intent(in) :: iunit
         real(r8), intent(in) :: theDeltaT        
+        !if(TUnit%fdir(iunit) >= 0 .and. TUnit%areaTotal(iunit) > TINYVALUE1) then
             THeat%Tqsur(iunit) = THeat%Tqsur(iunit)
             ! adjust surface runoff temperature estimated based on the top-layer soil temperature, i.e., no less than freezing point
             if(THeat%Tqsur(iunit) < 273.15_r8-TINYVALUE1) then
+                !write(unit=1821,fmt=*)  'Tqsub error at hillslopeHeat, ', iunit, THeat%Tqsur(iunit), THeat%Tqsub(iunit)
                 THeat%Tqsur(iunit) = 273.15_r8
+            !else
+                !write(unit=1822,fmt=*)  'Tqsur good at hillslopeHeat, ', iunit, THeat%Tqsur(iunit), THeat%Tqsub(iunit)
             end if
             
             THeat%Tqsub(iunit) = THeat%Tqsub(iunit)
             if(THeat%Tqsub(iunit) < 273.15_r8-TINYVALUE1) then
+                !write(unit=1822,fmt=*)  'Tqsub error at hillslopeHeat, ', iunit, THeat%Tqsur(iunit), THeat%Tqsub(iunit)
                 THeat%Tqsub(iunit) = 273.15_r8
             end if
         !end if
@@ -49,46 +65,55 @@ MODULE MOSART_heat_mod
         integer, intent(in) :: iunit
         real(r8), intent(in) :: theDeltaT    
         
-        real(r8) :: Qsur, Qsub ! flow rate of surface and subsurface runoff separately
+        real(r8) :: Qsur, Qsub ! flow rate (m3/s) of surface and subsurface runoff 
+        real(r8) :: Stor ! subnetwork channel storage (m3/s)
+        
         !if(TUnit%fdir(iunit) >= 0 .and. TUnit%areaTotal(iunit) > TINYVALUE1 .and. TUnit%tlen(iunit) >= TINYVALUE1) then
-                TRunoff%tarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%twidth(iunit) * TUnit%tlen(iunit)
-                THeat%Hs_t(iunit) = cr_swrad(THeat%forc_solar(iunit), TRunoff%tarea(iunit,nt_nliq))
-                THeat%Hl_t(iunit) = cr_lwrad(THeat%forc_lwrad(iunit), THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
-                THeat%He_t(iunit) = cr_latentheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_vp(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
-                THeat%Hh_t(iunit) = cr_sensibleheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
-                THeat%Hc_t(iunit) = cr_condheat(THeat%Hs_t(iunit),THeat%Hl_t(iunit),TRunoff%tarea(iunit,nt_nliq))
+        TRunoff%tarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%twidth(iunit) * TUnit%tlen(iunit)
+        THeat%Hs_t(iunit) = cr_swrad(THeat%forc_solar(iunit), TRunoff%tarea(iunit,nt_nliq))
+        THeat%Hl_t(iunit) = cr_lwrad(THeat%forc_lwrad(iunit), THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
+        THeat%He_t(iunit) = cr_latentheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_vp(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
+        THeat%Hh_t(iunit) = cr_sensibleheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tt(iunit), TRunoff%tarea(iunit,nt_nliq))
+        ! conductive heat flux at the streambed
+        THeat%Hc_t(iunit) = cr_condheat(THeat%Hs_t(iunit),THeat%Hl_t(iunit),TRunoff%tarea(iunit,nt_nliq))
 
-                Qsur = (-TRunoff%ehout(iunit,nt_nliq)-TRunoff%ehout(iunit,nt_nice)) * TUnit%area(iunit) * TUnit%frac(iunit)
-                Qsub = TRunoff%qsub(iunit,nt_nliq) * TUnit%area(iunit) * TUnit%frac(iunit)
-                THeat%Ha_h2t(iunit) = cr_advectheat(Qsur, THeat%Tqsur(iunit)) + cr_advectheat(Qsub, THeat%Tqsub(iunit))
-                THeat%Ha_t2r(iunit) = -cr_advectheat(abs(TRunoff%etout(iunit,nt_nliq)+TRunoff%etout(iunit,nt_nice)), THeat%Tt(iunit))
-            ! change of energy due to heat exchange with the environment
-            THeat%deltaH_t(iunit) = theDeltaT * (THeat%Hs_t(iunit) + THeat%Hl_t(iunit) + THeat%He_t(iunit) + THeat%Hc_t(iunit) + THeat%Hh_t(iunit))
-            ! change of energy due to advective heat flux
-            THeat%deltaM_t(iunit) = theDeltaT * (THeat%Ha_h2t(iunit)-cr_advectheat(Qsur + Qsub, THeat%Tt(iunit)))
+        Qsur = (-TRunoff%ehout(iunit,nt_nliq)-TRunoff%ehout(iunit,nt_nice)) * TUnit%area(iunit) * TUnit%frac(iunit)
+        Qsub = TRunoff%qsub(iunit,nt_nliq) * TUnit%area(iunit) * TUnit%frac(iunit)
+        THeat%Ha_h2t(iunit) = cr_advectheat(Qsur, THeat%Tqsur(iunit)) + cr_advectheat(Qsub, THeat%Tqsub(iunit))
+        THeat%Ha_t2r(iunit) = -cr_advectheat(abs(TRunoff%etout(iunit,nt_nliq)+TRunoff%etout(iunit,nt_nice)), THeat%Tt(iunit))
+               
+        ! change of energy due to heat exchange with the environment
+        THeat%deltaH_t(iunit) = theDeltaT * (THeat%Hs_t(iunit) + THeat%Hl_t(iunit) + THeat%He_t(iunit) + THeat%Hc_t(iunit) + THeat%Hh_t(iunit))
+        ! change of energy due to advective heat flux
+        THeat%deltaM_t(iunit) = theDeltaT * (THeat%Ha_h2t(iunit) - cr_advectheat(Qsur + Qsub, THeat%Tt(iunit)))
+        
+        !end if
     end subroutine subnetworkHeat
 
     subroutine subnetworkHeat_simple(iunit, theDeltaT)
-    ! !DESCRIPTION: calculate the net heat balance of subnetwork channel.
+    ! !DESCRIPTION: calculate the net heat balance of short subnetwork channel in length.
+    ! !NOTE: This subroutine is NOT used in calculaton of subnetwork water temperature (N. Sun)
     use shr_sys_mod , only : shr_sys_flush
         implicit none
         integer, intent(in) :: iunit
         real(r8), intent(in) :: theDeltaT    
         
-        real(r8) :: Qsur, Qsub ! flow rate of surface and subsurface runoff separately
+        !real(r8) :: Qsur, Qsub ! flow rate of surface and subsurface runoff separately
         !if(TUnit%fdir(iunit) >= 0 .and. TUnit%areaTotal(iunit) > TINYVALUE1) then
-                THeat%Hs_t(iunit) = 0._r8
-                THeat%Hl_t(iunit) = 0._r8
-                THeat%He_t(iunit) = 0._r8
-                THeat%Hh_t(iunit) = 0._r8
-                THeat%Hc_t(iunit) = 0._r8
+            THeat%Hs_t(iunit) = 0._r8
+            THeat%Hl_t(iunit) = 0._r8
+            THeat%He_t(iunit) = 0._r8
+            THeat%Hh_t(iunit) = 0._r8
+            THeat%Hc_t(iunit) = 0._r8
 
-                THeat%Ha_h2t(iunit) = 0._r8
-                THeat%Ha_t2r(iunit) = -cr_advectheat(abs(TRunoff%etout(iunit,nt_nliq)+TRunoff%etout(iunit,nt_nice)), THeat%Tt(iunit))
-            ! change of energy due to heat exchange with the environment
+            THeat%Ha_h2t(iunit) = 0._r8 ! Why h2t is set to zero??? (N. Sun)
+            THeat%Ha_t2r(iunit) = -cr_advectheat(abs(TRunoff%etout(iunit,nt_nliq)+TRunoff%etout(iunit,nt_nice)), THeat%Tt(iunit))
+            
+            ! set air-water energy input to zero
             THeat%deltaH_t(iunit) = theDeltaT * (THeat%Hs_t(iunit) + THeat%Hl_t(iunit) + THeat%He_t(iunit) + THeat%Hc_t(iunit) + THeat%Hh_t(iunit))
             ! change of energy due to advective heat flux
-            THeat%deltaM_t(iunit) = theDeltaT * (THeat%Ha_h2t(iunit)-cr_advectheat(Qsur + Qsub, THeat%Tt(iunit)))
+            ! Commented out - not used in calculation (N. Sun)
+            ! THeat%deltaM_t(iunit) = theDeltaT * (THeat%Ha_h2t(iunit)-cr_advectheat(Qsur + Qsub, THeat%Tt(iunit)))
         !end if
     end subroutine subnetworkHeat_simple
 
@@ -101,47 +126,91 @@ MODULE MOSART_heat_mod
         real(r8), intent(in) :: theDeltaT    
         integer    :: k
         real(r8) :: Ha_temp, Ha_temp1, Ha_temp2
+        real(r8) :: Qplant, Stor       
+        character(len=*),parameter :: subname='(mainchannelHeat)'
+        
         THeat%Ha_rin(iunit) = 0._r8
+        
+        
         !if(TUnit%fdir(iunit) >= 0 .and. TUnit%areaTotal(iunit) > TINYVALUE1 .and. TUnit%rlen(iunit) >= TINYVALUE1) then
-                if(TRunoff%yr(iunit,nt_nliq) > TUnit%rdepth(iunit)) then ! TODO: the cases w/o flooding should be treated differently, here treated the same for now
-                    !TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth0(iunit) * TUnit%rlen(iunit)
-                    TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth(iunit) * TUnit%rlen(iunit)
+            if(TRunoff%yr(iunit,nt_nliq) > TUnit%rdepth(iunit)) then ! TODO: the cases w/o flooding should be treated differently, here treated the same for now
+                !TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth0(iunit) * TUnit%rlen(iunit)
+                TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth(iunit) * TUnit%rlen(iunit)
+            else
+                TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth(iunit) * TUnit%rlen(iunit)
+            end if
+            THeat%Hs_r(iunit) = cr_swrad(THeat%forc_solar(iunit), TRunoff%rarea(iunit,nt_nliq))
+            THeat%Hl_r(iunit) = cr_lwrad(THeat%forc_lwrad(iunit), THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
+            THeat%He_r(iunit) = cr_latentheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_vp(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
+            THeat%Hh_r(iunit) = cr_sensibleheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
+            THeat%Hc_r(iunit) = cr_condheat(THeat%Hs_r(iunit),THeat%Hl_r(iunit),TRunoff%rarea(iunit,nt_nliq))
+            
+            !do k=1,TUnit%nUp(iunit)
+            !    THeat%Ha_rin(iunit) = THeat%Ha_rin(iunit) - THeat%Ha_rout(TUnit%iUp(iunit,k))
+            !end do
+            
+            THeat%Ha_rin(iunit) = THeat%Ha_rin(iunit) - THeat%Ha_eroutUp(iunit) 
+            !if(TUnit%indexDown(iunit) > 0) then
+                THeat%Ha_rout(iunit) = -cr_advectheat(abs(TRunoff%erout(iunit,nt_nliq)+TRunoff%erout(iunit,nt_nice)), THeat%Tr(iunit))
+            !else
+            !    THeat%Ha_rout(iunit) = 0._r8
+            !end if
+            
+            ! advective heat from thermal effluent of power plants
+            if (thermpflag) then            
+                Qplant = TRunoff%Qp(iunit,nt_nliq) + TRunoff%Qp(iunit,nt_nice)
+                Stor = (TRunoff%wr_last(iunit,nt_nliq)+TRunoff%wr_last(iunit,nt_nice))
+              if (Qplant > 0._r8) then
+                ! if channel storage falls short of power plant demand
+                if (Qplant * theDeltaT > Stor) then
+                    THeat%metdemand_r(iunit) = (Qplant * theDeltaT  - Stor)/ (Qplant * theDeltaT)
+                    Qplant = Stor / theDeltaT;
                 else
-                    TRunoff%rarea(iunit,nt_nliq) = WaterAreaRatio*TUnit%rwidth(iunit) * TUnit%rlen(iunit)
-                end if
-                THeat%Hs_r(iunit) = cr_swrad(THeat%forc_solar(iunit), TRunoff%rarea(iunit,nt_nliq))
-                THeat%Hl_r(iunit) = cr_lwrad(THeat%forc_lwrad(iunit), THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
-                THeat%He_r(iunit) = cr_latentheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_vp(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
-                THeat%Hh_r(iunit) = cr_sensibleheat(THeat%forc_t(iunit), THeat%forc_pbot(iunit), THeat%forc_wind(iunit), 1._r8, THeat%Tr(iunit), TRunoff%rarea(iunit,nt_nliq))
-                THeat%Hc_r(iunit) = cr_condheat(THeat%Hs_r(iunit),THeat%Hl_r(iunit),TRunoff%rarea(iunit,nt_nliq))
+                    THeat%metdemand_r(iunit) = 1.0_r8
+                end if 
+                THeat%Ha_p2r(iunit) = cr_advectheat(Qplant, THeat%Tp(iunit))
                 
-                !do k=1,TUnit%nUp(iunit)
-                !    THeat%Ha_rin(iunit) = THeat%Ha_rin(iunit) - THeat%Ha_rout(TUnit%iUp(iunit,k))
-                !end do
-                
-                THeat%Ha_rin(iunit) = THeat%Ha_rin(iunit) - THeat%Ha_eroutUp(iunit) 
-                !if(TUnit%indexDown(iunit) > 0) then
-                    THeat%Ha_rout(iunit) = -cr_advectheat(abs(TRunoff%erout(iunit,nt_nliq)+TRunoff%erout(iunit,nt_nice)), THeat%Tr(iunit))
-                !else
-                !    THeat%Ha_rout(iunit) = 0._r8
-                !end if
+                !!!! debug !!!!
+                if (iunit ==  8136) then
+                write(iulog,*) subname, 'Stor(m3),Qp(m3), metDemand=',Stor, Qplant*theDeltaT,THeat%metdemand_r(iunit)
+                end if				
+                !!!! debug !!!!                
+              end if                
+            end if
  
             ! change of energy due to heat exchange with the environment
             THeat%deltaH_r(iunit) = theDeltaT * (THeat%Hs_r(iunit) + THeat%Hl_r(iunit) + THeat%He_r(iunit) + THeat%Hc_r(iunit) + THeat%Hh_r(iunit))
             ! change of energy due to advective heat fluxes. Note here the advective heat flux is calculated differently from that by Huan Wu or van Vliet et al.
-            ! Their routing model is based on source-to-sink, while our model is explicitly tracing inflow from each upstream channel.
+            ! Their routing model is based on source-to-sink, while our model is explicitly tracing inflow from each upstream channel. 
             Ha_temp = cr_advectheat(TRunoff%erin(iunit,nt_nliq)+TRunoff%erin(iunit,nt_nice)+TRunoff%erlateral(iunit,nt_nliq)+TRunoff%erlateral(iunit,nt_nice),THeat%Tr(iunit))
-            THeat%deltaM_r(iunit) = theDeltaT * (THeat%Ha_lateral(iunit) + THeat%Ha_rin(iunit) - Ha_temp)
+			!!!! debug !!!!
+            if(iunit == 8136) then
+              write(iulog,'(a, 4(e16.5))'), 'Ha_temp (in, out, delta)=', THeat%Ha_lateral(iunit)+THeat%Ha_rin(iunit), -Ha_temp, THeat%Ha_lateral(iunit)+THeat%Ha_rin(iunit)-Ha_temp
+            end if
+			!!!! debug !!!!
+            if (thermpflag) then
+                Ha_temp = Ha_temp + cr_advectheat(Qplant, THeat%Tr(iunit))
+                THeat%deltaM_r(iunit) = theDeltaT * (THeat%Ha_lateral(iunit) + THeat%Ha_rin(iunit) + THeat%Ha_p2r(iunit) - Ha_temp)
+            else
+                THeat%deltaM_r(iunit) = theDeltaT * (THeat%Ha_lateral(iunit) + THeat%Ha_rin(iunit) - Ha_temp)
+            end if
             
-            !if(iunit == 85088) then
-            !  write(unit=2111,fmt="(i10, 6(e16.4))") iunit, THeat%Hs_r(iunit), THeat%Hl_r(iunit), THeat%He_r(iunit), THeat%Hc_r(iunit), THeat%Hh_r(iunit), TRunoff%rarea(iunit,nt_nliq)
-            !  write(unit=2112,fmt="(i10, f10.4, 6(e14.4))") iunit, THeat%Tr(iunit), THeat%ha_lateral(iunit), THeat%Ha_rin(iunit), Ha_temp, TRunoff%erin(iunit,nt_nliq), THeat%Ha_rout(iunit), TRunoff%erout(iunit,nt_nliq)
-            !end if
+			!!!! debug !!!!
+            if(iunit == 8136) then
+              write(iulog,'(a, 2(e16.4))') 'air-water H, advH= ', THeat%deltaH_r(iunit), THeat%deltaM_r(iunit)
+              write(iulog,'(a, 3(e16.4))') 'sw, lw, area', THeat%forc_solar(iunit), THeat%forc_lwrad(iunit), TRunoff%rarea(iunit,nt_nliq)            
+              write(iulog,'(a, 6(e16.4))'), 'Hs,Hl,He,Hc,Hh= ',THeat%Hs_r(iunit), THeat%Hl_r(iunit), THeat%He_r(iunit), THeat%Hc_r(iunit), THeat%Hh_r(iunit)
+              if (thermpflag) write(iulog,'(a, 4(e16.5))'), 'Qp (m3/s),Tp,Hp=',Qplant, THeat%Tp(iunit), THeat%Ha_p2r(iunit)
+              write(iulog,*) 'Tr= ', THeat%Tr(iunit)
+            end if
+			!!!! debug !!!!
+			
         !end if
     end subroutine mainchannelHeat
 
     subroutine mainchannelHeat_simple(iunit, theDeltaT)
     ! !DESCRIPTION: calculate the net heat balance of main channel.
+    ! !NOTE: This subroutine is NOT used in calculaton of channel water temperature (N. Sun)
         use shr_sys_mod , only : shr_sys_flush
         implicit none
         integer, intent(in) :: iunit
@@ -149,25 +218,28 @@ MODULE MOSART_heat_mod
         integer    :: k
         real(r8) :: Ha_temp, Ha_temp1, Ha_temp2
         THeat%Ha_rin(iunit) = 0._r8
+        
         !if(TUnit%fdir(iunit) >= 0 .and. TUnit%areaTotal(iunit) > TINYVALUE1) then
-                THeat%Hs_r(iunit) = 0._r8
-                THeat%Hl_r(iunit) = 0._r8
-                THeat%He_r(iunit) = 0._r8
-                THeat%Hh_r(iunit) = 0._r8
-                THeat%Hc_r(iunit) = 0._r8
-                THeat%Ha_rin(iunit) = 0._r8
-                !if(TUnit%indexDown(iunit) > 0) then
-                    THeat%Ha_rout(iunit) = -cr_advectheat(abs(TRunoff%erout(iunit,nt_nliq)+TRunoff%erout(iunit,nt_nice)), THeat%Tr(iunit))
-                !else
-                    !THeat%Ha_rout(iunit) = 0._r8
-                !end if                
+        THeat%Hs_r(iunit) = 0._r8
+        THeat%Hl_r(iunit) = 0._r8
+        THeat%He_r(iunit) = 0._r8
+        THeat%Hh_r(iunit) = 0._r8
+        THeat%Hc_r(iunit) = 0._r8
+        THeat%Ha_rin(iunit) = 0._r8
+        !if(TUnit%indexDown(iunit) > 0) then
+            THeat%Ha_rout(iunit) = -cr_advectheat(abs(TRunoff%erout(iunit,nt_nliq)+TRunoff%erout(iunit,nt_nice)), THeat%Tr(iunit))
+        !else
+            !THeat%Ha_rout(iunit) = 0._r8
+        !end if                
 
-            ! change of energy due to heat exchange with the environment
-            THeat%deltaH_r(iunit) = theDeltaT * (THeat%Hs_r(iunit) + THeat%Hl_r(iunit) + THeat%He_r(iunit) + THeat%Hc_r(iunit) + THeat%Hh_r(iunit))
-            ! change of energy due to advective heat fluxes. Note here the advective heat flux is calculated differently from that by Huan Wu or van Vliet et al.
-            ! Their routing model is based on source-to-sink, while our model is explicitly tracing inflow from each upstream channel.
-            Ha_temp = cr_advectheat(TRunoff%erin(iunit,nt_nliq)+TRunoff%erin(iunit,nt_nice)+TRunoff%erlateral(iunit,nt_nliq)+TRunoff%erlateral(iunit,nt_nice),THeat%Tr(iunit))
-            THeat%deltaM_r(iunit) = theDeltaT * (THeat%ha_lateral(iunit) + THeat%Ha_rin(iunit) - Ha_temp)
+        ! change of energy due to heat exchange with the environment
+        THeat%deltaH_r(iunit) = theDeltaT * (THeat%Hs_r(iunit) + THeat%Hl_r(iunit) + THeat%He_r(iunit) + THeat%Hc_r(iunit) + THeat%Hh_r(iunit))
+        ! change of energy due to advective heat fluxes. Note here the advective heat flux is calculated differently from that by Huan Wu or van Vliet et al.
+        ! Their routing model is based on source-to-sink, while our model is explicitly tracing inflow from each upstream channel.
+        Ha_temp = cr_advectheat(TRunoff%erin(iunit,nt_nliq)+TRunoff%erin(iunit,nt_nice)+TRunoff%erlateral(iunit,nt_nliq)+TRunoff%erlateral(iunit,nt_nice),THeat%Tr(iunit))
+        
+        ! Why set Ha_rin to zero??? (N. Sun)
+        THeat%deltaM_r(iunit) = theDeltaT * (THeat%ha_lateral(iunit) + THeat%Ha_rin(iunit) - Ha_temp)
         !end if
     end subroutine mainchannelHeat_simple
     
@@ -195,19 +267,24 @@ MODULE MOSART_heat_mod
     end subroutine subnetworkTemp
 
     subroutine subnetworkTemp_simple(iunit)
-    ! !DESCRIPTION: calculate the water temperature of subnetwork channel.
+    ! !DESCRIPTION: calculate the water temperature of short subnetwork channel in length.
         implicit none
         integer, intent(in) :: iunit
         
         real(r8) :: Mt  !mass of water (Kg)
-        real(r8) :: Ttmp1, Ttmp2  !
+        real(r8) :: Qsur, Qsub !surface and subsurface discharge (m3/s)
         
-        if(TRunoff%qsur(iunit,nt_nliq)+TRunoff%qsub(iunit,nt_nliq) > TINYVALUE1) then
-            THeat%Tt(iunit) = THeat%Tqsur(iunit) * (TRunoff%qsur(iunit,nt_nliq)+TRunoff%qsur(iunit,nt_nice)) + THeat%Tqsub(iunit) * (TRunoff%qsub(iunit,nt_nliq)+TRunoff%qsub(iunit,nt_nice))
-            THeat%Tt(iunit) = THeat%Tt(iunit)/(TRunoff%qsur(iunit,nt_nliq)+TRunoff%qsur(iunit,nt_nice)+TRunoff%qsub(iunit,nt_nliq)+TRunoff%qsub(iunit,nt_nice))
+        Qsur = (TRunoff%qsur(iunit,nt_nliq)+TRunoff%qsur(iunit,nt_nice)) * TUnit%area(iunit) * TUnit%frac(iunit)
+        Qsub = (TRunoff%qsub(iunit,nt_nliq)+TRunoff%qsub(iunit,nt_nice)) * TUnit%area(iunit) * TUnit%frac(iunit)
+        
+
+        if(Qsub+Qsur > TINYVALUE1) then
+            THeat%Tt(iunit) = THeat%Tqsur(iunit) * Qsur + THeat%Tqsub(iunit) * Qsub
+            THeat%Tt(iunit) = THeat%Tt(iunit)/(Qsub+Qsur)
         else
             THeat%Tt(iunit) = THeat%Tqsur(iunit)
         end if
+                      
     end subroutine subnetworkTemp_simple
     
     
@@ -219,30 +296,29 @@ MODULE MOSART_heat_mod
         
         real(r8) :: Mr  !mass of water (Kg)
         real(r8) :: Ttmp1, Ttmp2  !
+		
+		!!!! debug !!!!
+			if (iunit ==  8136) then
+			write(iulog,*) '(mainchannelTemp) Tr(bef),Tt,wr=', THeat%Tr(iunit), THeat%Tt(iunit), TRunoff%wr(iunit,nt_nliq)
+			end if				
+		!!!! debug !!!!  
         
-            if((TRunoff%wr(iunit,nt_nliq)+TRunoff%wr(iunit,nt_nice)) > TINYVALUE1 .and. THeat%forc_t(iunit) > 200._r8) then
-                Mr = TRunoff%wr(iunit,nt_nliq) * denh2o + TRunoff%wr(iunit,nt_nice) * denice
-                THeat%Tr(iunit) = THeat%Tr(iunit) + (THeat%deltaH_r(iunit)+THeat%deltaM_r(iunit)) / (Mr * cpliq)
-            else
-                THeat%Tr(iunit) = THeat%Tt(iunit)
-            end if
-            
-            !if(THeat%Tr(iunit) < 200._r8) then
-            ! if(iunit == 85088) then
-                
-            !  write(unit=1111,fmt="(i10, 6(f10.4), 2(e20.11))") iunit, THeat%Tr(iunit), THeat%forc_t(iunit), THeat%Tqsur(iunit), THeat%Tqsub(iunit), THeat%forc_lwrad(iunit), THeat%forc_solar(iunit), TRunoff%qsur(iunit,nt_nliq), TRunoff%qsub(iunit,nt_nliq)
-            !  write(unit=1112,fmt="(i10, 4(f10.4), 2(e20.11))") iunit, THeat%Tr(iunit), THeat%forc_t(iunit), THeat%forc_lwrad(iunit), THeat%forc_solar(iunit), THeat%deltaH_r(iunit), THeat%deltaM_r(iunit)
-            !end if
-            !if(THeat%Tr(iunit) < 200._r8) then
-            !if(iunit == 98784) then
-            !  write(unit=1113,fmt="(i10, 3(f10.4))") iunit, THeat%Tr(iunit), THeat%forc_lwrad(iunit), THeat%forc_solar(iunit)
-            !  write(unit=1112,fmt="(i10, 3(e20.11))") iunit, Mr, THeat%deltaH_r(iunit), THeat%deltaM_r(iunit)
-            !end if
-        
+		if((TRunoff%wr(iunit,nt_nliq)+TRunoff%wr(iunit,nt_nice)) > TINYVALUE1 .and. THeat%forc_t(iunit) > 200._r8) then
+			Mr = TRunoff%wr(iunit,nt_nliq) * denh2o + TRunoff%wr(iunit,nt_nice) * denice
+			THeat%Tr(iunit) = THeat%Tr(iunit) + (THeat%deltaH_r(iunit)+THeat%deltaM_r(iunit)) / (Mr * cpliq)
+		else
+			THeat%Tr(iunit) = THeat%Tt(iunit)
+		end if
+		
+		!!!! debug !!!!
+			if (iunit ==  8136) then
+			write(iulog,*) '(mainchannelTemp) Tr(aft),Tt,M=', THeat%Tr(iunit),THeat%Tt(iunit),(THeat%deltaH_r(iunit)+THeat%deltaM_r(iunit))/(Mr * cpliq)
+			end if				
+		!!!! debug !!!!       
     end subroutine mainchannelTemp
 
     subroutine mainchannelTemp_simple(iunit)
-    ! !DESCRIPTION: calculate the water temperature of subnetwork channel.
+    ! !DESCRIPTION: calculate the water temperature of short subnetwork channel.
     use shr_sys_mod , only : shr_sys_flush
         implicit none
         integer, intent(in) :: iunit
@@ -250,7 +326,14 @@ MODULE MOSART_heat_mod
         real(r8) :: Mr  !mass of water (Kg)
         real(r8) :: Ttmp1, Ttmp2  !
         
+        ! Channel water temperature is assumed to be equal to tributary temperature
         THeat%Tr(iunit) = THeat%Tt(iunit)
+		
+		!!!! debug !!!!
+			if (iunit ==  8136) then
+			write(iulog,*) '(mainchannelTemp_simple) Tr,Tt=', THeat%Tr(iunit), THeat%Tt(iunit)
+			end if				
+		!!!! debug !!!!  
     end subroutine mainchannelTemp_simple
 
     subroutine reservoirHeat(iunit, theDeltaT)
@@ -523,9 +606,108 @@ MODULE MOSART_heat_mod
     qs    = es    * vp1             ! kg/kg
     qsdT  = esdT  * vp2 * p         ! 1 / K
 
-  end subroutine QSat
-    
-    
+  end subroutine QSat    
+!-----------------------------------------------------------------------
+
+  subroutine readThermDischarge
+! DESCRIPTION: read in the thermal plant effluent data
+! Author: Ning Sun
+! Date of Creation: 08/20/2019
+
+      implicit none
+
+      integer             :: yr, mon, day, tod
+      integer             :: cnt, n
+      character(len=4)    :: strYear
+      character(len=2)    :: strMonth, strDay
+      character(len=1000) :: fname
+      integer             :: iunit, ier
+      integer, pointer    :: compdof(:)  ! computational degrees of freedom for pio
+      integer             :: dids(2)    ! variable dimension ids 
+      integer             :: dsizes(2)  ! variable dimension lengths
+      type(file_desc_t)   :: ncid       ! netcdf file
+      type(var_desc_t)    :: vardesc    ! netCDF variable description
+      type(io_desc_t)     :: iodesc_dbl ! pio io desc
+      type(io_desc_t)     :: iodesc_int ! pio io desc
+  
+      character(len=*),parameter :: subname='(readThermDischarge)'
+      character(len=*),parameter :: FORMR= '(2A,i8,2g15.7)'
+      character(len=*),parameter :: FORMI = '(2A,6i13)'
+      logical :: readvar               ! read variable in or not
+
+      call get_curr_date(yr, mon, day, tod)
+      if (masterproc) write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
+
+      write(strYear,'(I4.4)') yr
+      write(strMonth,'(I2.2)') mon
+      
+      !fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
+      !fname = trim(Tctl%thermPath)//'1980_'//strMonth//'.nc'   ! constant 1980 demand
+      !fname = trim(Tctl%thermPath)//'create_netcdf2D_SinglePoint_glb'   ! test file, 1/2 global domain (N. Sun)
+      !fname = trim(Tctl%thermPath)//'create_netcdf2D_SinglePoint_nldas'   ! test file, 1/8 NLDAS domain (N. Sun)
+      fname = trim(Tctl%thermPath)//'ThermoData2D_SinglePoint_nldas2.nc'   ! test file, 1/8 NLDAS domain (N. Sun)
+
+      call ncd_pio_openfile(ncid, trim(fname), 0)      
+  
+      ! read thermal discharge
+      ier = pio_inq_varid (ncid, name='QTHERM', vardesc=vardesc)
+      if (ier /= PIO_noerr) then
+         if (masterproc) write(iulog,*) subname//' variable QTHERM is not on dataset'
+         readvar = .false.
+         else
+         readvar = .true.
+         end if
+      
+      if (readvar) then
+         ier = pio_inq_vardimid(ncid, vardesc, dids)
+         ier = pio_inq_dimlen(ncid, dids(1),dsizes(1))
+         ier = pio_inq_dimlen(ncid, dids(2),dsizes(2))
+         allocate(compdof(rtmCTL%lnumr))
+         cnt = 0
+         do n = rtmCTL%begr,rtmCTL%endr
+            cnt = cnt + 1
+            compdof(cnt) = rtmCTL%gindex(n)!global index
+         end do
+         if (masterproc) write(iulog,*) subname,' lnumr = ',rtmCTL%lnumr,rtmCTL%begr,rtmCTL%endr
+         if (masterproc) write(iulog,*) subname,'gindex = ', minval(rtmCTL%gindex),maxval(rtmCTL%gindex)
+         call pio_initdecomp(pio_subsystem, pio_double, dsizes, compdof, iodesc_dbl)
+         call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compdof, iodesc_int)
+         deallocate(compdof)
+         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
+      end if
+  
+  
+      ier = pio_inq_varid (ncid, name='QTHERM', vardesc=vardesc)
+      call pio_read_darray(ncid, vardesc, iodesc_dbl, TRunoff%Qp(:,nt_nliq), ier)
+      if (masterproc) write(iulog,FORMR) trim(subname),' thermal discharge Q (m3/s)',iam, minval(TRunoff%Qp(:,nt_nliq)), maxval(TRunoff%Qp(:,nt_nliq))
+      call shr_sys_flush(iulog)  
+  
+      ! read effluent temperature
+      ier = pio_inq_varid (ncid, name='TTHERM', vardesc=vardesc)  
+      call pio_read_darray(ncid, vardesc, iodesc_dbl , THeat%Tp, ier)
+      !if (masterproc) write(iulog,FORMR) trim(subname),' thermal effluent T (K)',iam, minval(THeat%Tp), maxval(THeat%Tp)
+      call shr_sys_flush(iulog)	
+  
+      ! free up memory
+      call pio_freedecomp(ncid, iodesc_dbl)
+      call ncd_pio_closefile(ncid)
+
+      ! check error
+      do iunit = rtmCTL%begr,rtmCTL%endr
+         if (TRunoff%Qp(iunit,nt_nliq) .lt. 0._r8) then
+            write(iulog, *) trim(subname)//' ERROR: thermal discharge is negative at: !', iunit
+            call shr_sys_abort(trim(subname)//' ERROR: thermal discharge is negative !' )
+         end if
+         !if (THeat%Tp(iunit) .lt. 0._r8) then
+         !   write(iulog, *) trim(subname)//' ERROR: thermal effluent temperature is negative at: !', iunit
+         !   call shr_sys_abort(trim(subname)//' ERROR: thermal effluent temperature is negative !' )
+         !end if
+      end do
+            
+
+  end subroutine readThermDischarge
+!-----------------------------------------------------------------------
+  
   subroutine printTest1(nio)
       ! !DESCRIPTION: output the simulation results into external files
       implicit none

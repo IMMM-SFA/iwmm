@@ -360,11 +360,15 @@ contains
           ! Set the model domain by reading in the SDAT%domainfile
 
           if (present(dmodel_domain_fracname_from_stream)) then
-             write(logunit,*) subname,' ERROR: dmodel_domain_fracname_from_stream'
-             write(logunit,*) 'can only be provided when taking the data model domain'
-             write(logunit,*) 'from the domain of the first stream'
-             write(logunit,*) '(i.e., when the domain file is null).'
-             call shr_sys_abort(subname//' ERROR: dmodel_domain_fracname_from_stream not expected')
+             if (trim(dmodel_domain_fracname_from_stream) == trim(shr_strdata_nullstr)) then
+               readfrac = .false.
+             else
+               write(logunit,*) subname,' ERROR: dmodel_domain_fracname_from_stream'
+               write(logunit,*) 'can only be provided when taking the data model domain'
+               write(logunit,*) 'from the domain of the first stream'
+               write(logunit,*) '(i.e., when the domain file is null).'
+               call shr_sys_abort(subname//' ERROR: dmodel_domain_fracname_from_stream not expected')
+             end if
           end if
 
           if (lscmmode) then
