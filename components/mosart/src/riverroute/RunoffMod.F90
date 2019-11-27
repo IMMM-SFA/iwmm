@@ -99,6 +99,7 @@ module RunoffMod
 	 real(r8), pointer :: forc_wind(:)     ! atmospheric wind speed (m/s)
 	 real(r8), pointer :: forc_lwrad(:)    ! downward infrared (longwave) radiation (W/m**2)
 	 real(r8), pointer :: forc_swrad(:)    ! atmospheric incident solar (shortwave) radiation (W/m**2)
+	 real(r8), pointer :: forc_rh(:)       ! relative humidity (%)
 
      !    - outputs
      real(r8), pointer :: flood(:)         ! coupler return flood water sent back to clm [m3/s]
@@ -438,6 +439,7 @@ module RunoffMod
       real(r8), pointer :: forc_wind(:)   ! atmospheric wind speed (m/s)
       real(r8), pointer :: forc_lwrad(:)  ! downward infrared (longwave) radiation (W/m**2)
       real(r8), pointer :: forc_solar(:)  ! atmospheric incident solar (shortwave) radiation (W/m**2)
+	  real(r8), pointer :: forc_rh(:)     ! relative humidity
       
        ! thermal effluent from thermo-electric power plant 
       !! states
@@ -634,6 +636,7 @@ contains
 			   rtmCTL%forc_wind(begr:endr),   &
 			   rtmCTL%forc_lwrad(begr:endr),   &
 			   rtmCTL%forc_swrad(begr:endr),   &
+			   rtmCTL%forc_rh(begr:endr),   &
                stat=ier)
       if (ier /= 0) then
          write(iulog,*)'Rtmini ERROR allocation of runoff heat arrays'
@@ -651,6 +654,7 @@ contains
 	  rtmCTL%forc_wind(:) = spval
 	  rtmCTL%forc_lwrad(:) = spval
 	  rtmCTL%forc_swrad(:) = spval
+	  rtmCTL%forc_rh(:) = spval   &
 
       if (thermpflag) then
         allocate(rtmCTL%Qp(begr:endr,nt_rtm),     &

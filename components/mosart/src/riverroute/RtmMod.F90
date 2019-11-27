@@ -2061,6 +2061,7 @@ contains
 			  rtmCTL%forc_wind(n) = 0._r8
 			  rtmCTL%forc_lwrad(n) = 0._r8
 			  rtmCTL%forc_swrad(n) = 0._r8
+			  rtmCTL%forc_rh(n) = 0._r8
           end if
       end do
       
@@ -2493,6 +2494,7 @@ if (inundflag) then
 			 rtmCTL%forc_wind(n) = rtmCTL%forc_wind(n) + THeat%forc_wind(n)
 			 rtmCTL%forc_lwrad(n) = rtmCTL%forc_lwrad(n) + THeat%forc_lwrad(n)
 			 rtmCTL%forc_swrad(n) = rtmCTL%forc_swrad(n) + THeat%forc_solar(n)
+			 rtmCTL%forc_rh(n) = rtmCTL%forc_rh(n) + THeat%forc_rh(n)
 			 
              if (thermpflag) then
                 rtmCTL%avgTp(n) = rtmCTL%avgTp(n) + THeat%Tp(n)
@@ -2566,6 +2568,7 @@ endif
 			   rtmCTL%forc_wind(n)  = rtmCTL%forc_wind(n)  / float(nsub)
 			   rtmCTL%forc_lwrad(n) = rtmCTL%forc_lwrad(n) / float(nsub)
 			   rtmCTL%forc_swrad(n) = rtmCTL%forc_swrad(n) / float(nsub)
+			   rtmCTL%forc_rh(n)    = rtmCTL%forc_rh(n)    / float(nsub)
             else
                rtmCTL%templand_Tqsur(n) = spval
                rtmCTL%templand_Tqsub(n) = spval
@@ -4035,6 +4038,8 @@ endif
         THeat%forc_lwrad = 0._r8
         allocate (THeat%forc_solar(begr:endr))
         THeat%forc_solar = 0._r8
+		allocate (THeat%forc_rh(begr:endr))
+        THeat%forc_rh = 0._r8
 
         allocate (THeat%Tqsur(begr:endr))
         THeat%Tqsur = 273.15_r8

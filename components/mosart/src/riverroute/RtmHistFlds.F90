@@ -218,6 +218,10 @@ contains
            avgflag='A', long_name='Water temperature of tributary channels', &
            ptr_rof=rtmCTL%templand_Ttrib_nt1)
     
+      call RtmHistAddfld (fname='TEMP_CHANR', units='Kelvin',  &
+           avgflag='A', long_name='Water temperature of main channels', &
+           ptr_rof=rtmCTL%templand_Tchanr_nt1)         
+    
       call RtmHistAddfld (fname='ATM_TAIR', units='Kelvin',  &
            avgflag='A', long_name='Atmospheric temperature', &
            ptr_rof=rtmCTL%forc_tair)
@@ -237,6 +241,10 @@ contains
       call RtmHistAddfld (fname='ATM_LWRAD', units='m2/s',  &
            avgflag='A', long_name='Downward infrared (longwave) radiation', &
            ptr_rof=rtmCTL%forc_lwrad)
+		   
+      call RtmHistAddfld (fname='ATM_RH', units='%',  &
+           avgflag='A', long_name='Relative humidity', &
+           ptr_rof=rtmCTL%forc_rh)
 		   
       call RtmHistAddfld (fname='ATM_SWRAD', units='m2/s',  &
            avgflag='A', long_name='Atmospheric incident solar (shortwave) radiation', &
