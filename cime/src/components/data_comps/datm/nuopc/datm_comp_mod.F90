@@ -74,7 +74,7 @@ module datm_comp_mod
   real(R8)                   :: anidrmax              ! existance detector
 
   ! Attribute vectors field indices
-  integer                    :: kz,ktopo,ku,kv,ktbot,kptem,kshum,kdens,kpbot,kpslv,klwdn
+  integer                    :: kz,ktopo,ku,kv,ktbot,kptem,kshum,kvp,krh,kdens,kpbot,kpslv,klwdn
   integer                    :: krc,krl,ksc,ksl,kswndr,kswndf,kswvdr,kswvdf,kswnet
   integer                    :: kanidr,kanidf,kavsdr,kavsdf
   integer                    :: kshum_16O, kshum_18O, kshum_HDO
@@ -233,6 +233,12 @@ contains
 
     call dshr_fld_add(data_fld="shum", data_fld_array=avifld, model_fld="Sa_shum", model_fld_array=avofld, &
          model_fld_concat=flds_a2x, model_fld_index=kshum , fldlist_num=fldsFrAtm_num, fldlist=fldsFrAtm)
+
+    call dshr_fld_add(data_fld="vp", data_fld_array=avifld, model_fld="Sa_vp", model_fld_array=avofld, &
+         model_fld_concat=flds_a2x, model_fld_index=kvp , fldlist_num=fldsFrAtm_num, fldlist=fldsFrAtm)
+
+    call dshr_fld_add(data_fld="rh", data_fld_array=avifld, model_fld="Sa_rh", model_fld_array=avofld, &
+         model_fld_concat=flds_a2x, model_fld_index=rh , fldlist_num=fldsFrAtm_num, fldlist=fldsFrAtm)
 
     call dshr_fld_add(data_fld="lwdn", data_fld_array=avifld, &
          model_fld="Faxa_lwdn", model_fld_array=avofld, model_fld_concat=flds_a2x, model_fld_index=klwdn, &
@@ -1213,6 +1219,7 @@ contains
 
           !--- density ---
           vp = (a2x%rAttr(kshum,n)*pbot) / (0.622_R8 + 0.378_R8 * a2x%rAttr(kshum,n))
+          a2x%rAttr(kvp,n) = vp
           a2x%rAttr(kdens,n) = (pbot - 0.378_R8 * vp) / (tbot*rdair)
 
           !--- downward longwave ---
@@ -1536,6 +1543,8 @@ contains
     call dshr_export(a2x%rattr(kpbot,:) , exportState, 'Sa_pbot', rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
     call dshr_export(a2x%rattr(kshum,:) , exportState, 'Sa_shum', rc=rc)
+    if (ChkErr(rc,__LINE__,u_FILE_u)) return
+    call dshr_export(a2x%rattr(kvp,:) , exportState, 'Sa_vp', rc=rc)
     if (ChkErr(rc,__LINE__,u_FILE_u)) return
 
     call dshr_export(a2x%rattr(krc,:)   , exportState, 'Faxa_rainc', rc=rc)

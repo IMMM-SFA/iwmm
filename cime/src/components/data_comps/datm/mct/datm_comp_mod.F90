@@ -73,7 +73,7 @@ module datm_comp_mod
   data   dTarc      / 0.49_R8, 0.06_R8,-0.73_R8,  -0.89_R8,-0.77_R8,-1.02_R8, &
        -1.99_R8,-0.91_R8, 1.72_R8,   2.30_R8, 1.81_R8, 1.06_R8/
 
-  integer(IN) :: kz,ktopo,ku,kv,ktbot,kptem,kshum,kdens,kpbot,kpslv,klwdn
+  integer(IN) :: kz,ktopo,ku,kv,ktbot,kptem,kshum,kvp,krh,kdens,kpbot,kpslv,klwdn
   integer(IN) :: krc,krl,ksc,ksl,kswndr,kswndf,kswvdr,kswvdf,kswnet
   integer(IN) :: kanidr,kanidf,kavsdr,kavsdf
   integer(IN) :: stbot,swind,sz,spbot,sshum,stdew,srh,slwdn,sswdn,sswdndf,sswdndr
@@ -100,11 +100,11 @@ module datm_comp_mod
   real(R8), pointer    :: winddFactor(:)
   real(R8), pointer    :: qsatFactor(:)
 
-  integer(IN),parameter :: ktrans  = 77
+  integer(IN),parameter :: ktrans  = 79
 
   character(16),parameter  :: avofld(1:ktrans) = &
        (/"Sa_z            ","Sa_topo         ", &
-       "Sa_u            ","Sa_v            ","Sa_tbot         ", &
+       "Sa_u            ","Sa_v            ","Sa_tbot         ","Sa_vp           ", &
        "Sa_ptem         ","Sa_shum         ","Sa_dens         ","Sa_pbot         ", &
        "Sa_pslv         ","Faxa_lwdn       ","Faxa_rainc      ","Faxa_rainl      ", &
        "Faxa_snowc      ","Faxa_snowl      ","Faxa_swndr      ","Faxa_swvdr      ", &
@@ -112,7 +112,7 @@ module datm_comp_mod
        "Sa_co2diag      ","Faxa_bcphidry   ","Faxa_bcphodry   ","Faxa_bcphiwet   ", &
        "Faxa_ocphidry   ","Faxa_ocphodry   ","Faxa_ocphiwet   ","Faxa_dstwet1    ", &
        "Faxa_dstwet2    ","Faxa_dstwet3    ","Faxa_dstwet4    ","Faxa_dstdry1    ", &
-       "Faxa_dstdry2    ","Faxa_dstdry3    ","Faxa_dstdry4    ",                    &
+       "Faxa_dstdry2    ","Faxa_dstdry3    ","Faxa_dstdry4    ","Sa_rh           ", &
        "Sx_tref         ","Sx_qref         ","Sx_avsdr        ","Sx_anidr        ", &
        "Sx_avsdf        ","Sx_anidf        ","Sx_t            ","So_t            ", &
        "Sl_snowh        ","Sf_lfrac        ","Sf_ifrac        ","Sf_ofrac        ", &
@@ -131,7 +131,7 @@ module datm_comp_mod
 
   character(16),parameter  :: avifld(1:ktrans) = &
        (/"z               ","topo            ", &
-       "u               ","v               ","tbot            ", &
+       "u               ","v               ","tbot            ","vp              ", &
        "ptem            ","shum            ","dens            ","pbot            ", &
        "pslv            ","lwdn            ","rainc           ","rainl           ", &
        "snowc           ","snowl           ","swndr           ","swvdr           ", &
@@ -139,7 +139,7 @@ module datm_comp_mod
        "co2diag         ","bcphidry        ","bcphodry        ","bcphiwet        ", &
        "ocphidry        ","ocphodry        ","ocphiwet        ","dstwet1         ", &
        "dstwet2         ","dstwet3         ","dstwet4         ","dstdry1         ", &
-       "dstdry2         ","dstdry3         ","dstdry4         ",                    &
+       "dstdry2         ","dstdry3         ","dstdry4         ","rh              ", &
        "tref            ","qref            ","avsdr           ","anidr           ", &
        "avsdf           ","anidf           ","ts              ","to              ", &
        "snowhl          ","lfrac           ","ifrac           ","ofrac           ", &
@@ -365,6 +365,8 @@ CONTAINS
        ktbot = mct_aVect_indexRA(a2x,'Sa_tbot')
        kptem = mct_aVect_indexRA(a2x,'Sa_ptem')
        kshum = mct_aVect_indexRA(a2x,'Sa_shum')
+       kvp   = mct_aVect_indexRA(a2x,'Sa_vp')
+       krh   = mct_aVect_indexRA(a2x,'Sa_rh')
        kdens = mct_aVect_indexRA(a2x,'Sa_dens')
        kpbot = mct_aVect_indexRA(a2x,'Sa_pbot')
        kpslv = mct_aVect_indexRA(a2x,'Sa_pslv')
@@ -929,16 +931,21 @@ CONTAINS
           a2x%rAttr(kv,n) = a2x%rAttr(ku,n)
 
           !--- specific humidity ---
-          tbot = a2x%rAttr(ktbot,n)
-          pbot = a2x%rAttr(kpbot,n)
+          tbot = a2x%rAttr(ktbot,n) ! temperature at the lowest atm level 
+          pbot = a2x%rAttr(kpbot,n) ! surface pressure (pa)
           if (sshum > 0) then
+		     ! calculate atmpospheric vapor pressure (pa) based on temperature 
+			 ! datm_shr_esat() calculates saturated vapor pressure (pa) 
              e = datm_shr_esat(tbot,tbot)
+			 ! calculate specific humidity in kg/kg
              qsat = (0.622_R8 * e)/(pbot - 0.378_R8 * e)
              if (qsat < a2x%rAttr(kshum,n)) then
                 a2x%rAttr(kshum,n) = qsat
              endif
           else if (srh > 0) then
+		     ! calculate vapor pressure (pa) based on temperature 
              e = avstrm%rAttr(srh,n) * 0.01_R8 * datm_shr_esat(tbot,tbot)
+			 ! calculate specific humidity in kg/kg
              qsat = (0.622_R8 * e)/(pbot - 0.378_R8 * e)
              a2x%rAttr(kshum,n) = qsat
              if(wiso_datm) then
@@ -960,6 +967,7 @@ CONTAINS
 
           !--- density ---
           vp = (a2x%rAttr(kshum,n)*pbot) / (0.622_R8 + 0.378_R8 * a2x%rAttr(kshum,n))
+          a2x%rAttr(kvp,n) = vp
           a2x%rAttr(kdens,n) = (pbot - 0.378_R8 * vp) / (tbot*rdair)
 
           !--- downward longwave ---

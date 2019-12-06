@@ -165,8 +165,8 @@
       <value     stream="heat.nldas">
         QDRAI     rofsub
         QOVER     rofsur
-        TDRAI     rofsubt
-        TOVER     rofsurt
+        TDRAI     tqsub
+        TOVER     tqsur
       </value>
       <value     stream="clm.nldas">
         QDRAI     rofsub

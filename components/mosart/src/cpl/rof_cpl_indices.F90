@@ -36,6 +36,8 @@ module rof_cpl_indices
   integer, public :: index_x2r_Sa_u    = 0      ! atm->rof zonal velocity
   integer, public :: index_x2r_Sa_v    = 0      ! atm->rof merid velocity
   integer, public :: index_x2r_Sa_shum = 0      ! atm->rof specific humidity
+  integer, public :: index_x2r_Sa_vp = 0        ! atm->rof vapor pressure
+  integer, public :: index_x2r_Sa_rh = 0        ! atm->rof relative humidity
   integer, public :: index_x2r_Faxa_lwdn  = 0   ! atm->rof longwave down flux
   integer, public :: index_x2r_Faxa_swvdr = 0   ! atm->rof shorwave visible direct flux
   integer, public :: index_x2r_Faxa_swvdf = 0   ! atm->rof shorwave visible diffus flux
@@ -108,6 +110,8 @@ contains
     index_x2r_Sa_u        = mct_avect_indexra(avtmp,'Sa_u')
     index_x2r_Sa_v        = mct_avect_indexra(avtmp,'Sa_v')
     index_x2r_Sa_shum     = mct_avect_indexra(avtmp,'Sa_shum')
+    index_x2r_Sa_vp       = mct_avect_indexra(avtmp,'Sa_vp')
+    index_x2r_Sa_rh       = mct_avect_indexra(avtmp,'Sa_rh')
     index_x2r_Faxa_lwdn   = mct_avect_indexra(avtmp,'Faxa_lwdn')
     index_x2r_Faxa_swvdr  = mct_avect_indexra(avtmp,'Faxa_swvdr')
     index_x2r_Faxa_swvdf  = mct_avect_indexra(avtmp,'Faxa_swvdf')

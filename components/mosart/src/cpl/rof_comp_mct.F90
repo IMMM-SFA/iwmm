@@ -39,8 +39,8 @@ module rof_comp_mct
                                 index_x2r_Flrl_Tqsur, index_x2r_Flrl_Tqsub, &
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
-                                index_x2r_Sa_shum, &
-                                index_x2r_Faxa_lwdn , &
+                                index_x2r_Sa_shum, index_x2r_Sa_vp  , &
+                                index_x2r_Faxa_lwdn , index_x2r_Sa_rh, &
                                 index_x2r_Faxa_swvdr, index_x2r_Faxa_swvdf, &
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
@@ -631,6 +631,8 @@ contains
        
           THeat%forc_t(n) = x2r_r%rAttr(index_x2r_Sa_tbot,n2)
           THeat%forc_pbot(n) = x2r_r%rAttr(index_x2r_Sa_pbot,n2)
+          THeat%forc_rh(n) = x2r_r%rAttr(index_x2r_Sa_rh,n2)
+          THeat%forc_vp(n) = x2r_r%rAttr(index_x2r_Sa_vp,n2)
           tmp1 = x2r_r%rAttr(index_x2r_Sa_u   ,n2)
           tmp2 = x2r_r%rAttr(index_x2r_Sa_v   ,n2)
           THeat%forc_wind(n) = sqrt(tmp1*tmp1 + tmp2*tmp2)

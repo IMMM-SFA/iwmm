@@ -422,6 +422,8 @@ contains
     integer, save :: index_a2x_Sa_u
     integer, save :: index_a2x_Sa_v
     integer, save :: index_a2x_Sa_shum
+    integer, save :: index_a2x_Sa_vp
+    integer, save :: index_a2x_Sa_rh
     integer, save :: index_a2x_Faxa_swndr
     integer, save :: index_a2x_Faxa_swndf
     integer, save :: index_a2x_Faxa_swvdr
@@ -434,6 +436,8 @@ contains
     integer, save :: index_x2r_Sa_u
     integer, save :: index_x2r_Sa_v
     integer, save :: index_x2r_Sa_shum
+    integer, save :: index_x2r_Sa_vp
+    integer, save :: index_x2r_Sa_rh
     integer, save :: index_x2r_Faxa_swndr
     integer, save :: index_x2r_Faxa_swndf
     integer, save :: index_x2r_Faxa_swvdr
@@ -542,6 +546,8 @@ contains
        index_a2x_Sa_u       = mct_aVect_indexRA(a2x_r,'Sa_u')
        index_a2x_Sa_v       = mct_aVect_indexRA(a2x_r,'Sa_v')
        index_a2x_Sa_shum    = mct_aVect_indexRA(a2x_r,'Sa_shum')
+       index_a2x_Sa_vp      = mct_aVect_indexRA(a2x_r,'Sa_vp')
+       index_a2x_Sa_rh      = mct_aVect_indexRA(a2x_r,'Sa_rh')
        index_a2x_Faxa_swndr = mct_aVect_indexRA(a2x_r,'Faxa_swndr')
        index_a2x_Faxa_swndf = mct_aVect_indexRA(a2x_r,'Faxa_swndf')
        index_a2x_Faxa_swvdr = mct_aVect_indexRA(a2x_r,'Faxa_swvdr')
@@ -553,6 +559,8 @@ contains
        index_x2r_Sa_u       = mct_aVect_indexRA(x2r_r,'Sa_u')
        index_x2r_Sa_v       = mct_aVect_indexRA(x2r_r,'Sa_v')
        index_x2r_Sa_shum    = mct_aVect_indexRA(x2r_r,'Sa_shum')
+       index_x2r_Sa_vp      = mct_aVect_indexRA(x2r_r,'Sa_vp')
+       index_x2r_Sa_rh      = mct_aVect_indexRA(x2r_r,'Sa_rh')
        index_x2r_Faxa_swndr = mct_aVect_indexRA(x2r_r,'Faxa_swndr')
        index_x2r_Faxa_swndf = mct_aVect_indexRA(x2r_r,'Faxa_swndf')
        index_x2r_Faxa_swvdr = mct_aVect_indexRA(x2r_r,'Faxa_swvdr')
@@ -564,6 +572,8 @@ contains
        mrgstr(index_x2r_Sa_u)       = trim(mrgstr(index_x2r_Sa_u))//' = '//'a2x%Sa_u'
        mrgstr(index_x2r_Sa_v)       = trim(mrgstr(index_x2r_Sa_v))//' = '//'a2x%Sa_v'
        mrgstr(index_x2r_Sa_shum)    = trim(mrgstr(index_x2r_Sa_shum))//' = '//'a2x%Sa_shum'
+       mrgstr(index_x2r_Sa_vp)      = trim(mrgstr(index_x2r_Sa_vp))//' = '//'a2x%Sa_vp'
+       mrgstr(index_x2r_Sa_rh)      = trim(mrgstr(index_x2r_Sa_rh))//' = '//'a2x%Sa_rh'
        mrgstr(index_x2r_Faxa_swndr) = trim(mrgstr(index_x2r_Faxa_swndr))//' = '//'a2x%Faxa_swndr'
        mrgstr(index_x2r_Faxa_swndf) = trim(mrgstr(index_x2r_Faxa_swndf))//' = '//'a2x%Faxa_swndf'
        mrgstr(index_x2r_Faxa_swvdr) = trim(mrgstr(index_x2r_Faxa_swvdr))//' = '//'a2x%Faxa_swvdr'
@@ -597,6 +607,8 @@ contains
        x2r_r%rAttr(index_x2r_Sa_u,i)       = a2x_r%rAttr(index_a2x_Sa_u,i)
        x2r_r%rAttr(index_x2r_Sa_v,i)       = a2x_r%rAttr(index_a2x_Sa_v,i)
        x2r_r%rAttr(index_x2r_Sa_shum,i)    = a2x_r%rAttr(index_a2x_Sa_shum,i)
+       x2r_r%rAttr(index_x2r_Sa_vp,i)      = a2x_r%rAttr(index_a2x_Sa_vp,i)
+       x2r_r%rAttr(index_x2r_Sa_rh,i)      = a2x_r%rAttr(index_a2x_Sa_rh,i)
        x2r_r%rAttr(index_x2r_Faxa_swndr,i) = a2x_r%rAttr(index_a2x_Faxa_swndr,i)
        x2r_r%rAttr(index_x2r_Faxa_swndf,i) = a2x_r%rAttr(index_a2x_Faxa_swndf,i)
        x2r_r%rAttr(index_x2r_Faxa_swvdr,i) = a2x_r%rAttr(index_a2x_Faxa_swvdr,i)

@@ -654,7 +654,7 @@ contains
 	  rtmCTL%forc_wind(:) = spval
 	  rtmCTL%forc_lwrad(:) = spval
 	  rtmCTL%forc_swrad(:) = spval
-	  rtmCTL%forc_rh(:) = spval   &
+	  rtmCTL%forc_rh(:) = spval
 
       if (thermpflag) then
         allocate(rtmCTL%Qp(begr:endr,nt_rtm),     &

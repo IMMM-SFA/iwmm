@@ -653,6 +653,28 @@ contains
     attname  = 'Sa_shum'
     call metadata_set(attname, longname, stdname, units)
 
+    ! vapor pressure
+    call seq_flds_add(a2x_states,"Sa_vp")
+    call seq_flds_add(x2l_states,"Sa_vp")
+    call seq_flds_add(x2i_states,"Sa_vp")
+    call seq_flds_add(x2r_states,"Sa_vp")
+    longname = 'Vapor pressure'
+    stdname  = 'vapor_pressure'
+    units    = 'Pa'
+    attname  = 'Sa_vp'
+    call metadata_set(attname, longname, stdname, units)
+
+    ! relative humidity
+    call seq_flds_add(a2x_states,"Sa_rh")
+    call seq_flds_add(x2l_states,"Sa_rh")
+    call seq_flds_add(x2i_states,"Sa_rh")
+    call seq_flds_add(x2r_states,"Sa_rh")
+    longname = 'Relative humidity'
+    stdname  = 'relative_humidity'
+    units    = '%'
+    attname  = 'Sa_rh'
+    call metadata_set(attname, longname, stdname, units)
+
     ! pressure at the lowest model level (Pa)
     call seq_flds_add(a2x_states,"Sa_pbot")
     call seq_flds_add(x2l_states,"Sa_pbot")

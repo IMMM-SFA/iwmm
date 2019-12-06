@@ -1857,7 +1857,7 @@
         precip   precn
       </value>
       <value  stream="Livneh.rh">
-        rh       shum
+        rh       rh
       </value>
       <value  stream="Livneh.sw">
         sw       swdn
@@ -2347,7 +2347,7 @@
       <value datm_mode="CORE2_IAF">CORE2_IAF</value>
       <value datm_mode="CORE_IAF_JRA">CORE_IAF_JRA</value>
       <value datm_mode="CPLHIST">COPYALL</value>
-      <value datm_mode="HEAT">COPYALL</value>
+      <value datm_mode="HEAT">CLMNCEP</value>
     </values>
   </entry>
 
@@ -2623,6 +2623,7 @@
       <value stream="CPLHISTForcing.State1hr">3.0</value>
       <value stream="presaero.cplhist">3.0</value>
       <value stream="topo.cplhist">3.0</value>
+      <value stream="Livneh">1.e30</value>
     </values>
   </entry>
 
