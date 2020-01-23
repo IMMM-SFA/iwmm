@@ -37,12 +37,27 @@ wrmflag = .true.
 externaldemandflag = 1
 
 !----------------------------------------------------------------------------------
+! toggle the types of demand read from files:
+!   - TotalDemandFlag: if set to 1, differentiate between irrigation and non-irrigation demand
+!   - GroundwaterFlag: if set to 1, TODO
+!   - ReturnFlowFlag:  if set to 1, differentiate between consumptive use and withdrawal
+! if any of these flags are 1, demand will be read from files with the following suffixes:
+!   - TotalDemand: _ConNonIrrig, or if ReturnFlowFlag = 1, _WithNonIrrig
+!   - Groundwater: _gw_irr, and if TotalDemandFlag = 1, _gw_nonirr
+!   - ReturnFlow:  _WithIrrig if ReturnFlowFlag = 1, else _ConIrrig
+!----------------------------------------------------------------------------------
+TotalDemandFlag = 0
+GroundwaterFlag = 0
+ReturnFlowFlag = 0
+
+!----------------------------------------------------------------------------------
 ! set the path and prefix for the demand data
 !----------------------------------------------------------------------------------
 demandpath = '/pic/projects/im3/iwmm/input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_'
 
 !----------------------------------------------------------------------------------
 ! set the demand type, corresponding to the variable in the demand files [totalDemand / consDemand / etc. ]
+! if reading from multiple types of demand files, this should be the same for all files
 !----------------------------------------------------------------------------------
 demandvariablename = 'totalDemand'
 
