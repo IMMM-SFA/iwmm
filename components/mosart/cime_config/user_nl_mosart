@@ -38,13 +38,14 @@ externaldemandflag = 1
 
 !----------------------------------------------------------------------------------
 ! toggle the types of demand read from files:
-!   - TotalDemandFlag: if set to 1, differentiate between irrigation and non-irrigation demand
-!   - GroundwaterFlag: if set to 1, TODO
-!   - ReturnFlowFlag:  if set to 1, differentiate between consumptive use and withdrawal
+! - TotalDemandFlag: if set to 1, demand input is defined for irrigation and non-irrigation sectors. If set to 0, demand input is not distinguished between sectors.
+! - GroundwaterFlag: if set to 1, demand input is for both surface water and groundwater (proportions defined in gw_irr and gw_nonirr input files). If set to 0, demand input is for surface water only.
+! - ReturnFlowFlag: if set to 1, demand input is for withdrawals and model calculates return flows. If set to 0, demand input is for consumptive use and model assumes no return flows.
+!
 ! if any of these flags are 1, demand will be read from files with the following suffixes:
-!   - TotalDemand: _ConNonIrrig, or if ReturnFlowFlag = 1, _WithNonIrrig
-!   - Groundwater: _gw_irr, and if TotalDemandFlag = 1, _gw_nonirr
-!   - ReturnFlow:  _WithIrrig if ReturnFlowFlag = 1, else _ConIrrig
+! - TotalDemand: _ConNonIrrig & _ConIrrig, or if ReturnFlowFlag = 1, _WithNonIrrig & WithIrrig
+! - ReturnFlow: _WithIrrig, of if TotalDemand = 1 _WithIrrig & WithNonIrrig
+! - if the GroundwaterFlag is set to 1, additional _gw_irr & _gw_nonirr files will be read in and applied to the demand input files that define a percentage of demand met by gw (_gw_nonirr is 0 if TotalDemandFlag = 0)
 !----------------------------------------------------------------------------------
 TotalDemandFlag = 0
 GroundwaterFlag = 0
