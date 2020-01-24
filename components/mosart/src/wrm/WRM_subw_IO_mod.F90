@@ -866,14 +866,13 @@ MODULE WRM_subw_IO_mod
      type(var_desc_t) :: vardesc    ! netCDF variable description
      character(len=*),parameter :: subname='(WRM_readDemand)'
 
-     ! ExtractionFlag set to TRUE means read demand from file(s)
+     ! ExtractionFlag set to 1 means read demand from file(s), otherwise demand comes from coupled models
 
-     ! TotalDemandFlag set to TRUE means differentiate between irrigation and non irrigation demand
-     ! GroundwaterFlag set to TRUE means TODO
-     ! ReturnFlowFlag set to TRUE means differentiate between consumptive use and withdrawal
+     ! TotalDemandFlag set to 1 means demand input is defined for irrigation and non-irrigation sectors, otherwise demand input is not distinguished between sectors
+     ! GroundwaterFlag set to 1 means demand input is for both surface water and groundwater, otherwise demand input is for surface water only
+     ! ReturnFlowFlag  set to 1 means demand input is for withdrawals and model calculates return flows, otherwise demand input is for consumptive use and model assumes no return flows
 
-     ! If any of TotalDemand, Groundwater, or ReturnFlow is enabled, multiple files with the special suffixes will be read,
-     ! Otherwise, just the basic file will be read.
+     ! If any of TotalDemand, Groundwater, or ReturnFlow is enabled, multiple files with the special suffixes will be read; otherwise, just the basic file will be read.
 
      ! Extraction ON
      if (ctlSubwWRM%ExtractionFlag > 0) then
