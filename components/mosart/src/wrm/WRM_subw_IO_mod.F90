@@ -885,7 +885,7 @@ MODULE WRM_subw_IO_mod
         ! Read the usual files
         if (( ctlSubwWRM%TotalDemandFlag < 1 ) .AND. ( ctlSubwWRM%GroundwaterFlag < 1 ) .AND. ( ctlSubwWRM%ReturnFlowFlag < 1 )) then
 
-          fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
+          fname = trim(ctlSubwWRM%demandPath)//strYear//'_'//strMonth//'.nc'
           write(iulog,*) subname, ' reading ',trim(fname)
           call ncd_pio_openfile(ncid, trim(fname), 0)
           ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -896,7 +896,7 @@ MODULE WRM_subw_IO_mod
         else
 
           ! consumptive irrigation
-          fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_ConIrrig.nc'
+          fname = trim(ctlSubwWRM%demandPath)//'irr_consumption_'//strYear//'_'//strMonth//'.nc'
           write(iulog,*) subname, ' reading ',trim(fname)
           call ncd_pio_openfile(ncid, trim(fname), 0)
           ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -906,7 +906,7 @@ MODULE WRM_subw_IO_mod
           ! TotalDemand ON
           if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
             ! consumptive non-irrigation
-            fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_ConNonIrrig.nc'
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_consumption_'//strYear//'_'//strMonth//'.nc'
             write(iulog,*) subname, ' reading ',trim(fname)
             call ncd_pio_openfile(ncid, trim(fname), 0)
             ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -917,7 +917,7 @@ MODULE WRM_subw_IO_mod
           ! Groundwater ON
           if ( ctlSubwWRM%GroundwaterFlag > 0 ) then
             ! groundwater irrigation
-            fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_gw_irr.nc'
+            fname = trim(ctlSubwWRM%demandPath)//'irr_groundwater_'//strYear//'_'//strMonth//'.nc'
             write(iulog,*) subname, ' reading ',trim(fname)
             call ncd_pio_openfile(ncid, trim(fname), 0)
             ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -928,7 +928,7 @@ MODULE WRM_subw_IO_mod
           ! Groundwater ON and TotalDemand ON
           if (( ctlSubwWRM%GroundwaterFlag > 0 ) .AND. ( ctlSubwWRM%TotalDemandFlag > 0 )) then
             ! groundwater non-irrigation
-            fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_gw_nonirr.nc'
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_groundwater_'//strYear//'_'//strMonth//'.nc'
             write(iulog,*) subname, ' reading ',trim(fname)
             call ncd_pio_openfile(ncid, trim(fname), 0)
             ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -939,7 +939,7 @@ MODULE WRM_subw_IO_mod
           ! ReturnFlow ON
           if ( ctlSubwWRM%ReturnFlowFlag > 0 ) then
             ! return flow irrigation
-            fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_WithIrrig.nc'
+            fname = trim(ctlSubwWRM%demandPath)//'irr_withdraw_'//strYear//'_'//strMonth//'.nc'
             write(iulog,*) subname, ' reading ',trim(fname)
             call ncd_pio_openfile(ncid, trim(fname), 0)
             ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
@@ -950,7 +950,7 @@ MODULE WRM_subw_IO_mod
           ! ReturnFlow ON and TotalDemand ON
           if (( ctlSubwWRM%ReturnFlowFlag > 0 ) .AND. ( ctlSubwWRM%TotalDemandFlag > 0 )) then
             ! return flow non-irrigation
-            fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'_WithNonIrrig.nc'
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_withdraw_'//strYear//'_'//strMonth//'.nc'
             write(iulog,*) subname, ' reading ',trim(fname)
             call ncd_pio_openfile(ncid, trim(fname), 0)
             ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018

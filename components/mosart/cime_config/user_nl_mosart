@@ -43,9 +43,9 @@ externaldemandflag = 1
 ! - ReturnFlowFlag: if set to 1, demand input is for withdrawals and model calculates return flows. If set to 0, demand input is for consumptive use and model assumes no return flows.
 !
 ! if any of these flags are 1, demand will be read from files with the following suffixes:
-! - TotalDemand: _ConNonIrrig & _ConIrrig, or if ReturnFlowFlag = 1, _WithNonIrrig & WithIrrig
-! - ReturnFlow: _WithIrrig, of if TotalDemand = 1 _WithIrrig & WithNonIrrig
-! - if the GroundwaterFlag is set to 1, additional _gw_irr & _gw_nonirr files will be read in and applied to the demand input files that define a percentage of demand met by gw (_gw_nonirr is 0 if TotalDemandFlag = 0)
+! - TotalDemand: 'nonirr_consumption_{Y}_{M}.nc' & 'irr_consumption_{Y}_{M}.nc', or if ReturnFlowFlag = 1, 'nonirr_withdraw_{Y}_{M}.nc' & 'irr_withdraw_{Y}_{M}.nc'
+! - ReturnFlow: 'irr_withdraw_{Y}_{M}.nc', or if TotalDemand = 1 'irr_withdraw_{Y}_{M}.nc' & 'nonirr_withdraw_{Y}_{M}.nc'
+! - if the GroundwaterFlag is set to 1, additional 'irr_groundwater_{Y}_{M}.nc' & 'nonirr_groundwater_{Y}_{M}.nc' files will be read in and applied to the demand input files that define a percentage of demand met by gw (nonirr_groundwater is 0 if TotalDemandFlag = 0)
 !----------------------------------------------------------------------------------
 TotalDemandFlag = 0
 GroundwaterFlag = 0
@@ -55,6 +55,7 @@ ReturnFlowFlag = 0
 ! set the path and prefix for the demand data
 !----------------------------------------------------------------------------------
 demandpath = '/pic/projects/im3/iwmm/input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_'
+!demandpath = '/pic/projects/im3/wm/Jim/USGS_demand/USGS_'
 
 !----------------------------------------------------------------------------------
 ! set the demand type, corresponding to the variable in the demand files [totalDemand / consDemand / etc. ]
