@@ -75,11 +75,11 @@ MODULE WRM_subw_IO_mod
      character(len=256):: nlfilename_wrm
 
      character(len=350) :: paraFile, demandPath, DemandVariableName
-     integer :: ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
+     integer :: RoutingFlag, ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
         ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
      namelist /wrm_inparm/  &
-        paraFile, demandPath, DemandVariableName, &
+        paraFile, demandPath, DemandVariableName, RoutingFlag, &
         ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
         ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
@@ -124,6 +124,7 @@ MODULE WRM_subw_IO_mod
      call mpi_bcast(paraFile   ,len(paraFile)  , MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(demandPath ,len(demandPath), MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(DemandVariableName ,len(DemandVariableName), MPI_CHARACTER, 0, mpicom_rof, ier)
+     call mpi_bcast(RoutingFlag,      1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionMainChannelFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(RegulationFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
@@ -134,6 +135,7 @@ MODULE WRM_subw_IO_mod
 
      ctlSubwWRM%paraFile = paraFile
      ctlSubwWRM%demandPath = demandPath
+     ctlSubwWRM%RoutingFlag = RoutingFlag
      ctlSubwWRM%ExtractionFlag = ExtractionFlag
      ctlSubwWRM%ExtractionMainChannelFlag = ExtractionMainChannelFlag
      ctlSubwWRM%RegulationFlag = RegulationFlag
@@ -147,6 +149,7 @@ MODULE WRM_subw_IO_mod
         write(iulog,*) subname," paraFile        = ",trim(ctlSubwWRM%paraFile)
         write(iulog,*) subname," demandPath      = ",trim(ctlSubwWRM%demandPath)
         write(iulog,*) subname," DemandVariableName = ",trim(ctlSubwWRM%DemandVariableName)
+        write(iulog,*) subname," RoutingFlag     = ",ctlSubwWRM%RoutingFlag
         write(iulog,*) subname," ExtractionFlag  = ",ctlSubwWRM%ExtractionFlag
         write(iulog,*) subname," ExtractionMainChannelFlag = ",ctlSubwWRM%ExtractionMainChannelFlag
         write(iulog,*) subname," RegulationFlag  = ",ctlSubwWRM%RegulationFlag
