@@ -11,7 +11,7 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, thermpflag
+  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, rstraflag, thermpflag
 !#ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
 !#endif
@@ -275,7 +275,16 @@ contains
       call RtmHistAddfld (fname='RSRV_SURF', units='Kelvin',  &
            avgflag='A', long_name='Reservoir surface temperature', &
            ptr_rof=WRMUnit%resrv_surf)
-    endif
+        ! call RtmHistAddfld (fname='RSRV_OUT', units='Kelvin',  &
+			! avgflag='A', long_name='Reservoir outflow temperature', &
+			! ptr_rof=WRMUnit%resrv_out)
+		! call RtmHistAddfld (fname='RSRV_DPH', units='m',  &
+			! avgflag='A', long_name='Reservoir depth at each time step', &
+			! ptr_rof=WRMUnit%d_resrv)		
+		! call RtmHistAddfld (fname='RSRV_HGT', units='m',  &
+			! avgflag='A', long_name='Reservoir height 95% of dam height', &
+			! ptr_rof=WRMUnit%h_resrv)
+	endif
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()

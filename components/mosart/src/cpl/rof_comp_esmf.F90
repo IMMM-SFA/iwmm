@@ -48,8 +48,10 @@ module rof_comp_esmf
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
-                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
-                                !index_r2x_Flrr_supply , index_r2x_Flrr_supplyfrac, index_x2r_Flrl_demand, 
+                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
+                                index_r2x_Flrr_supply, index_x2r_Flrl_demand, &
+                                index_x2r_coszen_str, &
+                                index_r2x_Flrr_deficit
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
 !
 ! !PUBLIC MEMBER FUNCTIONS:

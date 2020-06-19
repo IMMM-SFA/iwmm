@@ -48,6 +48,8 @@ module rof_cpl_indices
 
   integer, public :: nflds_x2r = 0
 
+  integer, public :: index_x2r_coszen_str  = 0   ! lnd->rof Cosine of Zenith
+
   !TODO - nt_rtm and rtm_tracers need to be removed and set by access to the index array
   integer, parameter, public :: nt_rtm = 2    ! number of tracers
   character(len=3), parameter, public :: rtm_tracers(nt_rtm) =  (/'LIQ','ICE'/)

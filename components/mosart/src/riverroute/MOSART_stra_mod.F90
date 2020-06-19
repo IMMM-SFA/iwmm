@@ -177,7 +177,7 @@ MODULE MOSART_stra_mod
 					alb_s = 0.06_r8	!0.06_r8
 				end if
 				! alb_s = 0.03_r8	!0.06_r8
-				
+				! if (WRMUnit%grandid(damID)==1908)write(iulog,*)'albedo',WRMUnit%grandid(damID),int(100*alb_s),int(100*THeat%coszen(iunit)) !
 				sh_net 	= max(THeat%forc_solar(iunit)*(1._r8 - alb_s),0._r8)!			
 				t_s    	= WRMUnit%temp_resrv(damID,WRMUnit%d_ns(damID)) 
 				lw_abr 	= (1._r8 - 0.03_r8)*THeat%forc_lwrad(iunit) !
@@ -395,7 +395,7 @@ MODULE MOSART_stra_mod
 					j=WRMUnit%d_ns(damID)-k-1
 					do i=1,j
 					   phi_z(i)=(sar*WRMUnit%a_d(damID,i+1)*phi_x(i+1)-sar*WRMUnit%a_d(damID,i)*phi_x(i))
-					   
+					   ! if (WRMUnit%grandid(damID)==572)write(iulog,*) subname,'phi_z2',int(phi_z(i))
 					end do
 				elseif (sh_net > 0._r8 .and. WRMUnit%d_ns(damID)==1) then
 					phi_z(WRMUnit%d_ns(damID))=sh_net*sar*WRMUnit%a_d(damID,WRMUnit%d_ns(damID)+1)
@@ -436,7 +436,7 @@ MODULE MOSART_stra_mod
 					Fr(j)= (grav*WRMUnit%dd_z(damID,j)*drhodz(j)/rho_w)/l_vel**2._r8					
 				! Calculate diffusion coefficients				
 					df_eff(j)=min(max(dtime**2._r8*((cfw*dis_w/(1+ri))+(0.5_r8*cfa*(dis_ad(j)+dis_ad(j-1))/(1+Fr(j)))),k_m),5.56e-03) !5.56e-03!
-					
+					! if (WRMUnit%d_resrv(damID)>=90._r8)df_eff(j)=5.56e-03
 				end do
 			
 			!*****************************************************************
@@ -581,7 +581,7 @@ MODULE MOSART_stra_mod
 			elseif (WRMUnit%purpose(damID)== 10) then 
 				WRMUnit%out_lc(damID) = WRMUnit%out_lc(damID)
 			end if
-			
+			! if (WRMUnit%d_resrv(damID) >= 95._r8  .and. WRMUnit%d_ns(damID)>=8)WRMUnit%out_lc(damID) = 0.20_r8	! affects only large/deep reservoirs
 			
 			!********* outflow taken from layer at ~60% of the reservoir depth			
 			! WRMUnit%out_lc(damID) = 0.3_r8
@@ -1040,11 +1040,11 @@ MODULE MOSART_stra_mod
 		bp(n)=b(n)		
 ! 	initialize u
         WRMUnit%temp_resrv(damID,n) = max(rp(n)/bp(n),273.15_r8)	! to be modified after including ice/snow effect
-		
+		! WRMUnit%temp_resrv(damID,n) = rp(n)/bp(n)
 ! 	Back substitution
         do i = n-1, 1, -1
 			WRMUnit%temp_resrv(damID,i) = max((rp(i)-c(i)*WRMUnit%temp_resrv(damID,i+1))/bp(i),273.15_r8)
-			
+			! WRMUnit%temp_resrv(damID,i) =(rp(i)-c(i)*WRMUnit%temp_resrv(damID,i+1))/bp(i)
         end do
 		
 	end subroutine solve 

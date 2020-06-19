@@ -14,10 +14,11 @@ MODULE MOSART_physics_mod
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
   use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, &
-                             heatflag, thermpflag
+                             heatflag, rstraflag, thermpflag
   use RunoffMod     , only : Tctl, TUnit, TRunoff, Theat, TPara, rtmCTL, &
                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm
   use MOSART_heat_mod
+  use MOSART_stra_mod
   use RtmSpmd       , only : masterproc, mpicom_rof, iam
   use RtmTimeManager, only : get_curr_date, is_new_month
 !#ifdef INCLUDE_WRM
