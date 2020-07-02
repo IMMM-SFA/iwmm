@@ -270,6 +270,12 @@ contains
       
       end if
     end if     
+
+    if (wrmflag .and. heatflag .and. rstraflag) then
+      call RtmHistAddfld (fname='RSRV_SURF', units='Kelvin',  &
+           avgflag='A', long_name='Reservoir surface temperature', &
+           ptr_rof=WRMUnit%resrv_surf)
+    endif
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()
