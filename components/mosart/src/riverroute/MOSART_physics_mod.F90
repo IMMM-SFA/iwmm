@@ -435,11 +435,10 @@ MODULE MOSART_physics_mod
                    if ( ctlSubwWRM%RegulationFlag>0 ) then
 !                     call t_startf('mosartr_wrm_Reg')
                       call Regulation(iunit, localDeltaT)
-!                     call t_stopf('mosartr_wrm_Reg')
-!                      if ( ctlSubwWRM%ExtractionFlag > 0 ) then
-!                         call ExtractionRegulatedFlow(iunit, localDeltaT)
-!                      endif
-                      if (heatflag) then
+                      if (heatflag .and. rstraflag) then
+                          call stratification(iunit, localDeltaT,nt)
+                          call reservoirHeat(iunit, localDeltaT)
+                      elseif (heatflag .and. (rstraflag == .false.)) then
                           call reservoirHeat(iunit, localDeltaT)
                       end if
                    endif
