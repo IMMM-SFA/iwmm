@@ -740,6 +740,9 @@ contains
           THeat%forc_lwrad(n)= fptr(index_x2r_Faxa_lwdn ,n2)
           THeat%forc_solar(n)= fptr(index_x2r_Faxa_swvdr,n2) + fptr(index_x2r_Faxa_swvdf,n2) + &
                                fptr(index_x2r_Faxa_swndr,n2) + fptr(index_x2r_Faxa_swndf,n2)
+          shum               = fptr(index_x2r_Sa_shum,n2)
+          THeat%forc_vp(n)   = shum * THeat%forc_pbot(n)  / (0.622_r8 + 0.378_r8 * shum)
+          THeat%coszen(n) = fptr(index_x2r_coszen_str,n2)
        end if                 
 
     enddo
