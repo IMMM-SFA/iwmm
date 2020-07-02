@@ -278,6 +278,10 @@ contains
     do_rtmflood = .false.
     ice_runoff  = .true.
     wrmflag     = .false.
+    rstraflag   = .false.
+    rinittemp   = 283.15_r8
+    ngeom       = 50  
+    nlayers     = 30 
     inundflag   = .false.
     sediflag    = .false.
     heatflag    = .false.
