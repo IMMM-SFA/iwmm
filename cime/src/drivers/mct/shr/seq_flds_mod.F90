@@ -2052,14 +2052,13 @@ contains
     call metadata_set(attname, longname, stdname, units)
     
     ! Cosine of Zenith angle (-)
-    	call seq_flds_add(l2x_fluxes,'coszen_str')
-    	call seq_flds_add(x2r_fluxes,'coszen_str')
-    	longname = 'Cosine of Zenith angle'
-    	stdname  = 'coszen'
-    	units    = ' '
-    	attname  = 'coszen_str'
-    	call metadata_set(attname, longname, stdname, units)
-    endif
+    call seq_flds_add(l2x_fluxes,'coszen_str')
+    call seq_flds_add(x2r_fluxes,'coszen_str')
+    longname = 'Cosine of Zenith angle'
+    stdname  = 'coszen'
+    units    = ' '
+    attname  = 'coszen_str'
+    call metadata_set(attname, longname, stdname, units)
 
     call seq_flds_add(l2x_fluxes,'Flrl_QTHERM')
     call seq_flds_add(x2r_fluxes,'Flrl_QTHERM')

@@ -46,8 +46,8 @@ module rof_comp_mct
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
                                 index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
-                                index_x2r_coszen_str, &
-                                index_r2x_Flrr_supply, index_r2x_Flrr_deficit
+                                index_x2r_coszen_str
+                                !index_r2x_Flrr_supply, !index_r2x_Flrr_supplyfrac, index_r2x_Flrr_deficit, index_r2x_Flrr_demand
 
   use mct_mod
   use ESMF
@@ -645,8 +645,6 @@ contains
           THeat%forc_lwrad(n)= x2r_r%rAttr(index_x2r_Faxa_lwdn ,n2)
           THeat%forc_solar(n)= x2r_r%rAttr(index_x2r_Faxa_swvdr,n2) + x2r_r%rAttr(index_x2r_Faxa_swvdf,n2) + &
                                x2r_r%rAttr(index_x2r_Faxa_swndr,n2) + x2r_r%rAttr(index_x2r_Faxa_swndf,n2)
-          shum = x2r_r%rAttr(index_x2r_Sa_shum,n2)
-          THeat%forc_vp(n)   = shum * THeat%forc_pbot(n)  / (0.622_r8 + 0.378_r8 * shum)
           THeat%coszen(n)    = x2r_r%rAttr(index_x2r_coszen_str,n2)
        end if
     enddo
