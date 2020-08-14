@@ -242,7 +242,6 @@ contains
     real(r8) :: v_chnl                        ! Channel flow velocity (m/s).#endif
 !#endif
 
-    character(len=350) :: thermPath
     integer            :: ExternalThermFlag										   
 !-----------------------------------------------------------------------
 
@@ -271,7 +270,7 @@ contains
 !#endif
 
     if (heatflag .and. thermpflag) then
-        namelist /thermp_inparm / ExternalThermFlag, thermPath
+        namelist /thermp_inparm / ExternalThermFlag
     endif		 
 
     ! Preset values
@@ -422,7 +421,6 @@ contains
 
     if (heatflag .and. thermpflag) then
         call mpi_bcast (ExternalThermFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
-        call mpi_bcast(thermPath ,len(thermPath), MPI_CHARACTER, 0, mpicom_rof, ier)
     endif		 
 
     runtyp(:)               = 'missing'
@@ -455,9 +453,6 @@ contains
 !#endif
     if (heatflag .and. thermpflag) then
         Tctl%ExternalThermFlag = ExternalThermFlag ! read thermal discharge data from external input
-        Tctl%thermPath = thermPath
-        ! debug (N. Sun)
-        write(iulog,*) subname," path to thermal effluent data  = ",trim(Tctl%thermPath)
     endif																						
 
     if (masterproc) then
@@ -2550,7 +2545,9 @@ endif
 !#endif
     if (heatflag) then
          rtmCTL%Tqsur   = THeat%Tqsur
-		 rtmCTL%Tqsub   = THeat%Tqsub
+         rtmCTL%Tqsub   = THeat%Tqsub
+         rtmCTL%QTHERM   = THeat%QTHERM
+         rtmCTL%TTHERM   = THeat%TTHERM
          rtmCTL%Tt      = THeat%Tt
          rtmCTL%Tr      = THeat%Tr
          rtmCTL%Ha_rout   = THeat%Ha_rout
@@ -4045,6 +4042,11 @@ endif
         THeat%Tqsur = 273.15_r8
         allocate (THeat%Tqsub(begr:endr))
         THeat%Tqsub = 273.15_r8
+
+        allocate (THeat%QTHERM(begr:endr))
+        THeat%QTHERM = 0.0_r8
+        allocate (THeat%TTHERM(begr:endr))
+        THeat%TTHERM = 273.15_r8
 
         allocate (THeat%Tt(begr:endr))
         THeat%Tt = 273.15_r8

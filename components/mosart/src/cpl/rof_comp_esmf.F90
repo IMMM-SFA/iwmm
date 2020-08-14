@@ -38,7 +38,7 @@ module rof_comp_esmf
   use rof_cpl_indices  , only : rof_cpl_indices_set, nt_rtm, rtm_tracers, &
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
-                                index_x2r_Flrl_rofdto, &
+                                index_x2r_Flrl_rofdto, index_x2r_Flrl_QTHERM, index_x2r_Flrl_TTHERM, &
                                 index_x2r_Flrl_Tqsur, index_x2r_Flrl_Tqsub, &
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
@@ -725,8 +725,12 @@ contains
        if(heatflag) then
           rtmCTL%Tqsur(n) = fptr(index_x2r_Flrl_Tqsur,n2) !x2r_r%rAttr(index_x2r_Flrl_Tqsur,n2)
           rtmCTL%Tqsub(n) = fptr(index_x2r_Flrl_Tqsub,n2) !x2r_r%rAttr(index_x2r_Flrl_Tqsub,n2)
+          rtmCTL%QTHERM(n) = fptr(index_x2r_Flrl_QTHERM,n2)
+          rtmCTL%TTHERM(n) = fptr(index_x2r_Flrl_TTHERM,n2)
           THeat%Tqsur(n) = rtmCTL%Tqsur(n)
           THeat%Tqsub(n) = rtmCTL%Tqsub(n)
+          THeat%QTHERM(n) = rtmCTL%QTHERM(n)
+          THeat%TTHERM(n) = rtmCTL%TTHERM(n)
           
           THeat%forc_t(n) = fptr(index_x2r_Sa_tbot,n2)
           THeat%forc_pbot(n) = fptr(index_x2r_Sa_pbot,n2)

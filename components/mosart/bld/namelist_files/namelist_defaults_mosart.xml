@@ -72,6 +72,5 @@ for the CLM data in the CESM distribution
 
 <!-- thermal effluent -->
 <ExternalThermFlag>1</ExternalThermFlag>
-<thermPath rof_grid="NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/TEPP/</thermPath>
 
 </namelist_defaults>

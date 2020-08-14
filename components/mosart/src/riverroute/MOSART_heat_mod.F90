@@ -19,7 +19,7 @@ MODULE MOSART_heat_mod
     use RunoffMod     , only : Tctl, TUnit, TRunoff, THeat, TPara
     use RunoffMod     , only : rtmCTL
     use rof_cpl_indices, only : nt_rtm, rtm_tracers, nt_nliq, nt_nice
-	use RtmSpmd       , only : masterproc, mpicom_rof, iam 
+    use RtmSpmd       , only : masterproc, mpicom_rof, iam 
     use netcdf
     use mct_mod
     use pio
@@ -608,106 +608,24 @@ MODULE MOSART_heat_mod
 
   end subroutine QSat    
 !-----------------------------------------------------------------------
-
+  
   subroutine readThermDischarge
-! DESCRIPTION: read in the thermal plant effluent data
-! Author: Ning Sun
-! Date of Creation: 08/20/2019
+    ! DESCRIPTION: read in the hourly thermal plant effluent data
+    ! Author: Travis Thurber
+    ! Date of Creation: 5 Aug 2020
+    use netcdf
+    implicit none
+    character(len=*),parameter :: subname='(readHourlyThermDischarge)'
+    character(len=*),parameter :: FORMR= '(2A,i8,2g15.7)'
 
-      implicit none
-
-      integer             :: yr, mon, day, tod
-      integer             :: cnt, n
-      character(len=4)    :: strYear
-      character(len=2)    :: strMonth, strDay
-      character(len=1000) :: fname
-      integer             :: iunit, ier
-      integer, pointer    :: compdof(:)  ! computational degrees of freedom for pio
-      integer             :: dids(2)    ! variable dimension ids 
-      integer             :: dsizes(2)  ! variable dimension lengths
-      type(file_desc_t)   :: ncid       ! netcdf file
-      type(var_desc_t)    :: vardesc    ! netCDF variable description
-      type(io_desc_t)     :: iodesc_dbl ! pio io desc
-      type(io_desc_t)     :: iodesc_int ! pio io desc
-  
-      character(len=*),parameter :: subname='(readThermDischarge)'
-      character(len=*),parameter :: FORMR= '(2A,i8,2g15.7)'
-      character(len=*),parameter :: FORMI = '(2A,6i13)'
-      logical :: readvar               ! read variable in or not
-
-      call get_curr_date(yr, mon, day, tod)
-      if (masterproc) write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
-
-      write(strYear,'(I4.4)') yr
-      write(strMonth,'(I2.2)') mon
-      
-      !fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
-      !fname = trim(Tctl%thermPath)//'1980_'//strMonth//'.nc'   ! constant 1980 demand
-      !fname = trim(Tctl%thermPath)//'create_netcdf2D_SinglePoint_glb'   ! test file, 1/2 global domain (N. Sun)
-      !fname = trim(Tctl%thermPath)//'create_netcdf2D_SinglePoint_nldas'   ! test file, 1/8 NLDAS domain (N. Sun)
-      fname = trim(Tctl%thermPath)//'ThermoData2D_SinglePoint_nldas2.nc'   ! test file, 1/8 NLDAS domain (N. Sun)
-
-      call ncd_pio_openfile(ncid, trim(fname), 0)      
-  
-      ! read thermal discharge
-      ier = pio_inq_varid (ncid, name='QTHERM', vardesc=vardesc)
-      if (ier /= PIO_noerr) then
-         if (masterproc) write(iulog,*) subname//' variable QTHERM is not on dataset'
-         readvar = .false.
-         else
-         readvar = .true.
-         end if
-      
-      if (readvar) then
-         ier = pio_inq_vardimid(ncid, vardesc, dids)
-         ier = pio_inq_dimlen(ncid, dids(1),dsizes(1))
-         ier = pio_inq_dimlen(ncid, dids(2),dsizes(2))
-         allocate(compdof(rtmCTL%lnumr))
-         cnt = 0
-         do n = rtmCTL%begr,rtmCTL%endr
-            cnt = cnt + 1
-            compdof(cnt) = rtmCTL%gindex(n)!global index
-         end do
-         if (masterproc) write(iulog,*) subname,' lnumr = ',rtmCTL%lnumr,rtmCTL%begr,rtmCTL%endr
-         if (masterproc) write(iulog,*) subname,'gindex = ', minval(rtmCTL%gindex),maxval(rtmCTL%gindex)
-         call pio_initdecomp(pio_subsystem, pio_double, dsizes, compdof, iodesc_dbl)
-         call pio_initdecomp(pio_subsystem, pio_int   , dsizes, compdof, iodesc_int)
-         deallocate(compdof)
-         call pio_seterrorhandling(ncid, PIO_BCAST_ERROR)
-      end if
-  
-  
-      ier = pio_inq_varid (ncid, name='QTHERM', vardesc=vardesc)
-      call pio_read_darray(ncid, vardesc, iodesc_dbl, TRunoff%Qp(:,nt_nliq), ier)
-      if (masterproc) write(iulog,FORMR) trim(subname),' thermal discharge Q (m3/s)',iam, minval(TRunoff%Qp(:,nt_nliq)), maxval(TRunoff%Qp(:,nt_nliq))
-      call shr_sys_flush(iulog)  
-  
-      ! read effluent temperature
-      ier = pio_inq_varid (ncid, name='TTHERM', vardesc=vardesc)  
-      call pio_read_darray(ncid, vardesc, iodesc_dbl , THeat%Tp, ier)
-      !if (masterproc) write(iulog,FORMR) trim(subname),' thermal effluent T (K)',iam, minval(THeat%Tp), maxval(THeat%Tp)
-      call shr_sys_flush(iulog)	
-  
-      ! free up memory
-      call pio_freedecomp(ncid, iodesc_dbl)
-      call ncd_pio_closefile(ncid)
-
-      ! check error
-      do iunit = rtmCTL%begr,rtmCTL%endr
-         if (TRunoff%Qp(iunit,nt_nliq) .lt. 0._r8) then
-            write(iulog, *) trim(subname)//' ERROR: thermal discharge is negative at: !', iunit
-            call shr_sys_abort(trim(subname)//' ERROR: thermal discharge is negative !' )
-         end if
-         !if (THeat%Tp(iunit) .lt. 0._r8) then
-         !   write(iulog, *) trim(subname)//' ERROR: thermal effluent temperature is negative at: !', iunit
-         !   call shr_sys_abort(trim(subname)//' ERROR: thermal effluent temperature is negative !' )
-         !end if
-      end do
-            
+    TRunoff%Qp(:,nt_nliq) = THeat%QTHERM(:)
+    THeat%Tp = THeat%TTHERM
+    if (masterproc) write(iulog,FORMR) trim(subname),'thermal discharge Q (m3/s)',iam,minval(TRunoff%Qp(:,nt_nliq)),maxval(TRunoff%Qp(:,nt_nliq))
+    if (masterproc) write(iulog,FORMR) trim(subname),'thermal effluent T (K)',iam,minval(THeat%Tp),maxval(THeat%Tp)
 
   end subroutine readThermDischarge
 !-----------------------------------------------------------------------
-  
+
   subroutine printTest1(nio)
       ! !DESCRIPTION: output the simulation results into external files
       implicit none

@@ -69,7 +69,7 @@
     <values>
       <value dlnd_mode="NULL">NULL</value>
       <value dlnd_mode="^CPLHIST$">lnd.cplhist</value>
-      <value dlnd_mode="HEAT">heat.nldas</value>
+      <value dlnd_mode="HEAT">heat.nldas,heat.tepp</value>
       <value dlnd_mode="CLMNLDAS">clm.nldas</value>
       <value dlnd_mode="GLC_CPLHIST">sno.cplhist</value>
     </values>
@@ -82,6 +82,7 @@
     <desc>Stream domain file directory.</desc>
     <values>
       <value stream="heat.nldas">$DLND_CPLHIST_DIR</value>
+      <value stream="heat.tepp">$DLND_CPLHIST_DIR</value>
       <value stream="clm.nldas">$DLND_CPLHIST_DIR</value>
     </values>
   </entry>
@@ -92,7 +93,8 @@
     <group>streams_file</group>
     <desc>Stream domain file path(s).</desc>
     <values>
-      <value stream="heat.nldas">Livneh_NLDAS_RUNOFF_1950_2011.nc</value>
+      <value stream="heat.nldas">Runoff/Livneh_NLDAS_RUNOFF_1950_2011.nc</value>
+      <value stream="heat.tepp">TEPP/EIA1-4.reshaped.nc</value>
       <value stream="clm.nldas">mosart_nldas_hist_1975.clm2.h1.1975-01-01-00000.nc</value>
     </values>
   </entry>
@@ -117,6 +119,13 @@
         area     area
         landfrac mask
       </value>
+      <value stream="heat.tepp">
+        time     time
+        lon      lon
+        lat      lat
+        area     area
+        landfrac mask
+      </value>
       <value stream="clm.nldas">
         time     time
         lon      lon
@@ -135,6 +144,7 @@
     <values>
       <value>$DLND_CPLHIST_DIR</value>
       <value stream="heat.nldas">$DLND_CPLHIST_DIR</value>
+      <value stream="heat.tepp">$DLND_CPLHIST_DIR</value>
       <value stream="sno.cplhist">$DLND_CPLHIST_DIR</value>
     </values>
   </entry>
@@ -146,7 +156,8 @@
     <desc>Stream data file path(s).</desc>
     <values>
       <value stream="sno.cplhist">$DLND_CPLHIST_CASE.cpl.hl2x1yr_glc.%y-01-01.nc</value>
-      <value stream="heat.nldas">Livneh_NLDAS_RUNOFF_1950_2011.nc</value>
+      <value stream="heat.nldas">Runoff/Livneh_NLDAS_RUNOFF_1950_2011.nc</value>
+      <value stream="heat.tepp">TEPP/EIA1-4.reshaped.nc</value>
       <value stream="clm.nldas">mosart_nldas_hist_1975.clm2.h1.1975-01-01-00000.nc</value>
     </values>
   </entry>
@@ -167,6 +178,10 @@
         QOVER     rofsur
         TDRAI     tqsub
         TOVER     tqsur
+      </value>
+      <value     stream="heat.tepp">
+        QTHERM     QTHERM
+        TTHERM     TTHERM
       </value>
       <value     stream="clm.nldas">
         QDRAI     rofsub
@@ -192,6 +207,7 @@
     <desc>Simulation year to align stream to.</desc>
     <values>
       <value>$DLND_CPLHIST_YR_ALIGN</value>
+      <value stream="heat.tepp">2016</value>
       <value stream="sno.cplhist">$DLND_CPLHIST_YR_ALIGN</value>
     </values>
   </entry>
@@ -203,6 +219,7 @@
     <desc>First year of stream.</desc>
     <values>
       <value>$DLND_CPLHIST_YR_START</value>
+      <value stream="heat.tepp">2016</value>
       <value stream="sno.cplhist">$DLND_CPLHIST_YR_START</value>
     </values>
   </entry>
@@ -214,6 +231,7 @@
     <desc>Last year of stream.</desc>
     <values>
       <value>$DLND_CPLHIST_YR_END</value>
+      <value stream="heat.tepp">2016</value>
       <value stream="sno.cplhist">$DLND_CPLHIST_YR_END</value>
     </values>
   </entry>
@@ -470,7 +488,7 @@
       to turn off trapping, set the value to 1.0e30 or something similar.
     </desc>
     <values>
-      <value>1.5e0</value>
+      <value>1.0e30</value>
     </values>
   </entry>
 

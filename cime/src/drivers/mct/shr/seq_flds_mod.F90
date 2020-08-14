@@ -2042,6 +2042,22 @@ contains
     attname  = 'Flrl_Tqsub'
     call metadata_set(attname, longname, stdname, units)
 
+    call seq_flds_add(l2x_fluxes,'Flrl_QTHERM')
+    call seq_flds_add(x2r_fluxes,'Flrl_QTHERM')
+    longname = 'Thermal discharge Q (m3/s)'
+    stdname  = 'Thermal_discharge_Q'
+    units    = 'm3/s'
+    attname  = 'Flrl_QTHERM'
+    call metadata_set(attname, longname, stdname, units)
+
+    call seq_flds_add(l2x_fluxes,'Flrl_TTHERM')
+    call seq_flds_add(x2r_fluxes,'Flrl_TTHERM')
+    longname = 'Thermal effluent temperature (K)'
+    stdname  = 'Thermal_effluent_temperature'
+    units    = 'K'
+    attname  = 'Flrl_TTHERM'
+    call metadata_set(attname, longname, stdname, units)
+
     ! Currently only the CESM land and runoff models treat irrigation as a separate
     ! field: in E3SM, this field is folded in to the other runoff fields. Eventually,
     ! E3SM may want to update its land and runoff models to map irrigation specially, as

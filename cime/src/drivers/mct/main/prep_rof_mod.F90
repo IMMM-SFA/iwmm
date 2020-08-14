@@ -417,6 +417,8 @@ contains
 	
     integer, save :: index_l2x_Flrl_Tqsur
     integer, save :: index_l2x_Flrl_Tqsub
+    integer, save :: index_l2x_Flrl_QTHERM
+    integer, save :: index_l2x_Flrl_TTHERM
     integer, save :: index_a2x_Sa_tbot
     integer, save :: index_a2x_Sa_pbot
     integer, save :: index_a2x_Sa_u
@@ -431,6 +433,8 @@ contains
     integer, save :: index_a2x_Faxa_lwdn
     integer, save :: index_x2r_Flrl_Tqsur
     integer, save :: index_x2r_Flrl_Tqsub
+    integer, save :: index_x2r_Flrl_QTHERM
+    integer, save :: index_x2r_Flrl_TTHERM
     integer, save :: index_x2r_Sa_tbot
     integer, save :: index_x2r_Sa_pbot
     integer, save :: index_x2r_Sa_u
@@ -487,8 +491,12 @@ contains
        index_l2x_Flrl_Tqsur = mct_aVect_indexRA(l2x_r,'Flrl_Tqsur' )
        index_l2x_Flrl_Tqsub = mct_aVect_indexRA(l2x_r,'Flrl_Tqsub' )
        index_x2r_Flrl_Tqsur = mct_aVect_indexRA(x2r_r,'Flrl_Tqsur' )
-       index_x2r_Flrl_Tqsub = mct_aVect_indexRA(x2r_r,'Flrl_Tqsub' )	   
-	   
+       index_x2r_Flrl_Tqsub = mct_aVect_indexRA(x2r_r,'Flrl_Tqsub' )
+       index_l2x_Flrl_QTHERM = mct_aVect_indexRA(l2x_r,'Flrl_QTHERM' )
+       index_l2x_Flrl_TTHERM = mct_aVect_indexRA(l2x_r,'Flrl_TTHERM' )
+       index_x2r_Flrl_QTHERM = mct_aVect_indexRA(x2r_r,'Flrl_QTHERM' )
+       index_x2r_Flrl_TTHERM = mct_aVect_indexRA(x2r_r,'Flrl_TTHERM' )
+
        index_l2x_Flrl_rofl_16O = mct_aVect_indexRA(l2x_r,'Flrl_rofl_16O', perrWith='quiet' )
        if ( index_l2x_Flrl_rofl_16O /= 0 ) flds_wiso_rof = .true.
        if ( flds_wiso_rof ) then
@@ -526,6 +534,8 @@ contains
        end if
        mrgstr(index_x2r_Flrl_Tqsur) = trim(mrgstr(index_x2r_Flrl_Tqsur))//' = '//'l2x%Flrl_Tqsur'
        mrgstr(index_x2r_Flrl_Tqsur) = trim(mrgstr(index_x2r_Flrl_Tqsub))//' = '//'l2x%Flrl_Tqsub'
+       mrgstr(index_x2r_Flrl_QTHERM) = trim(mrgstr(index_x2r_Flrl_QTHERM))//' = '//'l2x%Flrl_QTHERM'
+       mrgstr(index_x2r_Flrl_TTHERM) = trim(mrgstr(index_x2r_Flrl_TTHERM))//' = '//'l2x%Flrl_TTHERM'
        if ( flds_wiso_rof ) then
           mrgstr(index_x2r_Flrl_rofl_16O) = trim(mrgstr(index_x2r_Flrl_rofl_16O))//' = '// &
                'lfrac*l2x%Flrl_rofl_16O'
@@ -593,6 +603,8 @@ contains
        end if
        x2r_r%rAttr(index_x2r_Flrl_Tqsur,i) = l2x_r%rAttr(index_l2x_Flrl_Tqsur,i)
        x2r_r%rAttr(index_x2r_Flrl_Tqsub,i) = l2x_r%rAttr(index_l2x_Flrl_Tqsub,i)
+       x2r_r%rAttr(index_x2r_Flrl_QTHERM,i) = l2x_r%rAttr(index_l2x_Flrl_QTHERM,i)
+       x2r_r%rAttr(index_x2r_Flrl_TTHERM,i) = l2x_r%rAttr(index_l2x_Flrl_TTHERM,i)
        if ( flds_wiso_rof ) then
           x2r_r%rAttr(index_x2r_Flrl_rofl_16O,i) = l2x_r%rAttr(index_l2x_Flrl_rofl_16O,i) * lfrac
           x2r_r%rAttr(index_x2r_Flrl_rofi_16O,i) = l2x_r%rAttr(index_l2x_Flrl_rofi_16O,i) * lfrac
