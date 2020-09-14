@@ -360,7 +360,6 @@ else {
     add_default($nl, 'threshold_slpRatio');
 
     add_default($nl, 'ExternalThermFlag'); 
-    add_default($nl, 'thermPath');
 
 }
 

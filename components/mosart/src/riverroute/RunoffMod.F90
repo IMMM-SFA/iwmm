@@ -81,6 +81,8 @@ module RunoffMod
      real(r8), pointer :: erout(:,:)       ! MOSART flow out of the main channel, instantaneous (m3/s) (negative is out)
      real(r8), pointer :: Tqsur(:)         ! MOSART hillslope surface runoff water temperature (K)
      real(r8), pointer :: Tqsub(:)         ! MOSART hillslope subsurface runoff water temperature (K)
+     real(r8), pointer :: QTHERM(:)        ! MOSART thermal discharge Q (m3/s)
+     real(r8), pointer :: TTHERM(:)        ! MOSART thermal effluence T (K)
      real(r8), pointer :: Tt(:)            ! MOSART sub-network water temperature (K)
      real(r8), pointer :: Tr(:)            ! MOSART main channel water temperature (K)
      real(r8), pointer :: Ha_rout(:)       ! MOSART heat flux out of the main channel, instantaneous (Watt)
@@ -231,7 +233,6 @@ module RunoffMod
      ! The following parameters are for the thermp option :
      ! --------------------------------- 
      integer :: ExternalThermFlag      ! Options for reading external thermal effluent data
-     character(len=350) :: thermPath   ! the path to the file storing thermal effluent discharge and temperature
   end type Tcontrol
   
   ! --- Topographic and geometric properties, applicable for both grid- and subbasin-based representations
@@ -449,6 +450,8 @@ module RunoffMod
       !! states
       real(r8), pointer :: Tqsur(:)       ! temperature of surface runoff, [K]
       real(r8), pointer :: Tqsub(:)       ! temperature of subsurface runoff, [K]
+      real(r8), pointer :: QTHERM(:)      ! thermal discharge Q [m3/s]
+      real(r8), pointer :: TTHERM(:)      ! thermal effluent T [K]
       real(r8), pointer :: Tqice(:)       ! temperature of ice flow, [K]
       !! fluxes
       
@@ -615,6 +618,8 @@ contains
     if (heatflag) then
       allocate(rtmCTL%Tqsur(begr:endr),                 &
                rtmCTL%Tqsub(begr:endr),                 &
+               rtmCTL%QTHERM(begr:endr),                 &
+               rtmCTL%TTHERM(begr:endr),                 &
                rtmCTL%Tt(begr:endr),                    &
                rtmCTL%Tr(begr:endr),                    &
                rtmCTL%Ha_rout(begr:endr),               &
@@ -644,6 +649,8 @@ contains
       end if
       rtmCTL%Tqsur(:)        = 273.15_r8
       rtmCTL%Tqsub(:)        = 273.15_r8                                        
+      rtmCTL%QTHERM(:)        = 0.0_r8
+      rtmCTL%TTHERM(:)        = 273.15_r8
       rtmCTL%templand_Tqsur(:)  = spval
       rtmCTL%templand_Tqsub(:)  = spval
       rtmCTL%templand_Ttrib(:)  = spval

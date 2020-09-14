@@ -518,12 +518,4 @@ External Therm Flag, 0 = false, 1 = true
 Default: 1
 </entry>
 
-<entry id="thermPath" 
-       type="char*350" 
-       category="mosart"
-       group="thermp_inparm" 
-       valid_values="" >
-Thermal effluent dataset
-</entry>
-
 </namelist_definition>

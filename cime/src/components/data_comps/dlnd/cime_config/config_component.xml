@@ -68,7 +68,7 @@
     <type>char</type>
     <default_value>UNSET</default_value>
     <values match="last">
-      <value compset="DLND%HEAT" grid="l%NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/Runoff</value>
+      <value compset="DLND%HEAT" grid="l%NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">$DIN_LOC_ROOT/lnd/dlnd7/NLDAS</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">$DIN_LOC_ROOT/lnd/dlnd7/CPLHIST_SNO/i.e20.I1850Clm50Sp.f09_g17.001_c180502</value>
     </values>

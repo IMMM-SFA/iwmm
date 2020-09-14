@@ -213,6 +213,14 @@ contains
       call RtmHistAddfld (fname='TEMP_QSUB', units='Kelvin',  &
            avgflag='A', long_name='Temperature of subsurface runoff', &
            ptr_rof=rtmCTL%templand_Tqsub_nt1)
+
+      call RtmHistAddfld (fname='QTHERM_FROM_CIME', units='m3/s',  &
+           avgflag='A', long_name='Thermal discharge Q ', &
+           ptr_rof=rtmCTL%QTHERM)
+
+      call RtmHistAddfld (fname='TTHERM_FROM_CIME', units='Kelvin',  &
+           avgflag='A', long_name='Thermal effluent temperature ', &
+           ptr_rof=rtmCTL%TTHERM)
     
       call RtmHistAddfld (fname='TEMP_TRIB', units='Kelvin',  &
            avgflag='A', long_name='Water temperature of tributary channels', &
