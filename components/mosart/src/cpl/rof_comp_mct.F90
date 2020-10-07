@@ -27,15 +27,15 @@ module rof_comp_mct
                                 inst_index, inst_suffix, inst_name, RtmVarSet, wrmflag, heatflag
   use RtmSpmd          , only : masterproc, mpicom_rof, npes, iam, RtmSpmdInit, ROFID
   use RtmMod           , only : Rtmini, Rtmrun
-  use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size!, advance_timestep
+  use RtmTimeManager   , only : timemgr_setup, get_curr_date, get_step_size
   use perf_mod         , only : t_startf, t_stopf, t_barrierf
-!#ifdef INCLUDE_WRM
+
   use WRM_type_mod     , only : StorWater
-!#endif
+
   use rof_cpl_indices  , only : rof_cpl_indices_set, nt_rtm, rtm_tracers, &
                                 index_x2r_Flrl_rofsur, index_x2r_Flrl_rofi, &
                                 index_x2r_Flrl_rofgwl, index_x2r_Flrl_rofsub, &
-                                index_x2r_Flrl_rofdto, index_x2r_Flrl_QTHERM, index_x2r_Flrl_TTHERM, &
+                                index_x2r_Flrl_rofdto, index_x2r_Flrl_demand, index_x2r_Flrl_QTHERM, index_x2r_Flrl_TTHERM, &
                                 index_x2r_Flrl_Tqsur, index_x2r_Flrl_Tqsub, &
                                 index_x2r_Sa_tbot, index_x2r_Sa_pbot, &
                                 index_x2r_Sa_u   , index_x2r_Sa_v   , &
@@ -45,8 +45,9 @@ module rof_comp_mct
                                 index_x2r_Faxa_swndr, index_x2r_Faxa_swndf, &
                                 index_r2x_Forr_rofl, index_r2x_Forr_rofi, &
                                 index_r2x_Flrr_flood, &
-                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch
-                                !index_r2x_Flrr_supply , index_r2x_Flrr_supplyfrac, index_x2r_Flrl_demand, 
+                                index_r2x_Flrr_volr, index_r2x_Flrr_volrmch, &
+                                index_r2x_Flrr_supply, index_r2x_Flrr_deficit
+
   use mct_mod
   use ESMF
 !
@@ -102,7 +103,6 @@ contains
     integer :: lsize                                 ! size of attribute vector
     integer :: g,i,j,n                               ! indices
     logical :: exists                                ! true if file exists
-    logical :: no_taskmap_output                     ! true then do not write out task-to-node mapping
     logical :: verbose_taskmap_output                ! true then use verbose task-to-node mapping format
     integer :: nsrest                                ! restart type
     integer :: ref_ymd                               ! reference date (YYYYMMDD)
@@ -178,8 +178,6 @@ contains
 
     if (info_taskmap_comp > 0) then
 
-       no_taskmap_output = .false.
-
        if (info_taskmap_comp == 1) then
           verbose_taskmap_output = .false.
        else
@@ -196,19 +194,13 @@ contains
           call shr_sys_flush(iulog)
        endif
 
-    else
-
-       no_taskmap_output = .true.
-       verbose_taskmap_output = .false.
+       call t_startf("shr_taskmap_write")
+       call shr_taskmap_write(iulog, mpicom_rof,                    &
+                              'ROF #'//trim(adjustl(c_inst_index)), &
+                              verbose=verbose_taskmap_output        )
+       call t_stopf("shr_taskmap_write")
 
     endif
-
-    call t_startf("shr_taskmap_write")
-    call shr_taskmap_write(iulog, mpicom_rof,                    &
-                           'ROF #'//trim(adjustl(c_inst_index)), &
-                           verbose=verbose_taskmap_output,       &
-                           no_output=no_taskmap_output           )
-    call t_stopf("shr_taskmap_write")
 
     ! Initialize mosart
     call seq_timemgr_EClockGetData(EClock,                               &
@@ -259,10 +251,10 @@ contains
        lsize = mct_gsMap_lsize(gsMap_rof, mpicom_rof)
        call rof_domain_mct( lsize, gsMap_rof, dom_r )
        
-       ! Initialize lnd -> mosart attribute vector        
+       ! Initialize lnd -> mosart attribute vector
        call mct_aVect_init(x2r_r, rList=seq_flds_x2r_fields, lsize=lsize)
        call mct_aVect_zero(x2r_r)
-       
+
        ! Initialize mosart -> ocn attribute vector        
        call mct_aVect_init(r2x_r, rList=seq_flds_r2x_fields, lsize=lsize)
        call mct_aVect_zero(r2x_r) 
@@ -570,6 +562,7 @@ contains
     ! LOCAL VARIABLES
     integer :: n2, n, nt, begr, endr, nliq, nfrz
     real(R8) :: tmp1, tmp2
+    real(R8) :: shum
     character(len=32), parameter :: sub = 'rof_import_mct'
     !---------------------------------------------------------------------------
     
@@ -603,26 +596,13 @@ contains
        else
           rtmCTL%qdto(n,nliq) = 0.0_r8
        endif
-!       rtmCTL%qdem(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_demand,n2) * (rtmCTL%area(n)*0.001_r8)
-
+       rtmCTL%qdem(n,nliq) = x2r_r%rAttr(index_x2r_Flrl_demand,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsur(n,nfrz) = x2r_r%rAttr(index_x2r_Flrl_rofi,n2) * (rtmCTL%area(n)*0.001_r8)
        rtmCTL%qsub(n,nfrz) = 0.0_r8
        rtmCTL%qgwl(n,nfrz) = 0.0_r8
        rtmCTL%qdto(n,nfrz) = 0.0_r8
-!       rtmCTL%qdem(n,nfrz) = 0.0_r8
+       rtmCTL%qdem(n,nfrz) = 0.0_r8
 
-       ! tcxcpl
-       !?? = x2r_r%rAttr(index_x2r_Sa_tbot,n2)
-       !?? = x2r_r%rAttr(index_x2r_Sa_pbot,n2)
-       !?? = x2r_r%rAttr(index_x2r_Sa_u   ,n2)
-       !?? = x2r_r%rAttr(index_x2r_Sa_v   ,n2)
-       !?? = x2r_r%rAttr(index_x2r_Sa_shum,n2)
-       !?? = x2r_r%rAttr(index_x2r_Faxa_lwdn ,n2)
-       !?? = x2r_r%rAttr(index_x2r_Faxa_swvdr,n2)
-       !?? = x2r_r%rAttr(index_x2r_Faxa_swvdf,n2)
-       !?? = x2r_r%rAttr(index_x2r_Faxa_swndr,n2)
-       !?? = x2r_r%rAttr(index_x2r_Faxa_swndf,n2)
-       
        if(heatflag) then
           rtmCTL%Tqsur(n) = x2r_r%rAttr(index_x2r_Flrl_Tqsur,n2)
           rtmCTL%Tqsub(n) = x2r_r%rAttr(index_x2r_Flrl_Tqsub,n2)
@@ -643,6 +623,8 @@ contains
           THeat%forc_lwrad(n)= x2r_r%rAttr(index_x2r_Faxa_lwdn ,n2)
           THeat%forc_solar(n)= x2r_r%rAttr(index_x2r_Faxa_swvdr,n2) + x2r_r%rAttr(index_x2r_Faxa_swvdf,n2) + &
                                x2r_r%rAttr(index_x2r_Faxa_swndr,n2) + x2r_r%rAttr(index_x2r_Faxa_swndf,n2)
+          shum = x2r_r%rAttr(index_x2r_Sa_shum,n2)
+          THeat%forc_vp(n)   = shum * THeat%forc_pbot(n)  / (0.622_r8 + 0.378_r8 * shum)
        end if
     enddo
 
@@ -739,14 +721,12 @@ contains
        r2x_r%rattr(index_r2x_Flrr_flood,ni)   = -rtmCTL%flood(n) / (rtmCTL%area(n)*0.001_r8)
        r2x_r%rattr(index_r2x_Flrr_volr,ni)    = (Trunoff%wr(n,nliq) + Trunoff%wt(n,nliq)) / rtmCTL%area(n)
        r2x_r%rattr(index_r2x_Flrr_volrmch,ni) = Trunoff%wr(n,nliq) / rtmCTL%area(n)
-!       r2x_r%rattr(index_r2x_Flrr_supply,ni)  = 0._r8  ! tcxcpl
-!       !r2x_r%rattr(index_r2x_Flrr_supplyfrac,ni)  = 0._r8  ! Tian
-!#ifdef INCLUDE_WRM
-!       if (wrmflag) then
-!          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)   ! tcxcpl   !! converted to mm/s during budget check (Tian)
-!          !r2x_r%rattr(index_r2x_Flrr_supplyfrac,ni)  = StorWater%SupplyFrac(n) ! passing fraction use instead of the supply flux rate (Tian June 2018)
-!       endif
-!#endif
+       r2x_r%rattr(index_r2x_Flrr_supply,ni)  = 0._r8
+       r2x_r%rattr(index_r2x_Flrr_deficit,ni)  = 0._r8
+       if (wrmflag) then
+          r2x_r%rattr(index_r2x_Flrr_supply,ni)  = StorWater%Supply(n) / (rtmCTL%area(n)*0.001_r8)   !converted to mm/s
+          r2x_r%rattr(index_r2x_Flrr_deficit,ni)  = (abs(rtmCTL%qdem(n,nliq)) - abs(StorWater%Supply(n))) / (rtmCTL%area(n)*0.001_r8)   !send deficit back to ELM
+       endif
     end do
 
   end subroutine rof_export_mct

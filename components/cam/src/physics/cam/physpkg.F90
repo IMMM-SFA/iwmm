@@ -14,7 +14,6 @@ module physpkg
 
 
   use shr_kind_mod,     only: i8 => shr_kind_i8, r8 => shr_kind_r8
-  use shr_sys_mod,      only: shr_sys_irtc
   use spmd_utils,       only: masterproc
   use physconst,        only: latvap, latice, rh2o
   use physics_types,    only: physics_state, physics_tend, physics_state_set_grid, &
@@ -30,7 +29,7 @@ module physpkg
 
   use cam_control_mod,  only: ideal_phys, adiabatic
   use phys_control,     only: phys_do_flux_avg, phys_getopts, waccmx_is
-  use zm_conv,          only: trigmem
+  use zm_conv,          only: trigmem, do_zmconv_dcape_ull => trigdcape_ull
   use scamMod,          only: single_column, scm_crm_mode
   use flux_avg,         only: flux_avg_init
 #ifdef SPMD
@@ -390,7 +389,7 @@ subroutine phys_inidat( cam_out, pbuf2d )
        if (masterproc) write(iulog,*) 'AQUA_PLANET simulation, sgh, sgh30, landm initialized to 0.'
     else
        if (masterproc) write(iulog,*) 'NOT AN AQUA_PLANET simulation, initialize &
-                                       sgh, sgh30, land m using data from file.'
+                                      &sgh, sgh30, land m using data from file.'
        fh_topo=>topo_file_get_id()
        call infld('SGH', fh_topo, dim1name, dim2name, 1, pcols, begchunk, endchunk, &
             sgh, found, gridname='physgrid')
@@ -938,7 +937,7 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
     use check_energy,   only: check_energy_gmean
 
     use physics_buffer,         only: physics_buffer_desc, pbuf_get_chunk, pbuf_allocate
-#if (defined BFB_CAM_SCAM_IOP )
+#if (defined E3SM_SCM_REPLAY )
     use cam_history,    only: outfld
 #endif
     use comsrf,         only: fsns, fsnt, flns, sgh, sgh30, flnt, landm, fsds
@@ -972,7 +971,8 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
 #endif
     integer(i8) :: beg_count                     ! start time for a chunk
     integer(i8) :: end_count                     ! stop time for a chunk
-    integer(i8) :: irtc_rate                     ! irtc clock rate
+    integer(i8) :: sysclock_rate                 ! system clock rate
+    integer(i8) :: sysclock_max                  ! system clock max value
     real(r8)    :: chunk_cost                    ! measured cost per chunk
     type(physics_buffer_desc), pointer :: phys_buffer_chunk(:)
 
@@ -1030,10 +1030,10 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
        call t_startf ('bc_physics')
        !call t_adj_detailf(+1)
 
-!$OMP PARALLEL DO PRIVATE (C, beg_count, phys_buffer_chunk, end_count, chunk_cost)
+!$OMP PARALLEL DO PRIVATE (C, beg_count, phys_buffer_chunk, end_count, sysclock_rate, sysclock_max, chunk_cost)
        do c=begchunk, endchunk
 
-          beg_count = shr_sys_irtc(irtc_rate)
+          call system_clock(count=beg_count)
 
           !
           ! Output physics terms to IC file
@@ -1048,8 +1048,9 @@ subroutine phys_run1(phys_state, ztodt, phys_tend, pbuf2d,  cam_in, cam_out)
                        phys_tend(c), phys_buffer_chunk,  fsds(1,c), landm(1,c),          &
                        sgh(1,c), sgh30(1,c), cam_out(c), cam_in(c) )
 
-          end_count = shr_sys_irtc(irtc_rate)
-          chunk_cost = real( (end_count-beg_count), r8)/real(irtc_rate, r8)
+          call system_clock(count=end_count, count_rate=sysclock_rate, count_max=sysclock_max)
+          if ( end_count < beg_count ) end_count = end_count + sysclock_max
+          chunk_cost = real( (end_count-beg_count), r8)/real(sysclock_rate, r8)
           call update_cost_p(c, chunk_cost)
 
        end do
@@ -1106,7 +1107,8 @@ subroutine phys_run1_adiabatic_or_ideal(ztodt, phys_state, phys_tend,  pbuf2d)
 
     integer(i8)         :: beg_count       ! start time for a chunk
     integer(i8)         :: end_count       ! stop time for a chunk
-    integer(i8)         :: irtc_rate       ! irtc clock rate
+    integer(i8)         :: sysclock_rate   ! system clock rate
+    integer(i8)         :: sysclock_max    ! system clock max value
     real(r8)            :: chunk_cost      ! measured cost per chunk
 
     ! physics buffer field for total energy
@@ -1122,10 +1124,10 @@ subroutine phys_run1_adiabatic_or_ideal(ztodt, phys_state, phys_tend,  pbuf2d)
        first_exec_of_phys_run1_adiabatic_or_ideal  = .FALSE.
     endif
 
-!$OMP PARALLEL DO PRIVATE (C, beg_count, FLX_HEAT, end_count, chunk_cost)
+!$OMP PARALLEL DO PRIVATE (C, beg_count, FLX_HEAT, end_count, sysclock_rate, sysclock_max, chunk_cost)
     do c=begchunk, endchunk
 
-       beg_count = shr_sys_irtc(irtc_rate)
+       call system_clock(count=beg_count)
 
        ! Initialize the physics tendencies to zero.
        call physics_tend_init(phys_tend(c))
@@ -1150,8 +1152,9 @@ subroutine phys_run1_adiabatic_or_ideal(ztodt, phys_state, phys_tend,  pbuf2d)
        ! Save total enery after physics for energy conservation checks
        call pbuf_set_field(pbuf_get_chunk(pbuf2d, c), teout_idx, phys_state(c)%te_cur)
 
-       end_count = shr_sys_irtc(irtc_rate)
-       chunk_cost = real( (end_count-beg_count), r8)/real(irtc_rate, r8)
+       call system_clock(count=end_count, count_rate=sysclock_rate, count_max=sysclock_max)
+       if ( end_count < beg_count ) end_count = end_count + sysclock_max
+       chunk_cost = real( (end_count-beg_count), r8)/real(sysclock_rate, r8)
        call update_cost_p(c, chunk_cost)
 
     end do
@@ -1208,8 +1211,11 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
 #if (! defined SPMD)
     integer :: mpicom = 0
 #endif
-    integer(i8) :: beg_count, end_count, irtc_rate ! for measuring chunk cost
-    real(r8):: chunk_cost
+    integer(i8) :: beg_count                     ! start time for a chunk
+    integer(i8) :: end_count                     ! stop time for a chunk
+    integer(i8) :: sysclock_rate                 ! system clock rate
+    integer(i8) :: sysclock_max                  ! system clock max value
+    real(r8)    :: chunk_cost                    ! measured cost per chunk
     type(physics_buffer_desc),pointer, dimension(:)     :: phys_buffer_chunk
     !
     ! If exit condition just return
@@ -1247,10 +1253,10 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
        call ieflx_gmean(phys_state, phys_tend, pbuf2d, cam_in, cam_out, nstep)
     end if
 
-!$OMP PARALLEL DO PRIVATE (C, beg_count, NCOL, phys_buffer_chunk, end_count, chunk_cost)
+!$OMP PARALLEL DO PRIVATE (C, beg_count, NCOL, phys_buffer_chunk, end_count, sysclock_rate, sysclock_max, chunk_cost)
     do c=begchunk,endchunk
 
-       beg_count = shr_sys_irtc(irtc_rate)
+       call system_clock(count=beg_count)
 
        ncol = get_ncols_p(c)
        phys_buffer_chunk => pbuf_get_chunk(pbuf2d, c)
@@ -1275,8 +1281,9 @@ subroutine phys_run2(phys_state, ztodt, phys_tend, pbuf2d,  cam_out, &
             phys_state(c), phys_tend(c), phys_buffer_chunk,&
             fsds(1,c))
 
-       end_count = shr_sys_irtc(irtc_rate)
-       chunk_cost = real( (end_count-beg_count), r8)/real(irtc_rate, r8)
+       call system_clock(count=end_count, count_rate=sysclock_rate, count_max=sysclock_max)
+       if ( end_count < beg_count ) end_count = end_count + sysclock_max
+       chunk_cost = real( (end_count-beg_count), r8)/real(sysclock_rate, r8)
        call update_cost_p(c, chunk_cost)
 
     end do                    ! Chunk loop
@@ -1455,6 +1462,11 @@ subroutine tphysac (ztodt,   cam_in,  &
 
     logical :: do_clubb_sgs 
 
+    !DCAPE-ULL: physics buffer fields to compute tendencies for dcape
+    real(r8), pointer, dimension(:,:) :: t_star   ! temperature
+    real(r8), pointer, dimension(:,:) :: q_star   ! moisture
+    logical :: do_zmconv_trigdcape_ull            ! switch if using dcape-ull as trigger for ZM convection
+                                                  ! default to false, to bbe made controllable by nml
     ! Debug physics_state.
     logical :: state_debug_checks
 
@@ -1741,11 +1753,7 @@ if (l_ac_energy_chk) then
 
     end if
 
-
-    !*** BAB's FV heating kludge *** apply the heating as temperature tendency.
-    !*** BAB's FV heating kludge *** modify the temperature in the state structure
     tmp_t(:ncol,:pver) = state%t(:ncol,:pver)
-    state%t(:ncol,:pver) = tini(:ncol,:pver) + ztodt*tend%dtdt(:ncol,:pver)
 
     ! store dse after tphysac in buffer
     do k = 1,pver
@@ -1794,6 +1802,19 @@ end if ! l_ac_energy_chk
 
     call diag_phys_tend_writeout (state, pbuf,  tend, ztodt, tmp_q, tmp_cldliq, tmp_cldice, &
          tmp_t, qini, cldliqini, cldiceini)
+
+    ! DCAPE-ULL: record current state of T and q for computing dynamical tendencies
+    !            the calculation follows the same format as in diag_phys_tend_writeout
+    if (do_zmconv_dcape_ull) then
+      ifld = pbuf_get_index('T_STAR')
+      call pbuf_get_field(pbuf, ifld, t_star, (/1,1/),(/pcols,pver/))
+      ifld = pbuf_get_index('Q_STAR')
+      call pbuf_get_field(pbuf, ifld, q_star, (/1,1/),(/pcols,pver/))
+      do k=1,pver
+         q_star(:ncol,k) = state%q(:ncol,k,1)
+         t_star(:ncol,k) = state%t(:ncol,k)
+      enddo
+    endif
 
     call clybry_fam_set( ncol, lchnk, map2chm, state%q, pbuf )
 
@@ -2253,7 +2274,6 @@ if (l_bc_energy_fix) then
 
     call t_startf('energy_fixer')
 
-    !*** BAB's FV heating kludge *** save the initial temperature
     tini(:ncol,:pver) = state%t(:ncol,:pver)
     if (dycore_is('LR') .or. dycore_is('SE'))  then
        call check_energy_fix(state, ptend, nstep, flx_heat)

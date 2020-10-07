@@ -112,6 +112,7 @@ OPTIONS
 
      -[no]age_of_air_trcs Switch on [off] age of air tracers. Default: on for waccm_phys, otherwise off
      -aquaplanet        Switch on aqua-planet mode w/ SST controlled by data ocean component in CIME
+     -rce               Use homogenous conditions for radiative-convective equilibrium (RCE), normally used with aquaplanet 
      -carma <name>      Build CAM with specified CARMA microphysics model
                         [ none | bc_strat | cirrus | cirrus_dust | dust | meteor_impact | 
                           meteor_smoke | mixed_sulfate | pmc | pmc_sulfate | sea_salt | sulfate | tholin |
@@ -167,9 +168,9 @@ OPTIONS
 
   Options relevent to SCAM mode:
 
-     -camiop            Configure CAM to generate an IOP file that can be used to drive SCAM.
-                        This switch only works with the Eulerian dycore.
-     -scam              Compiles model in single column mode.  Only works with Eulerian dycore.
+     -e3smreplay        Configure E3SM to generate an IOP file that can be used to drive the SCM.
+                        This switch only works with the Spectral Element dycore.		
+     -scam              Compiles model in single column mode.  Only works with SE dycore.
 
   CAM parallelization:
 
@@ -309,7 +310,8 @@ GetOptions(
     "cam_bld=s"                 => \$opts{'cam_bld'},
     "cam_exe=s"                 => \$opts{'cam_exe'},
     "cam_exedir=s"              => \$opts{'cam_exedir'},
-    "camiop"                    => \$opts{'camiop'},
+    "caseroot=s"                => \$opts{'caseroot'},
+    "e3smreplay"                => \$opts{'e3smreplay'},
     "cc=s"                      => \$opts{'cc'},
     "ccsm_seq"                  => \$opts{'ccsm_seq'},
     "cflags=s"                  => \$opts{'cflags'},
@@ -371,6 +373,7 @@ GetOptions(
     "prog_species=s"            => \$opts{'prog_species'},
     "psubcols=s"                => \$opts{'psubcols'},
     "rad=s"                     => \$opts{'rad'},
+    "rce"                       => \$opts{'rce'},
     "res=s"                     => \$opts{'res'},
     "rof=s"                     => \$opts{'rof'},
     "scam"                      => \$opts{'scam'},
@@ -611,6 +614,10 @@ EOF
     if ($print>=2) { print "CAM executable will be created in: $cam_exedir$eol"; }
 }
 
+if (defined $opts{'caseroot'}) {
+    $cfg_ref->set('caseroot', $opts{'caseroot'})
+}
+
 #-----------------------------------------------------------------------------------------------
 # User source directories.
 my $usr_src = '';
@@ -755,6 +762,21 @@ if (defined $opts{'dyn'}) {
       print "+------------------------------------------------+\n";
     } else {
       $cfg_ref->set('dyn', lc($opts{'dyn'}) );
+    }
+    if (defined $opts{'dyn_target'}) {                                                        
+        #$cfg_ref->set('dyn_target', $opts{'dyn_target'});
+        if (substr($opts{'dyn_target'},0,5) eq 'preqx') {
+            # preqx, preqx_acc, preqx_kokkos use 'preqx' namelist defaults
+            $cfg_ref->set('dyn_target', 'preqx');
+        }
+        if (substr($opts{'dyn_target'},0,5) eq 'theta') {
+            # theta_* uses 'theta-l' namelist defaults
+            $cfg_ref->set('dyn_target', 'theta-l');
+        }
+        print  "SE dycore target options:\n";
+        print  "  build target:    $opts{'dyn_target'}\n";
+        my $temp = $cfg_ref->get('dyn_target');
+        print  "  namelist target: $temp\n";
     }
 }
 
@@ -1103,6 +1125,23 @@ my $aqua_mode = $aquaplanet ? "ON" : "OFF";
 if ($print>=2) { print "Aqua-planet mode: $aqua_mode$eol"; }
 
 #-----------------------------------------------------------------------------------------------
+# RCE mode (radiative-convective equilibrium)
+# This provides a flag to indicate that we are running an RCE case. This is normally used 
+# along with the aquaplanet flag, but could be used with an idealized land surface. 
+# This flag is mainly used to set the initial condition files that matches the grid.
+# this flag is not sufficient to run an RCE case, as many namelist variables need to be set
+# by the use case file to use idleaized ozone, disable rotation, and homogenize 
+# radiation, albedo, SST, and solar zenith angle.
+my $rce = 0;
+# user override
+if (defined $opts{'rce'}) {
+    $rce = 1;
+}
+$cfg_ref->set('rce', $rce);
+my $rce_mode = $rce ? "ON" : "OFF";
+if ($print>=2) { print "Radiative-Convctive Equilibrium mode: $rce_mode$eol"; }
+
+#-----------------------------------------------------------------------------------------------
 # Ocean model
 my $ocn_pkg = 'docn';
 # If the physics package is adiabatic, or ideal, change the default
@@ -1211,10 +1250,10 @@ if (defined $opts{'scam'}) {
 }
 my $scam = $cfg_ref->get('scam') ? "ON" : "OFF";
 
-# Currently only Eulerian and Spectral Element dycores support SCM
-if ($scam eq 'ON' and $dyn_pkg ne 'eul' and $dyn_pkg ne 'se') {
+# Currently only Spectral Element dycore supports SCM
+if ($scam eq 'ON' and $dyn_pkg ne 'se') {
     die <<"EOF";
-**  ERROR: SCAM mode only works with Eulerian dycore or Spectral Element dycore.
+**  ERROR: The Single Column Model only works with Spectral Element dycore.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
@@ -1223,20 +1262,21 @@ if ($print>=2) { print "CAM single column mode (SCAM): $scam$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Generate IOP
-if (defined $opts{'camiop'}) {
-    $cfg_ref->set('camiop', 1);
+if (defined $opts{'e3smreplay'}) {
+    $cfg_ref->set('e3smreplay', 1);
 }
-my $camiop = $cfg_ref->get('camiop') ? "ON" : "OFF";
 
-# The only dycore supported in CAMIOP mode is Spectral Element
-if ($camiop eq 'ON' and $dyn_pkg ne 'se') {
+my $e3smreplay = $cfg_ref->get('e3smreplay') ? "ON" : "OFF";
+
+# The only dycore supported in REPLAY mode is Spectral Element
+if ($e3smreplay eq 'ON'  and $dyn_pkg ne 'se') {
     die <<"EOF";
-**  ERROR: CAMIOP mode only works with Spectral Element dycore.
+**  ERROR: REPLAY mode only works with Spectral Element dycore.
 **         Requested dycore is: $dyn_pkg
 EOF
 }
 
-if ($print>=2) { print "Produce IOP file for SCAM: $camiop$eol"; }
+if ($print>=2) { print "Produce IOP file for SCAM: $e3smreplay$eol"; }
 
 #-----------------------------------------------------------------------------------------------
 # Horizontal grid parameters
@@ -1789,7 +1829,7 @@ $cfg_cppdefs .= " -DMAXPATCH_PFT=numpft+1 -DLSMLAT=1 -DLSMLON=1";
 if ($pergro eq "ON") { $cfg_cppdefs .= " -DPERGRO"; }
 
 # Configure CAM to produce IOP files for SCAM
-if ($camiop eq 'ON') { $cfg_cppdefs .= " -DBFB_CAM_SCAM_IOP"; }
+if ($e3smreplay eq 'ON') { $cfg_cppdefs .= " -DE3SM_SCM_REPLAY"; }
 
 # Resolution parameters for rectangular lat/lon grids
 my $nlon = $cfg_ref->get('nlon');
@@ -1812,6 +1852,9 @@ if ($dyn_pkg eq 'se') {
     if ($smp eq 'ON') {
       $cfg_cppdefs .= " -DHORIZ_OPENMP"
     }
+    # use FV physics grid if npg>0
+    my $npg = $cfg_ref->get('npg');
+    $cfg_cppdefs .= " -DNPG=$npg "
 }
 
 # Resolution parameters for vertical grid, number of constituents, chunk size
@@ -1839,7 +1882,7 @@ if ($offline_dyn) { $cfg_cppdefs .= ' -DOFFLINE_DYN'; }
 # Spectral Element dycore
 if($dyn_pkg eq 'se'){
     if ($spmd eq 'ON'){	$cfg_cppdefs .=" -D_MPI"; }
-    $cfg_cppdefs .= " -DCAM  -D_WK_GRAD -D_PRIM ";
+    $cfg_cppdefs .= " -DCAM -D_PRIM ";
 }
 
 # -DSPMD only added for CESM build.  The CAM Makefile has a separate SPMD macro.
@@ -2212,6 +2255,7 @@ if ($print>=2) { print "CPP definitions set by configure: \'$cfg_cppdefs\'$eol";
 
 #-----------------------------------------------------------------------------------------------
 # COSP library.
+# JGF: We can get rid of this stuff once the legacy build system is removed
 if ($cosp) {
 
     # Set the directory used to build cosp.  Add location and library name
@@ -2237,7 +2281,7 @@ if ($cosp) {
     }
 
     # Create the COSP Makefile from a template and copy it into the cosp bld directory
-    write_cosp_makefile("$cfgdir/../src/physics/cosp/Makefile.cospinline.in", "$cosp_libdir/Makefile");
+    write_cosp_makefile("$cfgdir/../src/physics/cosp2/Makefile.cospinline.in", "$cosp_libdir/Makefile");
     if ($print) { print "creating $cosp_libdir/Makefile\n"; }
 }
 
@@ -2483,6 +2527,7 @@ sub write_filepath
     my $lnd           = $cfg_ref->get('lnd');
     my $ice           = $cfg_ref->get('ice');
     my $rof           = $cfg_ref->get('rof');
+    my $caseroot      = $cfg_ref->get('caseroot');
 
     # Root directory
     my $camsrcdir = "$cam_root/components";
@@ -2504,8 +2549,7 @@ sub write_filepath
 
     # CESM has a standard source mods location.
     if ($ccsm_seq) {
-	my $CASEROOT = "$ENV{'CASEROOT'}";
-	print $fh "$CASEROOT/SourceMods/src.cam\n";
+	print $fh "$caseroot/SourceMods/src.cam\n";
     }
 
     # offline unit driver (defaults to stub)
@@ -2827,13 +2871,14 @@ sub write_cosp_makefile
 
 
 CAM_BLD    := $cam_bld
-COSP_PATH  := $cam_root/components/cam/src/physics/cosp
-ISCCP_PATH := $cam_root/components/cam/src/physics/icarus-scops
-RS_PATH    := $cam_root/components/cam/src/physics/cosp/quickbeam
-CS_PATH    := $cam_root/components/cam/src/physics/cosp/actsim
-LLNL_PATH  := $cam_root/components/cam/src/physics/cosp/llnl
-MISR_PATH  := $cam_root/components/cam/src/physics/cosp/MISR_simulator
-MODIS_PATH := $cam_root/components/cam/src/physics/cosp/MODIS_simulator
+COSP_PATH  := $cam_root/components/cam/src/physics/cosp2
+ISCCP_PATH := $cam_root/components/cam/src/physics/cosp2/src/simulator/icarus
+RS_PATH    := $cam_root/components/cam/src/physics/cosp2/src/simulator/quickbeam
+CS_PATH    := $cam_root/components/cam/src/physics/cosp2/src/simulator/actsim
+RT_PATH    := $cam_root/components/cam/src/physics/cosp2/src/simulator/rttov
+MISR_PATH  := $cam_root/components/cam/src/physics/cosp2/src/simulator/MISR_simulator
+MODIS_PATH := $cam_root/components/cam/src/physics/cosp2/src/simulator/MODIS_simulator
+PARASOL_PATH  := $cam_root/components/cam/src/physics/cosp2/src/simulator/parasol
 
 EOF
 
@@ -2935,10 +2980,19 @@ sub set_horiz_grid
     elsif ( $dyn_pkg eq 'se' ) {
 	$cfg_ref->set('csne', $a{'csne'});
 	$cfg_ref->set('csnp', $a{'csnp'});
+        $cfg_ref->set('npg',  $a{'npg'});
 	# needed for cice configure script.  sets nlat=1 and nlon=ncol
 	$cfg_ref->set('nlat', 1);
 	$cfg_ref->set('nlon', $a{'ncol'});
+        # To allow more flexibility when matching grid attributes in the namelist
+        # defaults file, split the dynamics (GLL) and physics grid specifiers in 
+        # the hgrid argument to configure, and just store the dynamics (GLL) part 
+        # in the hgrid parameter of the config_cache file.  The physics grid 
+        # specifier is stored separately in the npg parameter.
+        $hgrid =~ s/\.pg\d//;   # strip the '.pgN' extension
+        $cfg_ref->set('hgrid', $hgrid);
     }
+
 
     # Override resolution settings to configure for SCAM mode.  The override is needed
     # because in SCAM mode the -hgrid option is used to specify the resolution of default

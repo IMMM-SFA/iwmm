@@ -40,6 +40,16 @@ IF (${HOMME_BUILD_EXECS})
   ENDIF()
 ENDIF()
 
+#option to build without pio and any netcdf in homme (no mesh runs either),
+#by default is not on.
+IF(NOT DEFINED BUILD_HOMME_WITHOUT_PIOLIBRARY)
+  SET(BUILD_HOMME_WITHOUT_PIOLIBRARY FALSE CACHE BOOL "")
+ENDIF()
+IF(BUILD_HOMME_WITHOUT_PIOLIBRARY)
+  ADD_DEFINITIONS(-DHOMME_WITHOUT_PIOLIBRARY)
+  MESSAGE(STATUS "This configuration builds without PIO library and NetCDF calls")
+ENDIF()
+
 # Add the cmake/CMakeLists.txt file
 SET (CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
 
@@ -89,9 +99,10 @@ OPTION(BUILD_HOMME_PREQX "Primitive equations FEM" ON)
 OPTION(BUILD_HOMME_THETA "SB81 NH model with theta and Exner pressure" ON)
 OPTION(BUILD_HOMME_PREQX_ACC "Primitive equations FEM with OpenACC" ON)
 OPTION(BUILD_HOMME_PREQX_KOKKOS "Primitive equations FEM with Kokkos" OFF)
-OPTION(BUILD_HOMME_PESE  "Primitive equations with vertical spectral elements" OFF)
+OPTION(ENABLE_PREQX_KOKKOS_BFB_TESTS "Turn on unit tests for XX and bfb for F vs XX" OFF)
 OPTION(BUILD_HOMME_SWIM  "Shallow water equations implicit" OFF)
 OPTION(BUILD_HOMME_PRIM  "Primitive equations implicit" OFF)
+OPTION(BUILD_HOMME_TOOL  "Offline tool" ON)
 OPTION(HOMME_ENABLE_COMPOSE "Build COMPOSE semi-Lagrangian tracer transport code" ON)
 
 #by default we don't need cxx
@@ -112,7 +123,7 @@ IF (${BUILD_HOMME_PREQX_KOKKOS})
   SET (HOMME_USE_KOKKOS TRUE)
   SET (HOMME_USE_CXX TRUE)
   IF (NOT ${BUILD_HOMME_PREQX} AND ${HOMME_BUILD_EXECS})
-    # If we build theta kokkos, we also build theta, so we can compare
+    # If we build preqx kokkos, we also build preqx, so we can compare
     MESSAGE (STATUS "Setting manually disabled BUILD_HOMME_PREQX to ON, since BUILD_HOMME_PREQX_KOKKOS is ON.")
 
     # We need to compare against F90 implementation, so turn this on
@@ -122,6 +133,10 @@ ENDIF ()
 IF (${HOMME_ENABLE_COMPOSE})
   SET (HOMME_USE_CXX TRUE)
   SET (HOMME_USE_KOKKOS TRUE)
+ENDIF ()
+#if not kokkos, then no bfb tests
+IF (NOT ${BUILD_HOMME_PREQX_KOKKOS})
+  SET (ENABLE_PREQX_KOKKOS_BFB_TESTS FALSE)
 ENDIF ()
 
 IF (${HOMME_USE_CXX})
@@ -170,7 +185,7 @@ ENDIF()
 ##############################################################################
 # Compiler options set in cmake/SetCompiler.cmake
 ##############################################################################
-INCLUDE(SetCompilerFlags)
+INCLUDE(${HOMME_SOURCE_DIR}/cmake/SetCompilerFlags.cmake)
 
 
 OPTION(HOMME_USE_MKL "Whether to use Intel's MKL instead of blas/lapack" FALSE)
@@ -189,9 +204,6 @@ ELSE()
     FIND_PACKAGE(LAPACK REQUIRED)
   ELSE()
     SET(HOMME_FIND_BLASLAPACK FALSE)
-    # Build the blas and lapack provided with homme
-    ADD_SUBDIRECTORY(libs/blas)
-    ADD_SUBDIRECTORY(libs/lapack)
   ENDIF()
 ENDIF()
 
@@ -287,6 +299,8 @@ SET (CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/utils/cime/src/externals/pio
 # necessyar PIO variables:
 #
 ADD_DEFINITIONS(-D_NO_MPI_RSEND)
+
+if(NOT BUILD_HOMME_WITHOUT_PIOLIBRARY)
 SET(NetCDF_PATH ${NETCDF_DIR})
 SET(PnetCDF_PATH ${PNETCDF_DIR})
 message("** Configuring PIO with:")
@@ -299,7 +313,7 @@ message("-- PnetCDF_C_PATH = ${PnetCDF_C_PATH}")
 # pio needs cime/externals/genf90/genf90.pl
 SET(GENF90_PATH ${CMAKE_CURRENT_SOURCE_DIR}/utils/cime/src/externals/genf90)
 ADD_SUBDIRECTORY(utils/cime/src/externals/pio1)
-
+ENDIF()
 
 
 # CPRNC locations
@@ -315,29 +329,35 @@ IF (CPRNC_DIR)
   ENDIF ()
 ENDIF ()
 
-IF (NOT (CPRNC_DIR))
-  # compile CPRNC from CIME source code. Requires CIME support for machine
-  message("-- CPRNC_BINARY = will compile from source")
-  message("-- If cmake aborts, set CPRNC_DIR to location of external cprnc executable")
+#compile cprnc only if pio is built
+if(NOT BUILD_HOMME_WITHOUT_PIOLIBRARY)
+  IF (NOT (CPRNC_DIR))
+    # compile CPRNC from CIME source code. Requires CIME support for machine
+    message("-- CPRNC_BINARY = will compile from source")
+    message("-- If cmake aborts, set CPRNC_DIR to location of external cprnc executable")
 
-  # cprnc's cmake wont search for netcdf, so we have to find it first:
-  FIND_PACKAGE(NetCDF "4.0" COMPONENTS C Fortran)
-  set(NETCDF_LIBRARIES ${NetCDF_Fortran_LIBRARIES})
-  set(NETCDF_INCLUDE_DIR ${NetCDF_Fortran_INCLUDE_DIRS})
+    # cprnc's cmake wont search for netcdf, so we have to find it first:
+    FIND_PACKAGE(NetCDF "4.0" COMPONENTS C Fortran)
+    set(NETCDF_LIBRARIES ${NetCDF_Fortran_LIBRARIES})
+    set(NETCDF_INCLUDE_DIR ${NetCDF_Fortran_INCLUDE_DIRS})
 
-  # needed for CPRNC build system
-  file(WRITE "${CMAKE_CURRENT_SOURCE_DIR}/utils/cime/tools/cprnc/Macros.cmake" "#dummy Macros file for non-CIME machines")
+    # needed for CPRNC build system
+    set (cprnc_dummy_file "${CMAKE_CURRENT_SOURCE_DIR}/utils/cime/tools/cprnc/Macros.cmake")
+    if (NOT EXISTS "${cprnc_dummy_file}")
+      file(WRITE "${cprnc_dummy_file}" "#dummy Macros file for non-CIME machines")
+    endif ()
 
-  SET (CPRNC_INSTALL_DIR ${HOMME_BINARY_DIR}/utils/cime/tools/cprnc)
-  SET (CPRNC_BINARY ${HOMME_BINARY_DIR}/utils/cime/tools/cprnc/cprnc)
-  ADD_SUBDIRECTORY(utils/cime/tools/cprnc)
+    SET (CPRNC_INSTALL_DIR ${HOMME_BINARY_DIR}/utils/cime/tools/cprnc)
+    SET (CPRNC_BINARY ${HOMME_BINARY_DIR}/utils/cime/tools/cprnc/cprnc)
+    ADD_SUBDIRECTORY(utils/cime/tools/cprnc)
+  ENDIF ()
 ENDIF ()
 
 IF (${HOMME_USE_KOKKOS})
   INCLUDE(Kokkos)
 ENDIF ()
 
-IF (${HOMME_USE_KOKKOS} AND ${HOMME_BUILD_EXECS})
+IF (${HOMME_USE_KOKKOS} AND ${HOMME_BUILD_EXECS} AND ${ENABLE_PREQX_KOKKOS_BFB_TESTS})
   # Add unit tests for C++ code
   ADD_SUBDIRECTORY(test/unit_tests)
 ENDIF ()
@@ -362,7 +382,6 @@ IF(${BUILD_HOMME_PREQX})
 ENDIF()
 
 IF(${BUILD_HOMME_THETA})
-  ADD_SUBDIRECTORY(src/theta)
   ADD_SUBDIRECTORY(src/theta-l)
 ENDIF()
 
@@ -374,16 +393,16 @@ IF(${BUILD_HOMME_PREQX_KOKKOS})
   ADD_SUBDIRECTORY(src/preqx_kokkos)
 ENDIF()
 
-IF(${BUILD_HOMME_PESE})
-  ADD_SUBDIRECTORY(src/pese)
-ENDIF()
-
 IF(${BUILD_HOMME_SWIM})
   ADD_SUBDIRECTORY(src/swim)
 ENDIF()
 
 IF(${BUILD_HOMME_PRIM})
   ADD_SUBDIRECTORY(src/prim)
+ENDIF()
+
+IF(${BUILD_HOMME_TOOL})
+  ADD_SUBDIRECTORY(src/tool)
 ENDIF()
 
 # Tests and execs only if this is a standalone build
@@ -397,6 +416,14 @@ ADD_CUSTOM_TARGET(clean-all
    COMMAND ${CMAKE_BUILD_TOOL} clean
    COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_SOURCE_DIR}/cmake/clean-cmake-files.cmake"
 )
+
+IF (NOT "${PROJECT_NAME}" STREQUAL "HOMME")
+  # Homme is used as a subproject. We need to make the compiler options available to the outside
+  SET (HOMME_C_FLAGS ${CMAKE_C_FLAGS} PARENT_SCOPE)
+  SET (HOMME_CXX_FLAGS ${CMAKE_CXX_FLAGS} PARENT_SCOPE)
+  SET (HOMME_Fortran_FLAGS ${CMAKE_Fortran_FLAGS} PARENT_SCOPE)
+  SET (HOMME_LINKER_FLAGS ${CMAKE_EXE_LINKER_FLAGS} PARENT_SCOPE)
+ENDIF ()
 
 IF (${HOMME_USE_KOKKOS})
   # Put this last so that tribits.cmake's 'check' target doesn't conflict with

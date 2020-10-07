@@ -2026,6 +2026,14 @@ contains
     attname  = 'Flrl_rofi'
     call metadata_set(attname, longname, stdname, units)
 
+    if (trim(cime_model) == 'e3sm') then
+       call seq_flds_add(l2x_fluxes,'Flrl_demand')
+       call seq_flds_add(x2r_fluxes,'Flrl_demand')
+       longname = 'Water flux total demand in land from rof'
+       stdname  = 'water_flux_total_demand_from_runoff'
+       units    = 'kg m-2 s-1'
+       attname  = 'Flrl_demand'
+       call metadata_set(attname, longname, stdname, units)
     call seq_flds_add(l2x_fluxes,'Flrl_Tqsur')
     call seq_flds_add(x2r_fluxes,'Flrl_Tqsur')
     longname = 'Temperature of surface runoff'
@@ -2041,6 +2049,7 @@ contains
     units    = 'Kelvin'
     attname  = 'Flrl_Tqsub'
     call metadata_set(attname, longname, stdname, units)
+    endif
 
     call seq_flds_add(l2x_fluxes,'Flrl_QTHERM')
     call seq_flds_add(x2r_fluxes,'Flrl_QTHERM')
@@ -2138,6 +2147,25 @@ contains
     attname  = 'Flrr_volrmch'
     call metadata_set(attname, longname, stdname, units)
 
+    if (trim(cime_model) == 'e3sm') then
+       call seq_flds_add(r2x_fluxes,'Flrr_supply')
+       call seq_flds_add(x2l_fluxes,'Flrr_supply')
+       longname = 'River model supply for land use'
+       stdname  = 'rtm_supply'
+       units    = 'kg m-2 s-1'
+       attname  = 'Flrr_supply'
+       call metadata_set(attname, longname, stdname, units)
+    endif
+    
+	if (trim(cime_model) == 'e3sm') then   
+       call seq_flds_add(r2x_fluxes,'Flrr_deficit')
+       call seq_flds_add(x2l_fluxes,'Flrr_deficit')
+       longname = 'River model supply deficit'
+       stdname  = 'rtm_deficit'
+       units    = 'kg m-2 s-1'
+       attname  = 'Flrr_deficit'
+       call metadata_set(attname, longname, stdname, units)
+    endif
     !-----------------------------
     ! wav->ocn and ocn->wav
     !-----------------------------

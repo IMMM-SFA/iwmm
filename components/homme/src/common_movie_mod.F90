@@ -4,18 +4,30 @@
 
 module common_movie_mod
   use control_mod, only : test_case, max_string_len
+
+#ifndef HOMME_WITHOUT_PIOLIBRARY
   use common_io_mod, only : output_start_time, output_end_time, &
        max_output_streams, output_frequency, nf_double, nf_int, &
        max_output_variables
+#else
+  use common_io_mod, only : output_start_time, output_end_time, &
+       max_output_streams, output_frequency,                    &
+       max_output_variables
+#endif
   implicit none
   private
+
+#ifndef HOMME_WITHOUT_PIOLIBRARY
   public ::  varrequired, vartype, varnames, varcnt, vardims, &
-	dimnames, maxdims, setvarnames, nextoutputstep
+             dimnames, maxdims
+#endif
 
+  public :: nextoutputstep, setvarnames
 
+#ifndef HOMME_WITHOUT_PIOLIBRARY
 
 #ifdef _PRIM
-  integer, parameter :: varcnt =  33
+  integer, parameter :: varcnt =  37
 
   integer, parameter :: maxdims =  6
 
@@ -34,6 +46,10 @@ module common_movie_mod
                                                  'u          ', &
                                                  'v          ', &
                                                  'w          ', &
+                                                 'w_i        ', &
+                                                 'mu_i       ', &
+                                                 'geo_i      ', &
+                                                 'pnh        ', &
                                                  'ke         ', &
                                                  'hypervis   ', &
                                                  'Q          ', &
@@ -69,6 +85,10 @@ module common_movie_mod
                                                                1,2,5,0,0,0, & ! u
                                                                1,2,5,0,0,0, & ! v
                                                                1,2,5,0,0,0, & ! w
+                                                               1,3,5,0,0,0, & ! w_i
+                                                               1,3,5,0,0,0, & ! mu_i
+                                                               1,3,5,0,0,0, & ! geo_i
+                                                               1,2,5,0,0,0, & ! pnh
                                                                1,2,5,0,0,0, & ! ke
                                                                1,5,0,0,0,0, & ! hypervis
                                                                1,2,5,0,0,0, & ! Q
@@ -91,13 +111,15 @@ module common_movie_mod
 
   integer, parameter :: vartype(varcnt)=(/nf_double, nf_double,nf_double, nf_double,nf_double,nf_double,& !ps:cv_lon
                                           nf_int,    nf_double,nf_double,nf_double,nf_double,& !corners:T
-                               nf_double, nf_double, nf_double,nf_double,nf_double,nf_double,& !Th:hv
+                                          nf_double, nf_double,nf_double,nf_double,nf_double,nf_double,& !Th:w
+                                          nf_double, nf_double, nf_double,nf_double,& 
                                           nf_double, nf_double,nf_double,nf_double,nf_double,& !Q:geo
                                           nf_double, nf_double,nf_double,nf_double,nf_double,nf_double,& !omega:ilev
                                           nf_double, nf_double,nf_double,nf_double,nf_double/)
   logical, parameter :: varrequired(varcnt)=(/.false.,.false.,.false.,.false.,.false.,.false.,&
                                               .false.,.false.,.false.,.false.,.false.,&
-                                      .false.,.false.,.false.,.false.,.false.,.false.,&
+                                              .false.,.false.,.false.,.false.,.false.,.false.,&
+                                              .false.,.false.,.false.,.false.,&
                                               .false.,.false.,.false.,.false.,.false.,&
                                               .false.,.false.,.true. ,.true. ,&
                                               .true. ,.true. ,&   ! lev,ilev
@@ -137,6 +159,8 @@ module common_movie_mod
 
   ! end of analysis_nl namelist variables
 
+#endif
+
 contains
 
 !
@@ -144,6 +168,7 @@ contains
 !
   subroutine setvarnames(nlvarnames)
     character*(*), intent(out) :: nlvarnames(:)
+#ifndef HOMME_WITHOUT_PIOLIBRARY
     integer :: lvarcnt
     if (varcnt > max_output_variables) then
        print *,__FILE__,__LINE__,"varcnt > max_output_varnames"
@@ -152,7 +177,9 @@ contains
     lvarcnt=varcnt
     nlvarnames(1:varcnt) = varnames
     !print *,__FILE__,__LINE__,varcnt, size(nlvarnames),varnames
+#endif
   end subroutine setvarnames
+
 !
 ! This function returns the next step number in which an output (either restart or movie) 
 ! needs to be written.
@@ -160,6 +187,7 @@ contains
   integer function nextoutputstep(tl)
     use time_mod, only : Timelevel_t, nendstep  
     use control_mod, only : restartfreq
+
     type(timelevel_t), intent(in) :: tl
     integer :: ios, nstep(max_output_streams)
 
@@ -180,4 +208,5 @@ contains
        nextoutputstep=min(nextoutputstep,tl%nstep+restartfreq-MODULO(tl%nstep,restartfreq))    
     end if
  end function nextoutputstep
+
 end module common_movie_mod

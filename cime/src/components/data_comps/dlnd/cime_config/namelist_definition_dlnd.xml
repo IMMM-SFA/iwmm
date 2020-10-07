@@ -81,7 +81,7 @@
     <group>streams_file</group>
     <desc>Stream domain file directory.</desc>
     <values>
-      <value stream="heat.nldas">$DLND_CPLHIST_DIR</value>
+      <value stream="heat.nldas">/pic/projects/im3/iwmm/lnd/dlnd7/NLDAS/</value>
       <value stream="heat.tepp">$DLND_CPLHIST_DIR</value>
       <value stream="clm.nldas">$DLND_CPLHIST_DIR</value>
     </values>
@@ -93,7 +93,7 @@
     <group>streams_file</group>
     <desc>Stream domain file path(s).</desc>
     <values>
-      <value stream="heat.nldas">Runoff/Livneh_NLDAS_RUNOFF_1950_2011.nc</value>
+      <value stream="heat.nldas">Livneh_NLDAS_1915_2011.nc</value>
       <value stream="heat.tepp">TEPP/EIA1-4.reshaped.nc</value>
       <value stream="clm.nldas">mosart_nldas_hist_1975.clm2.h1.1975-01-01-00000.nc</value>
     </values>

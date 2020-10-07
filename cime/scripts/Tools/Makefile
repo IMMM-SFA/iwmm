@@ -131,29 +131,6 @@ ifeq (,$(SHAREDPATH))
   INSTALL_SHAREDPATH = $(EXEROOT)/$(SHAREDPATH)
 endif
 
-# Decide whether to use a C++ or Fortran linker, based on whether we
-# are using any C++ code and the compiler-dependent CXX_LINKER variable
-ifeq ($(USE_CXX), TRUE)
-  # The following is essentially an "if... elseif... else", but gmake
-  # 3.80 and earlier doesn't support elseif
-  ifeq ($(CXX_LINKER), CXX)
-    LD := $(MPICXX)
-  endif
-  ifeq ($(CXX_LINKER), FORTRAN)
-    LD := $(MPIFC)
-  endif
-endif
-# Use this if LD has not already been defined.
-ifeq ($(origin LD), default)
-  ifeq ($(strip $(MPILIB)),mpi-serial)
-    LD := $(SFC)
-  else
-    LD := $(MPIFC)
-  endif
-endif
-
-
-
 ifeq ($(USE_CXX), TRUE)
   ifeq ($(SUPPORTS_CXX), FALSE)
     $(error Fatal attempt to include C++ code on a compiler/machine combo that has not been set up to support C++)
@@ -343,14 +320,65 @@ endif
 # For compiling and linking with external ESMF.
 # If linking to external ESMF library then include esmf.mk
 # ESMF_F90COMPILEPATHS
-# ESMF_F90LINKPATHS
+# ESMF_F90ESMFLINKPATHS
 # ESMF_F90LINKRPATHS
 # ESMF_F90ESMFLINKLIBS
 ifeq ($(USE_ESMF_LIB), TRUE)
   -include $(CIME_ESMFMKFILE)
   CPPDEFS += -DESMF_VERSION_MAJOR=$(ESMF_VERSION_MAJOR) -DESMF_VERSION_MINOR=$(ESMF_VERSION_MINOR)
   FFLAGS += $(ESMF_F90COMPILEPATHS)
-  SLIBS  += $(ESMF_F90LINKPATHS) $(ESMF_F90LINKRPATHS) $(ESMF_F90ESMFLINKLIBS)
+  SLIBS  += $(ESMF_F90ESMFLINKPATHS) $(ESMF_F90ESMFLINKRPATHS) $(ESMF_F90ESMFLINKLIBS)
+endif
+
+# Stub libraries do not need to be built for nuopc driver
+# so it will override these settings on the command line
+ATM_PRESENT ?= TRUE
+ICE_PRESENT ?= TRUE
+LND_PRESENT ?= TRUE
+OCN_PRESENT ?= TRUE
+ROF_PRESENT ?= TRUE
+GLC_PRESENT ?= TRUE
+WAV_PRESENT ?= TRUE
+ESP_PRESENT ?= TRUE
+IAC_PRESENT ?= TRUE
+ifeq ($(ULIBDEP),$(null))
+  ifneq ($(LIBROOT),$(null))
+    ifeq ($(ATM_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libatm.a
+      CPPDEFS += -DATM_PRESENT
+    endif
+    ifeq ($(ICE_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libice.a
+      CPPDEFS += -DICE_PRESENT
+    endif
+    ifeq ($(LND_PRESENT),TRUE)
+      ULIBDEP += $(LNDLIBDIR)/$(LNDLIB)
+      CPPDEFS += -DLND_PRESENT
+    endif
+    ifeq ($(OCN_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libocn.a
+      CPPDEFS += -DOCN_PRESENT
+    endif
+    ifeq ($(ROF_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/librof.a
+      CPPDEFS += -DROF_PRESENT
+    endif
+    ifeq ($(GLC_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libglc.a
+      CPPDEFS += -DGLC_PRESENT
+    endif
+    ifeq ($(WAV_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libwav.a
+      CPPDEFS += -DWAV_PRESENT
+    endif
+    ifeq ($(ESP_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libesp.a
+      CPPDEFS += -DESP_PRESENT
+    endif
+    ifeq ($(IAC_PRESENT),TRUE)
+      ULIBDEP += $(LIBROOT)/libiac.a
+    endif
+  endif
 endif
 
 ifdef CPRE
@@ -406,6 +434,20 @@ else
     LIB_MPI := $(MPI_PATH)/lib
   endif
 endif
+LD := $(MPIFC)
+# Decide whether to use a C++ or Fortran linker, based on whether we
+# are using any C++ code and the compiler-dependent CXX_LINKER variable
+ifeq ($(USE_CXX), TRUE)
+  # The following is essentially an "if... elseif... else", but gmake
+  # 3.80 and earlier doesn't support elseif
+  ifeq ($(CXX_LINKER), CXX)
+    LD := $(MPICXX)
+  endif
+  ifeq ($(CXX_LINKER), FORTRAN)
+    LD := $(MPIFC)
+  endif
+endif
+
 CSM_SHR_INCLUDE:=$(INSTALL_SHAREDPATH)/$(COMP_INTERFACE)/$(ESMFDIR)/$(NINST_VALUE)/include
 # This is needed so that dependancies are found
 VPATH+=$(CSM_SHR_INCLUDE)
@@ -444,6 +486,29 @@ endif
 
 ifeq ($(MODEL),driver)
   INCLDIR += -I$(EXEROOT)/atm/obj -I$(EXEROOT)/ice/obj -I$(EXEROOT)/ocn/obj -I$(EXEROOT)/glc/obj -I$(EXEROOT)/rof/obj -I$(EXEROOT)/wav/obj -I$(EXEROOT)/esp/obj -I$(EXEROOT)/iac/obj
+# nagfor and gcc have incompatible LDFLAGS.
+# nagfor requires the weird "-Wl,-Wl,," syntax.
+# If done in config_compilers.xml, we break MCT.
+  ifeq ($(strip $(COMPILER)),nag)
+     ifeq ($(NETCDF_SEPARATE), false)
+       SLIBS += -Wl,-Wl,,-rpath=$(LIB_NETCDF)
+     else ifeq ($(NETCDF_SEPARATE), true)
+       SLIBS += -Wl,-Wl,,-rpath=$(LIB_NETCDF_C)
+       SLIBS += -Wl,-Wl,,-rpath=$(LIB_NETCDF_FORTRAN)
+     endif
+  endif
+else
+  ifeq ($(strip $(COMPILER)),nag)
+    ifeq ($(DEBUG), TRUE)
+      ifneq (,$(filter $(strip $(MACH)),hobart izumi))
+       # GCC needs to be able to link to
+       # nagfor runtime to get autoconf
+       # tests to work.
+         CFLAGS += -Wl,--as-needed,--allow-shlib-undefined
+         SLIBS += -L$(COMPILER_PATH)/lib/NAG_Fortran -lf62rts
+       endif
+    endif
+  endif
 endif
 
 ifndef MCT_LIBDIR
@@ -514,7 +579,7 @@ rrtmg_lw_k_g.o: rrtmg_lw_k_g.f90
 	$(FC) -c $(FPPFLAGS) $(INCLDIR) $(INCS) $(FREEFLAGS) $(FFLAGS) $(FFLAGS_NOOPT) $<
 
 rrtmg_sw_k_g.o: rrtmg_sw_k_g.f90
-	$(FC) -c $(FPPFLAGS) $(INCLDIR) $(INCS) $(FREEFLAGS) $(FLLAGS) $(FFLAGS_NOOPT) $<
+	$(FC) -c $(FPPFLAGS) $(INCLDIR) $(INCS) $(FREEFLAGS) $(FFLAGS) $(FFLAGS_NOOPT) $<
 
 
 ifdef COSP_LIBDIR
@@ -604,20 +669,33 @@ $(SHAREDLIBROOT)/$(SHAREDPATH)/mct/mpi-serial/Makefile.conf:
 	@echo "SHAREDLIBROOT |$(SHAREDLIBROOT)| SHAREDPATH |$(SHAREDPATH)|"; \
 	$(CONFIG_SHELL) $(CIMEROOT)/src/externals/mct/mpi-serial/configure $(CONFIG_ARGS) --srcdir $(CIMEROOT)/src/externals/mct/mpi-serial
 
+ifndef IO_LIB_SRCROOT
+  ifndef PIO_SRCROOT
+    PIO_SRCROOT = $(CIMEROOT)/src/externals
+  endif
+
+  ifeq ($(PIO_VERSION),2)
+    PIO_SRC_DIR = $(PIO_SRCROOT)/pio2
+  else
+    ifneq ("$(wildcard $(PIO_SRCROOT)/pio1/pio)", "")
+      PIO_SRC_DIR = $(PIO_SRCROOT)/pio1
+    else
+      PIO_SRC_DIR = $(PIO_SRCROOT)/pio1/pio
+    endif
+  endif
+else
+  PIO_SRC_DIR = $(IO_LIB_SRCROOT)/$(IO_LIB_v$(PIO_VERSION)_SRCDIR)
+endif
+
+
 ifeq ($(PIO_VERSION),2)
 # This is a pio2 library
   PIOLIB = $(PIO_LIBDIR)/libpiof.a $(PIO_LIBDIR)/libpioc.a
   PIOLIBNAME = -lpiof -lpioc
-  PIO_SRC_DIR = $(CIMEROOT)/src/externals/pio2
 else
 # This is a pio1 library
   PIOLIB = $(PIO_LIBDIR)/libpio.a
   PIOLIBNAME = -lpio
-  ifneq ("$(wildcard $(CIMEROOT)/src/externals/pio1/pio)", "")
-    PIO_SRC_DIR = $(CIMEROOT)/src/externals/pio1
-  else
-    PIO_SRC_DIR = $(CIMEROOT)/src/externals/pio1/pio
-  endif
 endif
 #endif
 
@@ -644,7 +722,7 @@ CMAKE_OPTS += -D CMAKE_Fortran_FLAGS:STRING="$(FFLAGS) $(EXTRA_PIO_FPPDEFS) $(IN
               -D CMAKE_VERBOSE_MAKEFILE:BOOL=ON \
               -D GPTL_PATH:STRING=$(INSTALL_SHAREDPATH) \
               -D PIO_ENABLE_TESTS:BOOL=OFF \
-              -D PIO_USE_MALLOC:BOOL=OFF \
+              -D PIO_USE_MALLOC:BOOL=ON \
 	      -D USER_CMAKE_MODULE_PATH:LIST="$(CIMEROOT)/src/CMake;$(CIMEROOT)/src/externals/pio2/cmake" \
 
 # Allow for separate installations of the NetCDF C and Fortran libraries
@@ -797,21 +875,8 @@ else
     INCLUDE_DIR = $(INSTALL_SHAREDPATH)/$(COMP_INTERFACE)/$(ESMFDIR)/include
   endif
 endif
-ifeq ($(ULIBDEP),$(null))
-   ifneq ($(LIBROOT),$(null))
-     ULIBDEP += $(LIBROOT)/libatm.a
-     ULIBDEP += $(LIBROOT)/libice.a
-     ULIBDEP += $(LNDLIBDIR)/$(LNDLIB)
-     INCLDIR += -I$(LNDOBJDIR)
-     ULIBDEP += $(LIBROOT)/libocn.a
-     ULIBDEP += $(LIBROOT)/librof.a
-     ULIBDEP += $(LIBROOT)/libglc.a
-     ULIBDEP += $(LIBROOT)/libwav.a
-     ifneq ($(COMP_INTERFACE), nuopc)
-       ULIBDEP += $(LIBROOT)/libiac.a
-     endif
-     ULIBDEP += $(LIBROOT)/libesp.a
-   endif
+ifeq ($(LND_PRESENT),TRUE)
+  INCLDIR += -I$(LNDOBJDIR)
 endif
 ifeq ($(COMP_GLC), cism)
   ULIBDEP += $(CISM_LIBDIR)/libglimmercismfortran.a

@@ -191,7 +191,6 @@ module RunoffMod
      character(len=80), pointer :: out_name(:)  ! the name of the outlets  
      character(len=80) :: curOutlet    ! the name of the current outlet
    
-!#ifdef INCLUDE_INUND   
      integer :: OPT_inund            ! Options for inundation, 0=inundation off, 1=inundation on
      integer :: OPT_trueDW           ! Options for diffusion wave channel routing method:
                                      !     1 -- True diffusion wave method for channel routing;
@@ -228,7 +227,6 @@ module RunoffMod
      ! (2) Steep slope:
      !real(r8) :: e_eprof_std(12) = (/ 0.0_r8, 15.0_r8, 35.0_r8, 60.0_r8, 90.0_r8, 125.0_r8, 165.0_r8, 205.0_r8, 245.0_r8, 285.0_r8, 325.0_r8, 10000.0_r8 /)
 
-!#endif   
      ! --------------------------------- 
      ! The following parameters are for the thermp option :
      ! --------------------------------- 
@@ -283,7 +281,6 @@ module RunoffMod
      real(r8), pointer :: phi_r(:)     ! the indicator used to define numDT_r
      real(r8), pointer :: phi_t(:)     ! the indicator used to define numDT_t
    
-!#ifdef INCLUDE_INUND   
      real(r8), pointer :: rlen_dstrm(:)  ! Length of downstream channel (m).
      real(r8), pointer :: rslp_dstrm(:)  ! Bed slope of downstream channel (dimensionless).
      real(r8), pointer :: wr_bf(:)       ! Water volume in the bankfull channel (i.e., channel storage capacity) (m^3).
@@ -316,7 +313,6 @@ module RunoffMod
      real(r8), pointer :: alfa3(:,:)     ! Coefficient (1/m).
      real(r8), pointer :: p3(:,:)        ! Coefficient (m).
      real(r8), pointer :: q3(:,:)        ! Coefficient (m^2).
-!#endif
 
   end type Tspatialunit
 
@@ -398,10 +394,9 @@ module RunoffMod
      real(r8), pointer :: k4(:,:)
    
      
-     ! thermal discharge from thermo-electric power plant 
-     !! fluxes
-     real(r8), pointer :: Qp(:,:)       ! outflow from thermo-electric plant, [m3/s]
-!#ifdef INCLUDE_INUND
+    ! thermal discharge from thermo-electric power plant 
+    !! fluxes
+    real(r8), pointer :: Qp(:,:)       ! outflow from thermo-electric plant, [m3/s]
     !real(r8), pointer :: wr_ini(:)     ! Channel water volume at beginning of step (m^3).
     !real(r8), pointer :: yr_ini(:)     ! Channel water depth at beginning of step (m).
     real(r8), pointer :: wf_ini(:)      ! Floodplain water volume at beginning of step (m^3).
@@ -409,7 +404,8 @@ module RunoffMod
     real(r8), pointer :: ff_ini(:)      ! Floodplain water area fraction at beginning of step (dimensionless).
     real(r8), pointer :: ffunit_ini(:)      ! Flooded water area fraction at beginning of step (dimensionless).
 
-    real(r8), pointer :: se_rf(:)       ! Amount of channel--floodplain exchange (positive: flow from channel to floodplain; vice versa ) (m^3).
+    real(r8), pointer :: netchange(:)   ! Amount of channel--floodplain exchange during one subcycle in MOSART timestep (positive: flow from channel to floodplain; vice versa ) (m^3).
+    real(r8), pointer :: se_rf(:)       ! Amount of channel--floodplain exchange during one MOSART timestep(positive: flow from channel to floodplain; vice versa ) (m^3).
     real(r8), pointer :: ff_unit(:)       ! = area of inundated area (including channel area) divided by the computation-unit total area (dimensionless).
 
     real(r8), pointer :: ff_fp(:)       ! = area of inundated floodplain (not including channel area) divided by the computation-unit total area (dimensionless).
@@ -424,7 +420,6 @@ module RunoffMod
     !real(r8), pointer :: delta_wr(:)   ! Change of channel water volume during channel routing (m^3).
     real(r8), pointer :: wr_rtg(:)      ! Channel water volume after channel routing (m^3).
     real(r8), pointer :: yr_rtg(:)      ! Channel water depth after channel routing (m).
-!#endif
    
   end type TstatusFlux
   !== Hongyi

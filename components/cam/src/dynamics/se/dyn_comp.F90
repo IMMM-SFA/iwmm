@@ -84,7 +84,8 @@ CONTAINS
 
     use pmgrid,              only: dyndecomp_set
     use dyn_grid,            only: dyn_grid_init, elem, get_dyn_grid_parm,&
-                                   set_horiz_grid_cnt_d, define_cam_grids
+                                   set_horiz_grid_cnt_d, define_cam_grids,&
+                                   fv_physgrid_init, fv_nphys
     use rgrid,               only: fullgrid
     use spmd_utils,          only: mpi_integer, mpicom, mpi_logical
     use spmd_dyn,            only: spmd_readnl
@@ -95,7 +96,8 @@ CONTAINS
     use prim_driver_mod,  only: prim_init1
     use parallel_mod,     only: par, initmp
     use namelist_mod,     only: readnl
-    use control_mod,      only: runtype, qsplit, rsplit
+    use control_mod,      only: runtype, qsplit, rsplit, dt_tracer_factor, dt_remap_factor, &
+         timestep_make_eam_parameters_consistent
     use time_mod,         only: tstep
     use phys_control,     only: use_gw_front
     use physics_buffer,   only: pbuf_add_field, dtype_r8
@@ -108,7 +110,7 @@ CONTAINS
     type (dyn_import_t), intent(OUT) :: dyn_in
     type (dyn_export_t), intent(OUT) :: dyn_out
 
-    integer :: neltmp(3)
+    integer :: neltmp(3), ierr, nstep_factor
     integer :: npes_se
     integer :: npes_se_stride
 
@@ -121,7 +123,7 @@ CONTAINS
             frontga_idx)
     end if
 
-    ! Initialize dynamics grid
+    ! Initialize dynamics grid variables
     call dyn_grid_init()
 
     ! Read in the number of tasks to be assigned to SE (needed by initmp)
@@ -159,7 +161,7 @@ CONTAINS
 
        neltmp(1) = nelemdmax
        neltmp(2) = nelem
-       neltmp(3) = get_dyn_grid_parm('plon')
+       neltmp(3) = GlobalUniqueCols ! get_dyn_grid_parm('plon')
     else
        nelemd = 0
        neltmp(1) = 0
@@ -181,7 +183,6 @@ CONTAINS
        endif
     endif
 
-
     !
     ! This subroutine creates mapping files using SE basis functions if requested
     !
@@ -196,15 +197,17 @@ CONTAINS
     !        tstep = the dynamics timestep:  
     !
 
-    if (rsplit==0) then
-       ! non-lagrangian code
-       tstep = dtime/real(se_nsplit*qsplit,r8)
-       TimeLevel%nstep = get_nstep()*se_nsplit*qsplit
-   else
-      ! lagrangian code
-       tstep = dtime/real(se_nsplit*qsplit*rsplit,r8)
-       TimeLevel%nstep = get_nstep()*se_nsplit*qsplit*rsplit
-    endif
+    ! Ignore ierr, as on error, timestep_make_eam_parameters_consistent defaults
+    ! to printing an error and then aborting.
+    ierr = timestep_make_eam_parameters_consistent(par, dt_remap_factor, dt_tracer_factor, &
+         se_nsplit, nstep_factor, tstep, dtime)
+    tstep = dtime/real(nstep_factor,r8)
+    TimeLevel%nstep = get_nstep()*nstep_factor
+
+    ! Initialize FV physics grid variables
+    if (fv_nphys > 0) then
+      call fv_physgrid_init()
+    end if
 
     ! Define the CAM grids (this has to be after dycore spinup).
     ! Physics-grid will be defined later by phys_grid_init
@@ -223,8 +226,9 @@ CONTAINS
 
   subroutine dyn_init2(dyn_in)
     use dimensions_mod,   only: nlev, nelemd, np
+    use dyn_grid,         only: fv_nphys
     use prim_driver_mod,  only: prim_init2
-    use prim_si_mod,  only: prim_set_mass
+    use prim_si_mod,      only: prim_set_mass
     use hybrid_mod,       only: hybrid_create
     use hycoef,           only: ps0
     use parallel_mod,     only: par
@@ -242,7 +246,7 @@ CONTAINS
     integer :: ithr, nets, nete, ie, k, tlev
     real(r8), parameter :: Tinit=300.0_r8
     type(hybrid_t) :: hybrid
-    real(r8) :: temperature(np,np,nlev)
+    real(r8) :: temperature(np,np,nlev),ps(np,np)
 
     elem  => dyn_in%elem
 
@@ -284,7 +288,8 @@ CONTAINS
                 elem(ie)%state%q(:,:,:,:)=0.0_r8
 
                 temperature(:,:,:)=0.0_r8
-                call set_thermostate(elem(ie),temperature,hvcoord)
+                ps=ps0
+                call set_thermostate(elem(ie),ps,temperature,hvcoord)
 
              end do
           end if
