@@ -513,6 +513,21 @@
     </values>
   </entry>
 
+  <entry id="constant_zenith_deg">
+    <type>real</type>
+    <category>orbital</category>
+    <group>seq_infodata_inparm</group>
+    <desc>
+      Constant solar zenith angle value in degrees for idealized configurations
+      such as radiative-convective equilibrium experiments. This is disabled when 
+      the value is less than 0
+      Default: -1
+    </desc>
+    <values>
+      <value>-1</value>
+    </values>
+  </entry>
+
   <entry id="wv_sat_scheme">
     <type>char</type>
     <category>wv_sat</category>
@@ -696,7 +711,22 @@
      <values>
       <value>.false.</value>
      </values>
-   </entry>
+  </entry>
+
+  <entry id="ocn_surface_flux_scheme">
+     <type>integer</type>
+     <category>control</category>
+     <group>seq_infodata_inparm</group>
+     <desc>
+      0: standard surface flux calculation as in E3SMv1 
+      1: COAREv3.0 flux computation (Fairall et al., 2003)
+      2: University of Arizona algorithm (Zeng et al., 1998)
+      default: 0
+     </desc>
+     <values>
+      <value>0</value>
+     </values>
+  </entry>
 
   <entry id="flux_convergence">
     <type>real</type>
@@ -1385,6 +1415,7 @@
     </desc>
     <values>
       <value>$EPS_AGRID</value>
+      <value atm_grid="ne0np4_northamericax4v1">3.e-10</value>
     </values>
   </entry>
 
@@ -4766,6 +4797,44 @@
     </desc>
     <values>
       <value>$DATA_ASSIMILATION_LND</value>
+    </values>
+  </entry>
+
+  <entry id="seq_flux_mct_albdif">
+    <type>real</type>
+    <category>seq_flux_mct</category>
+    <group>seq_flux_mct_inparm</group>
+    <desc>
+       Surface albedo for direct radiation
+    </desc>
+    <values>
+      <value>0.06</value>
+      <value aqua_planet_sst_type="sst_aquap11">0.07</value>
+    </values>
+  </entry>
+
+  <entry id="seq_flux_mct_albdir">
+    <type>real</type>
+    <category>seq_flux_mct</category>
+    <group>seq_flux_mct_inparm</group>
+    <desc>
+       Surface albedo for diffuse radiation
+    </desc>
+    <values>
+      <value>0.07</value>
+    </values>
+  </entry>
+
+  <entry id="seq_flux_atmocn_minwind">
+    <type>real</type>
+    <category>seq_flux_mct</category>
+    <group>seq_flux_mct_inparm</group>
+    <desc>
+       minimum wind speed for atmOcn flux calculations
+    </desc>
+    <values>
+      <value>0.5</value>
+      <value aqua_planet_sst_type="sst_aquap_constant">1.0</value>
     </values>
   </entry>
 

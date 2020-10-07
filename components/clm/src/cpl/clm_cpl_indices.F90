@@ -28,6 +28,7 @@ module clm_cpl_indices
   integer, public ::index_l2x_Flrl_rofgwl     ! lnd->rtm input liquid gwl fluxes
   integer, public ::index_l2x_Flrl_rofsub     ! lnd->rtm input liquid subsurface fluxes
   integer, public ::index_l2x_Flrl_rofi       ! lnd->rtm input frozen fluxes
+  integer, public ::index_l2x_Flrl_demand     ! lnd->rtm input total fluxes (<= 0)
   integer, public ::index_l2x_Flrl_Tqsur      ! lnd->rtm input surface runoff temperature
   integer, public ::index_l2x_Flrl_Tqsub      ! lnd->rtm input subsurface runoff temperature
   integer, public ::index_l2x_Flrl_QTHERM      ! lnd->rtm
@@ -108,6 +109,8 @@ module clm_cpl_indices
   integer, public ::index_x2l_Flrr_flood      ! rtm->lnd rof (flood) flux
   integer, public ::index_x2l_Flrr_volr       ! rtm->lnd rof volr total volume
   integer, public ::index_x2l_Flrr_volrmch    ! rtm->lnd rof volr main channel volume
+  integer, public ::index_x2l_Flrr_supply     ! rtm->lnd rof supply for land use
+  integer, public ::index_x2l_Flrr_deficit    ! rtm->lnd supply deficit
 
   ! In the following, index 0 is bare land, other indices are glc elevation classes
   integer, public ::index_x2l_Sg_frac(0:glc_nec_max)   = 0   ! Fraction of glacier from glc model
@@ -171,6 +174,7 @@ contains
     index_l2x_Flrl_rofgwl   = mct_avect_indexra(l2x,'Flrl_rofgwl')
     index_l2x_Flrl_rofsub   = mct_avect_indexra(l2x,'Flrl_rofsub')
     index_l2x_Flrl_rofi     = mct_avect_indexra(l2x,'Flrl_rofi')
+    index_l2x_Flrl_demand   = mct_avect_indexra(l2x,'Flrl_demand')
     index_l2x_Flrl_Tqsur    = mct_avect_indexra(l2x,'Flrl_Tqsur')
     index_l2x_Flrl_Tqsub    = mct_avect_indexra(l2x,'Flrl_Tqsub')
     index_l2x_Flrl_QTHERM    = mct_avect_indexra(l2x,'Flrl_QTHERM')
@@ -237,7 +241,9 @@ contains
 
     index_x2l_Flrr_volr     = mct_avect_indexra(x2l,'Flrr_volr')
     index_x2l_Flrr_volrmch  = mct_avect_indexra(x2l,'Flrr_volrmch')
-
+    index_x2l_Flrr_supply   = mct_avect_indexra(x2l,'Flrr_supply')
+    index_x2l_Flrr_deficit  = mct_avect_indexra(x2l,'Flrr_deficit')
+	
     index_x2l_Faxa_lwdn     = mct_avect_indexra(x2l,'Faxa_lwdn')
     index_x2l_Faxa_rainc    = mct_avect_indexra(x2l,'Faxa_rainc')
     index_x2l_Faxa_rainl    = mct_avect_indexra(x2l,'Faxa_rainl')

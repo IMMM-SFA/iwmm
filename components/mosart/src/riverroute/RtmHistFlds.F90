@@ -12,9 +12,9 @@ module RtmHistFlds
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
   use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, thermpflag
-!#ifdef INCLUDE_WRM
+
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
-!#endif
+
   use rof_cpl_indices, only : nt_rtm, rtm_tracers  
 
   implicit none
@@ -158,15 +158,11 @@ contains
          avgflag='A', long_name='MOSART total demand: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%qdem_nt2, default='active')
 
-!#ifdef INCLUDE_WRM
     if (wrmflag) then
 
       call RtmHistAddfld (fname='WRM_SUPPLY', units='m3/s',  &
          avgflag='A', long_name='WRM supply provided ', &
-         ptr_rof=StorWater%Supply, default='active')
-      !call RtmHistAddfld (fname='WRM_SUPPLY_FRACTION', units='none',  &
-      !   avgflag='A', long_name='WRM supply fraction relative to demand ', &
-      !   ptr_rof=StorWater%SupplyFrac, default='active')                                                                                                                               
+         ptr_rof=StorWater%Supply, default='active')                                                                                                                              
 
       call RtmHistAddfld (fname='WRM_DEMAND', units='m3/s',  &
          avgflag='A', long_name='WRM new demand after supply: same as deficit ', &
@@ -184,9 +180,7 @@ contains
          avgflag='A', long_name='WRM storage ', &
          ptr_rof=StorWater%storageG, default='active')
     endif
-!#endif
 
-!#ifdef INCLUDE_INUND
     if (inundflag) then
       call RtmHistAddfld (fname='FLOODPLAIN_VOLUME', units='m3',  &
          avgflag='A', long_name='MOSART floodplain water volume', &
@@ -194,16 +188,13 @@ contains
       call RtmHistAddfld (fname='FLOODPLAIN_DEPTH', units='m',  &
          avgflag='A', long_name='MOSART floodplain water depth', &
          ptr_rof=rtmCTL%inundhf, default='active')
-        !!!!!!!!!!! added by Tian Dec 2017 
       call RtmHistAddfld (fname='FLOODPLAIN_FRACTION', units='none',  &
          avgflag='A', long_name='MOSART floodplain water area fraction', &
          ptr_rof=rtmCTL%inundff, default='active')
       call RtmHistAddfld (fname='FLOODED_FRACTION', units='none',  &
          avgflag='A', long_name='MOSART flooded water area fraction', &
          ptr_rof=rtmCTL%inundffunit, default='active')
-        !!!!!!!!!!!!!!!!!!!!!!!!
     endif
-!#endif
 
     if(heatflag) then
       call RtmHistAddfld (fname='TEMP_QSUR', units='Kelvin',  &
@@ -335,7 +326,6 @@ contains
     rtmCTL%qdem_nt1(:)       = rtmCTL%qdem(:,1)
     rtmCTL%qdem_nt2(:)       = rtmCTL%qdem(:,2)
 
-!#ifdef INCLUDE_WRM
     if (wrmflag) then
        StorWater%storageG = 0._r8
        do idam = 1, ctlSubwWRM%localNumDam
@@ -343,7 +333,6 @@ contains
           StorWater%storageG(ig) = StorWater%storage(idam)
        enddo
     endif
-!#endif
 
     if(heatflag) then
       rtmCTL%templand_Tqsur_nt1(:) = rtmCTL%templand_Tqsur(:)

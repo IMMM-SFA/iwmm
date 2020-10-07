@@ -32,25 +32,30 @@ _TESTS = {
             "ERS.f19_g16.I1850GSWCNPRDCTCBC.clm-ctc_f19_g16_I1850GSWCNPRDCTCBC",
             "ERS.f19_g16.I20TRGSWCNPRDCTCBC.clm-ctc_f19_g16_I20TRGSWCNPRDCTCBC",
             "ERS.f09_g16.ICLM45BC",
+            "SMS.r05_r05.I1850CLM45CN",
+            "SMS_Ly2_P1x1.1x1_smallvilleIA.ICLM45CNCROP.clm-lulcc_sville",
             )
         },
 
     "e3sm_atm_developer" : {
-        "tests" : (
+        "tests"   : (
             "ERP_Ln9.ne4_ne4.FC5AV1C-L",
             "SMS_Ln9.ne4_ne4.FC5AV1C-L.cam-outfrq9s",
             "SMS.ne4_ne4.FC5AV1C-L.cam-cosplite",
-            "SMS_R_Ld5.T42_T42.FSCM5A97",
             "SMS_R_Ld5.ne4_ne4.FSCM5A97",
             "SMS_D_Ln5.ne4_ne4.FC5AV1C-L",
-            "SMS.ne4_ne4.FC5AV1C-L.cam-thetasl",
+            "SMS_Ln5.ne4pg2_ne4pg2.FC5AV1C-L",
+            "SMS_Ln5.ne4pg2_ne4pg2.FC5AV1C-L.cam-thetahy_pg2",
+            "SMS_Ln5.ne4pg2_ne4pg2.FC5AV1C-L.cam-thetahy_sl_pg2",
             )
         },
 
     "e3sm_atm_integration" : {
+        "inherit" : ("eam_preqx", "eam_theta"),
         "tests" : (
             "ERP_Ln9.ne4_ne4.F-EAMv1-AQP1",
             "SMS_Ld1.ne4_ne4.F-EAMv1-AQP1.cam-clubb_only",
+            "ERP_Ln9.ne4_ne4.F-EAMv1-RCEMIP",
             "PET_Ln5.ne4_ne4.FC5AV1C-L.allactive-mach-pet",
             "PEM_Ln5.ne4_ne4.FC5AV1C-L",
             "SMS_D_Ln5.ne4_ne4.FC5AV1C-L.cam-cosplite_nhtfrq5",
@@ -67,7 +72,7 @@ _TESTS = {
             "ERS_Ld31.ne4_ne4.FC5AV1C-L",
             "ERP_Lm3.ne4_ne4.FC5AV1C-L",
             "SMS_D_Ln5.ne30_ne30.FC5AV1C-L",
-            "ERP_Ln5.ne30_ne30.FC5AV1C-L",
+            "ERP_Ln7.ne30_ne30.FC5AV1C-L",
             "SMS_Ly1.ne4_ne4.FC5AV1C-L",
             )
         },
@@ -80,7 +85,10 @@ _TESTS = {
 
     #atmopheric tests to mimic low res production runs
     "e3sm_atm_prod" : {
-        "tests" : "SMS_Ln5.ne30_ne30.FC5AV1C-L.cam-cosplite"
+        "tests" : (
+            "SMS_Ln5.ne30_ne30.FC5AV1C-L.cam-cosplite",
+            "SMS.ne30_r05_ne30.F20TRC5-CMIP6",
+            )
         },
 
     #atmopheric nbfb tests
@@ -88,6 +96,7 @@ _TESTS = {
         "tests" : (
             "PGN_P1x1.ne4_ne4.FC5AV1C-L",
             "TSC.ne4_ne4.FC5AV1C-L",
+            "MVK_PL.ne4_ne4.FC5AV1C-L",
             )
         },
 
@@ -106,7 +115,6 @@ _TESTS = {
             "ERS.ne30_g16_rx1.A",
             "SEQ.f19_g16.X",
             "ERIO.ne30_g16_rx1.A",
-            "HOMME_P24.f19_g16_rx1.A",
             "NCK.f19_g16_rx1.A",
             "SMS.ne30_f19_g16_rx1.A",
             "ERS_Ld5.T62_oQU120.CMPASO-NYF",
@@ -118,6 +126,14 @@ _TESTS = {
             )
         },
 
+    "homme_integration" : {
+        "time"    : "0:45:00",
+        "tests"   : (
+            "HOMME_P24.f19_g16_rx1.A",
+            "HOMMEBFB_P24.f19_g16_rx1.A",
+            )
+        },    
+    
     "e3sm_integration" : {
         "inherit" : ("e3sm_developer", "e3sm_atm_integration"),
         "time"    : "03:00:00",
@@ -136,6 +152,8 @@ _TESTS = {
             "SMS_D_Ln5.conusx4v1_conusx4v1.FC5AV1C-L",
             "SMS.ne30_oECv3.BGCEXP_BCRC_CNPECACNT_1850.clm-bgcexp",
             "SMS.ne30_oECv3.BGCEXP_BCRC_CNPRDCTC_1850.clm-bgcexp",
+            "SMS_D_Ld1.T62_oEC60to30v3.DTESTM",
+            "SMS_D_Ld1.ne30_r05_oECv3.A_WCYCL1850",
             )
         },
 
@@ -179,5 +197,138 @@ _TESTS = {
             "SMS_D_Lm6.1x1_brazil.ICLM45ED",
             )
         },
+
+
+    #atmopheric tests for ftypes with 2 builds only
+    #ftype2 is a default and tested in other suites for preqx
+    # preqx ftype0
+    # preqx ftype1
+    # preqx ftype4
+    # theta-l hy ftype0
+    # theta-l hy ftype1
+    # theta-l hy ftype2
+    # theta-l hy ftype4
+    # theta-l nh ftype0
+    # theta-l nh ftype1
+    # theta-l nh ftype2
+    # theta-l nh ftype4
+    # theta-l hy SL
+    "eam_preqx" : {
+        "share"    : True,
+        "time"     : "01:00:00",
+        "tests"    : (
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-preqx_ftype0",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-preqx_ftype1",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-preqx_ftype4",
+                 )
+    },
+    "eam_theta" : {
+        "share"    : True,
+        "time"     : "02:00:00",
+        "tests"    : (
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetahy_ftype0",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetahy_ftype1",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetahy_ftype2",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetahy_ftype4",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetanh_ftype0",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetanh_ftype1",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetanh_ftype2",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetanh_ftype4",
+                 "SMS.ne4_ne4.FC5AV1C-L.cam-thetahy_sl",
+                 "ERS.ne4_ne4.FC5AV1C-L.cam-thetahy_ftype2",
+                 "ERS.ne4_ne4.FC5AV1C-L.cam-thetanh_ftype2",
+                 )
+    },
+    "e3sm_bench_hires_g" : {
+        "share"    : True,
+        "time"     : "01:00:00",
+        "tests"    : (
+                 "PFS_P2560.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P2792.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P3072.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P3200.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P4096.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P4800.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P5120.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P5200.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P5584.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P6400.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P7200.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P8192.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P9600.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P11168.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P12000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P12800.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P16000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P16384.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P19200.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P21600.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P22400.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P24000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P25600.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P26000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P28000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P28800.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P30000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P32000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P36000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P48000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P64000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P96000.T62_oRRS18to6v3.GMPAS-IAF.bench-gmpas_noio",
+                 )
+    },
+    "e3sm_bench_hires_f" : {
+        "time"     : "01:00:00",
+        "tests"    : (
+                 "PFS_P7200.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P8640.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P10800.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P14400.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P21600.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P43200.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 "PFS_P86400.ne120_ne120.FC5AV1C-H01A.cam-bench-noio",
+                 )
+    },
+    "e3sm_bench_hires" : {
+        "inherit" : ("e3sm_bench_hires_g", "e3sm_bench_hires_f"),
+        "time"    : "01:00:00",
+        "tests"   : (
+                 "PFS_PS.ne120_oRRS18v3_ICG.A_WCYCL1950S_CMIP6_HR.bench-wcycl-hires",
+                 "PFS_PM.ne120_oRRS18v3_ICG.A_WCYCL1950S_CMIP6_HR.bench-wcycl-hires",
+                 "PFS_PL.ne120_oRRS18v3_ICG.A_WCYCL1950S_CMIP6_HR.bench-wcycl-hires",
+                 )
+    },
+    "e3sm_bench_lores_g" : {
+        "share"    : True,
+        "time"     : "01:00:00",
+        "tests"    : ( 
+                 "PFS_P320.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P480.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P640.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P960.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
+                 "PFS_P1280.T62_oEC60to30v3.GMPAS-IAF.bench-gmpas_noio",
+                 )
+    },
+    "e3sm_bench_lores_f" : {
+        "time"     : "01:00:00",
+        "tests"    : (
+                 "PFS_P1350.ne30_ne30.FC5AV1C-L.cam-bench-noio",
+                 "PFS_P2700.ne30_ne30.FC5AV1C-L.cam-bench-noio",
+                 "PFS_P5400.ne30_ne30.FC5AV1C-L.cam-bench-noio",
+                 )
+    },
+    "e3sm_bench_lores" : {
+        "inherit" : ("e3sm_bench_lores_g", "e3sm_bench_lores_f"),
+        "time"    : "01:00:00",
+        "tests"   : (
+                 "PFS_PS.ne30_oECv3_ICG.A_WCYCL1850S_CMIP6.bench-wcycl-lores",
+                 "PFS_PM.ne30_oECv3_ICG.A_WCYCL1850S_CMIP6.bench-wcycl-lores",
+                 "PFS_PL.ne30_oECv3_ICG.A_WCYCL1850S_CMIP6.bench-wcycl-lores",
+                 )
+    },
+    "e3sm_bench_all" : {
+        "inherit" : ("e3sm_bench_hires", "e3sm_bench_lores"),
+        "time"    : "01:00:00",
+    },
 
 }

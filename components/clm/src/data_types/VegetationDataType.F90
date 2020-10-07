@@ -366,12 +366,21 @@ module VegetationDataType
     real(r8), pointer :: qflx_dew_snow      (:)   => null() ! surface dew added to snow pack (mm H2O /s) [+]
     real(r8), pointer :: qflx_dew_grnd      (:)   => null() ! ground surface dew formation (mm H2O /s) [+]
     real(r8), pointer :: qflx_prec_intr     (:)   => null() ! interception of precipitation [mm/s]
+    real(r8), pointer :: qflx_dirct_rain    (:)   => null() ! direct through rainfall [mm/s]
+    real(r8), pointer :: qflx_leafdrip      (:)   => null() ! leaf rain drip [mm/s]
     real(r8), pointer :: qflx_ev_snow       (:)   => null() ! evaporation heat flux from snow       (W/m**2) [+ to atm] ! NOTE: unit shall be mm H2O/s for water NOT heat
     real(r8), pointer :: qflx_ev_soil       (:)   => null() ! evaporation heat flux from soil       (W/m**2) [+ to atm] ! NOTE: unit shall be mm H2O/s for water NOT heat
     real(r8), pointer :: qflx_ev_h2osfc     (:)   => null() ! evaporation heat flux from soil       (W/m**2) [+ to atm] ! NOTE: unit shall be mm H2O/s for water NOT heat
     real(r8), pointer :: qflx_rootsoi_frac  (:,:) => null() !  
-    real(r8), pointer :: qflx_irrig         (:)   => null() ! irrigation flux (mm H2O/s)
-    real(r8), pointer :: irrig_rate         (:)   => null() ! current irrigation rate [mm/s]
+   
+    real(r8), pointer :: irrig_rate               (:)   => null() ! current irrigation rate [mm/s]
+    real(r8), pointer :: qflx_irrig_patch         (:)   => null()   ! patch irrigation flux (mm H2O/s)
+    real(r8), pointer :: qflx_real_irrig_patch    (:)   => null()   ! patch real irrigation flux (mm H2O/s) 
+    real(r8), pointer :: qflx_grnd_irrig_patch    (:)   => null()   ! groundwater irrigation (mm H2O/s) 
+    real(r8), pointer :: qflx_surf_irrig_patch    (:)   => null()   ! surface water irrigation(mm H2O/s) 
+    real(r8), pointer :: qflx_supply_patch        (:)   => null()   ! patch supply flux (mm H2O/s) 
+
+    real(r8), pointer :: qflx_over_supply_patch   (:)   => null()   ! over supplied irrigation
     integer , pointer :: n_irrig_steps_left (:)   => null() ! number of time steps for which we still need to irrigate today (if 0, ignore)
 
   contains
@@ -799,8 +808,6 @@ module VegetationDataType
     real(r8), pointer :: livecrootn_to_retransn              (:)   => null()  ! live coarse root N to retranslocated N pool (gN/m2/s)
     ! summary (diagnostic) flux variables, not involved in mass balance
     real(r8), pointer :: ndeploy                             (:)   => null()  ! total N deployed to growth and storage (gN/m2/s)
-    real(r8), pointer :: ninputs                             (:)   => null()  ! total N inputs to pft-level (gN/m2/s)
-    real(r8), pointer :: noutputs                            (:)   => null()  ! total N outputs from pft-level (gN/m2/s)
     real(r8), pointer :: wood_harvestn                       (:)   => null()  ! total N losses to wood product pools (gN/m2/s)
     ! deposition fluxes
     real(r8), pointer :: nfix_to_plantn                      (:)   => null()  ! nitrogen fixation goes to plant
@@ -973,8 +980,6 @@ module VegetationDataType
     real(r8), pointer :: livecrootp_to_deadcrootp            (:)     ! live coarse root P turnover (gP/m2/s)
     real(r8), pointer :: livecrootp_to_retransp              (:)     ! live coarse root P to retranslocated P pool (gP/m2/s)
     real(r8), pointer :: pdeploy                             (:)     ! total P deployed to growth and storage (gP/m2/s)
-    real(r8), pointer :: pinputs                             (:)     ! total P inputs to pft-level (gP/m2/s)
-    real(r8), pointer :: poutputs                            (:)     ! total P outputs from pft-level (gP/m2/s)
     real(r8), pointer :: wood_harvestp                       (:)     ! total P losses to wood product pools (gP/m2/s)
     real(r8), pointer :: biochem_pmin_to_plant               (:)     ! biochemical P mineralization directly goes to plant (gP/m2/s)
     real(r8), pointer :: crop_seedp_to_leaf                  (:)     ! (gP/m2/s) seed source to leaf, for crops
@@ -5344,26 +5349,69 @@ module VegetationDataType
     allocate(this%qflx_dew_snow          (begp:endp))             ; this%qflx_dew_snow        (:)   = nan
     allocate(this%qflx_dew_grnd          (begp:endp))             ; this%qflx_dew_grnd        (:)   = nan
     allocate(this%qflx_prec_intr         (begp:endp))             ; this%qflx_prec_intr       (:)   = nan
+    allocate(this%qflx_dirct_rain        (begp:endp))             ; this%qflx_dirct_rain      (:)   = nan
+    allocate(this%qflx_leafdrip          (begp:endp))             ; this%qflx_leafdrip        (:)   = nan
     allocate(this%qflx_ev_snow           (begp:endp))             ; this%qflx_ev_snow         (:)   = nan
     allocate(this%qflx_ev_soil           (begp:endp))             ; this%qflx_ev_soil         (:)   = nan
     allocate(this%qflx_ev_h2osfc         (begp:endp))             ; this%qflx_ev_h2osfc       (:)   = nan
     allocate(this%qflx_rootsoi_frac      (begp:endp,1:nlevgrnd))  ; this%qflx_rootsoi_frac    (:,:) = nan
-    allocate(this%qflx_irrig             (begp:endp))             ; this%qflx_irrig           (:)   = nan
-    allocate(this%irrig_rate             (begp:endp))             ; this%irrig_rate           (:)   = nan
-    allocate(this%n_irrig_steps_left     (begp:endp))             ; this%n_irrig_steps_left   (:)   = 0
+    
+    allocate(this%irrig_rate               (begp:endp))              ; this%irrig_rate               (:)   = nan
+    allocate(this%qflx_irrig_patch         (begp:endp))              ; this%qflx_irrig_patch         (:)   = nan
+    allocate(this%qflx_real_irrig_patch    (begp:endp))              ; this%qflx_real_irrig_patch    (:)   = nan
+    allocate(this%qflx_grnd_irrig_patch    (begp:endp))              ; this%qflx_grnd_irrig_patch    (:)   = nan
+    allocate(this%qflx_surf_irrig_patch    (begp:endp))              ; this%qflx_surf_irrig_patch    (:)   = nan
+    allocate(this%qflx_supply_patch        (begp:endp))              ; this%qflx_supply_patch        (:)   = nan
+    allocate(this%qflx_over_supply_patch   (begp:endp))              ; this%qflx_over_supply_patch   (:)   = nan 
+    allocate(this%n_irrig_steps_left       (begp:endp))              ; this%n_irrig_steps_left       (:)   = 0
     
     !-----------------------------------------------------------------------
     ! initialize history fields for select members of veg_wf
     !-----------------------------------------------------------------------
-    this%qflx_irrig(begp:endp) = spval
-    call hist_addfld1d (fname='QIRRIG', units='mm/s', &
-         avgflag='A', long_name='water added through irrigation', &
-         ptr_patch=this%qflx_irrig)
+    this%qflx_irrig_patch(begp:endp) = spval
+    call hist_addfld1d (fname='QIRRIG_ORIG', units='mm/s', &
+         avgflag='A', long_name='Original total irrigation water demand (surface + ground)', &
+         ptr_patch=this%qflx_irrig_patch)
+		 
+    this%qflx_real_irrig_patch(begp:endp) = spval     ! real irrig
+    call hist_addfld1d (fname='QIRRIG_REAL', units='mm/s', &
+         avgflag='A', long_name='actual water added through irrigation (surface + ground)', &
+         ptr_patch=this%qflx_real_irrig_patch)
+    
+    this%qflx_supply_patch(begp:endp) = spval     
+    call hist_addfld1d (fname='QSUPPLY', units='mm/s', &
+         avgflag='A', long_name='irrigation supply from MOSART', &
+         ptr_patch=this%qflx_supply_patch)
+         
+    this%qflx_surf_irrig_patch(begp:endp) = spval    
+    call hist_addfld1d (fname='QSURF_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Surface water irrigation', &
+         ptr_patch=this%qflx_surf_irrig_patch)
+    
+    this%qflx_grnd_irrig_patch(begp:endp) = spval   
+    call hist_addfld1d (fname='QGRND_IRRIG', units='mm/s', &
+         avgflag='A', long_name='Groundwater irrigation', &
+         ptr_patch=this%qflx_grnd_irrig_patch)
+		 
+    this%qflx_over_supply_patch(begp:endp) = spval   
+    call hist_addfld1d (fname='QOVER_SUPPLY', units='mm/s', &
+         avgflag='A', long_name='Over supplied irrigation due to remapping, added to irrigation to conserve mass', &
+         ptr_patch=this%qflx_over_supply_patch)
 
     this%qflx_prec_intr(begp:endp) = spval
     call hist_addfld1d (fname='QINTR', units='mm/s',  &
          avgflag='A', long_name='interception', &
          ptr_patch=this%qflx_prec_intr, set_lake=0._r8)
+
+    this%qflx_dirct_rain(begp:endp) = spval
+    call hist_addfld1d (fname='QWTRGH', units='mm/s',  &
+         avgflag='A', long_name='direct rain throughfall', &
+         ptr_patch=this%qflx_dirct_rain, c2l_scale_type='urbanf', default='inactive')
+
+    this%qflx_leafdrip(begp:endp) = spval
+    call hist_addfld1d (fname='QWDRIP', units='mm/s',  &
+         avgflag='A', long_name='leaf rain drip', &
+         ptr_patch=this%qflx_leafdrip, c2l_scale_type='urbanf', default='inactive')
 
     this%qflx_prec_grnd(begp:endp) = spval
     call hist_addfld1d (fname='QDRIP', units='mm/s',  &
@@ -7772,7 +7820,7 @@ module VegetationDataType
        this%dwt_prod100c_gain(begp:endp) = spval
        call hist_addfld1d (fname='C14_DWT_PROD100C_GAIN_PATCH', units='gC14/m^2/s', &
             avgflag='A', long_name='C14 landcover change-driven addition to 100-yr wood product pool', &
-            ptr_patch=this%dwt_prod10c_gain, default='inactive')
+            ptr_patch=this%dwt_prod100c_gain, default='inactive')
 
        this%dwt_seedc_to_leaf(begp:endp) = spval
        call hist_addfld1d (fname='C14_DWT_SEEDC_TO_LEAF_PATCH', units='gC14/m^2/s', &
@@ -8018,12 +8066,10 @@ module VegetationDataType
             this%psnshade_to_cpool(p)
 
        ! maintenance respiration (MR)
-       if ( trim(isotope) == 'c13' .or. trim(isotope) == 'c14') then
-          this%leaf_mr(p)      = this%leaf_curmr(p)      + this%leaf_xsmr(p)
-          this%froot_mr(p)     = this%froot_curmr(p)     + this%froot_xsmr(p)
-          this%livestem_mr(p)  = this%livestem_curmr(p)  + this%livestem_xsmr(p)
-          this%livecroot_mr(p) = this%livecroot_curmr(p) + this%livecroot_xsmr(p)
-       endif
+       this%leaf_mr(p)      = this%leaf_curmr(p)      + this%leaf_xsmr(p)
+       this%froot_mr(p)     = this%froot_curmr(p)     + this%froot_xsmr(p)
+       this%livestem_mr(p)  = this%livestem_curmr(p)  + this%livestem_xsmr(p)
+       this%livecroot_mr(p) = this%livecroot_curmr(p) + this%livecroot_xsmr(p)
 
        this%mr(p)  = &
             this%leaf_mr(p)     + &
@@ -8829,8 +8875,6 @@ module VegetationDataType
     allocate(this%livecrootn_to_deadcrootn            (begp:endp)) ; this%livecrootn_to_deadcrootn            (:) = nan
     allocate(this%livecrootn_to_retransn              (begp:endp)) ; this%livecrootn_to_retransn              (:) = nan
     allocate(this%ndeploy                             (begp:endp)) ; this%ndeploy                             (:) = nan
-    allocate(this%ninputs                             (begp:endp)) ; this%ninputs                             (:) = nan
-    allocate(this%noutputs                            (begp:endp)) ; this%noutputs                            (:) = nan
     allocate(this%wood_harvestn                       (begp:endp)) ; this%wood_harvestn                       (:) = nan
     allocate(this%fire_nloss                          (begp:endp)) ; this%fire_nloss                          (:) = nan
     allocate(this%npool_to_grainn                     (begp:endp)) ; this%npool_to_grainn                     (:) = nan
@@ -9619,8 +9663,6 @@ module VegetationDataType
        this%livecrootn_to_deadcrootn(i)            = value_patch
        this%livecrootn_to_retransn(i)              = value_patch
        this%ndeploy(i)                             = value_patch
-       this%ninputs(i)                             = value_patch
-       this%noutputs(i)                            = value_patch
        this%wood_harvestn(i)                       = value_patch
        this%fire_nloss(i)                          = value_patch
        this%nfix_to_plantn(i)                      = value_patch
@@ -9772,11 +9814,17 @@ module VegetationDataType
            this%hrv_deadcrootn_to_litter(p)        + &
            this%hrv_deadcrootn_storage_to_litter(p)+ &
            this%hrv_deadcrootn_xfer_to_litter(p)
+      if (crop_prog) then
+         this%sen_nloss_litter(p) = &
+             this%livestemn_to_litter(p)            + &
+             this%leafn_to_litter(p)                + &
+             this%frootn_to_litter(p)
+      else
+         this%sen_nloss_litter(p) = &
+             this%leafn_to_litter(p)                + &
+             this%frootn_to_litter(p)
+      end if
 
-       this%sen_nloss_litter(p) = &
-           this%livestemn_to_litter(p)            + &
-           this%leafn_to_litter(p)                + &
-           this%frootn_to_litter(p)
     end do
 
     call p2c(bounds, num_soilc, filter_soilc, &
@@ -9940,8 +9988,6 @@ module VegetationDataType
     allocate(this%livecrootp_to_deadcrootp            (begp:endp)) ; this%livecrootp_to_deadcrootp            (:) = nan
     allocate(this%livecrootp_to_retransp              (begp:endp)) ; this%livecrootp_to_retransp              (:) = nan
     allocate(this%pdeploy                             (begp:endp)) ; this%pdeploy                             (:) = nan
-    allocate(this%pinputs                             (begp:endp)) ; this%pinputs                             (:) = nan
-    allocate(this%poutputs                            (begp:endp)) ; this%poutputs                            (:) = nan
     allocate(this%wood_harvestp                       (begp:endp)) ; this%wood_harvestp                       (:) = nan
     allocate(this%fire_ploss                          (begp:endp)) ; this%fire_ploss                          (:) = nan
     allocate(this%ppool_to_grainp                     (begp:endp)) ; this%ppool_to_grainp                     (:) = nan
@@ -10724,8 +10770,6 @@ module VegetationDataType
        this%livecrootp_to_deadcrootp(i)            = value_patch
        this%livecrootp_to_retransp(i)              = value_patch
        this%pdeploy(i)                             = value_patch
-       this%pinputs(i)                             = value_patch
-       this%poutputs(i)                            = value_patch
        this%wood_harvestp(i)                       = value_patch
        this%fire_ploss(i)                          = value_patch
        this%biochem_pmin_to_plant(i)               = value_patch
@@ -10872,10 +10916,16 @@ module VegetationDataType
            this%hrv_deadcrootp_storage_to_litter(p)+ &
            this%hrv_deadcrootp_xfer_to_litter(p)
 
-       this%sen_ploss_litter(p) = &
-           this%livestemp_to_litter(p)            + &
-           this%leafp_to_litter(p)                + &
-           this%frootp_to_litter(p)
+      if (crop_prog) then
+         this%sen_ploss_litter(p) = &
+             this%livestemp_to_litter(p)            + &
+             this%leafp_to_litter(p)                + &
+             this%frootp_to_litter(p)
+      else
+         this%sen_ploss_litter(p) = &
+             this%leafp_to_litter(p)                + &
+             this%frootp_to_litter(p)
+      end if
     end do
 
     call p2c(bounds, num_soilc, filter_soilc, &

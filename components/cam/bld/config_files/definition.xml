@@ -13,6 +13,9 @@ Directory where CAM executable will be created.
 <entry id="cam_root" value="">
 Root directory of CAM source distribution.
 </entry>
+<entry id="caseroot" value="">
+Root directory of the case.
+</entry>
 <entry id="usr_src" value="" list="1">
 User source directories to prepend to the filepath.  Multiple directories
 are specified as a comma separated list with no embedded white space.
@@ -26,6 +29,9 @@ Component interfaces: mct or esmf.  Default: mct.
 <entry id="dyn" valid_values="eul,sld,fv,homme,se" value="">
 Dynamics package: eul, sld, fv, or se.
 </entry>
+<entry id="dyn_target" valid_values="preqx,theta-l,preqx_acc,preqx_kokkos" value="">          
+SE dynamical core option.
+</entry>        
 <entry id="waccm_phys" valid_values="0,1" value="0">
 Switch to turn on waccm physics: 0 => no, 1 => yes.
 </entry>
@@ -111,6 +117,11 @@ to use an analytic expression for SST.  To use aquaplanet with time varying
 SSTs read from a dataset, or with a slab ocean, the ocean component should
 be set to DOCN.
 </entry>
+<entry id="rce" valid_value="0,1" value="0">
+Switch for radiative-convective equilibrium mode. This switch sets the 
+initial condition file to a spun up case with homogenous SST.
+(see cam/bld/namelist_files/namelist_defaults_cam.xml)
+</entry>
 <entry id="ice" valid_values="cice,sice,none" value="">
 Use cice, stub ice model or no ice model in cam build: cice, sice, none
 </entry>
@@ -142,9 +153,9 @@ Modifications that allow perturbation growth testing: 0=off, 1=on.
 Configure CAM for single column mode: 0=off, 1=on.  This option only
 supported for the Eulerian dycore.
 </entry>
-<entry id="camiop" valid_values="0,1" value="0">
-Configure CAM to generate an IOP file that can be used to drive SCAM: 0=no, 1=yes.
-This option only supported for the Eulerian dycore.
+<entry id="e3smreplay" valid_values="0,1" value="0">
+Configure E3SM to generate an IOP file that can be used to drive the SCM: 0=no, 1=yes.
+This option only supported for the Spectral Element dycore.
 </entry>
 <entry id="hgrid" value="">
 Horizontal grid specifier.  The recognized values depend on
@@ -161,6 +172,9 @@ Number of elements along one edge of a cubed sphere grid.
 </entry>
 <entry id="csnp" value="1">
 Number of points on each edge of the elements in a cubed sphere grid.
+</entry>
+<entry id="npg" value="0">
+Number of physics grid cells on each edge of the elements in a cubed sphere grid.
 </entry>
 <entry id="nlev" value="30">
 Number of vertical levels.

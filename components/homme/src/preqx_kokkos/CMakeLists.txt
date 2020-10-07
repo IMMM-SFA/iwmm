@@ -54,6 +54,8 @@ SET (SRC_SHARE_F90
   ${SRC_SHARE_DIR}/edge_mod_base.F90
   ${SRC_SHARE_DIR}/edgetype_mod.F90
   ${SRC_SHARE_DIR}/element_mod.F90
+  ${SRC_SHARE_DIR}/gllfvremap_mod.F90
+  ${SRC_SHARE_DIR}/gllfvremap_util_mod.F90
   ${SRC_SHARE_DIR}/global_norms_mod.F90
   ${SRC_SHARE_DIR}/gridgraph_mod.F90
   ${SRC_SHARE_DIR}/hybrid_mod.F90
@@ -100,6 +102,7 @@ SET(TEST_SRC_F90
   ${TEST_SRC_DIR}/dcmip12_wrapper.F90
   ${TEST_SRC_DIR}/dcmip16_wrapper.F90
   ${TEST_SRC_DIR}/dcmip2012_test1_2_3.F90
+  ${TEST_SRC_DIR}/dcmip2012_test1_conv.F90
   ${TEST_SRC_DIR}/dcmip2012_test4.F90
   ${TEST_SRC_DIR}/dcmip2012_test5.F90
   ${TEST_SRC_DIR}/dcmip2016-baroclinic.F90
@@ -219,10 +222,10 @@ SET(USE_OPENACC FALSE)
 
 ENDMACRO(PREQX_KOKKOS_SETUP)
 
-PREQX_KOKKOS_SETUP()
-
 # Build exec only if HOMME_BUILD_EXECS is true
 IF (${HOMME_BUILD_EXECS})
+  PREQX_KOKKOS_SETUP()
+
   ############################################################################
   # createTestExec(exec_name exec_type NP NC PLEV USE_PIO USE_ENERGY QSIZE_D)
   ############################################################################

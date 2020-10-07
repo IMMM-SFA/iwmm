@@ -128,7 +128,7 @@ module cime_comp_mod
 
   ! flux calc routines
   use seq_flux_mct, only: seq_flux_init_mct, seq_flux_initexch_mct, seq_flux_ocnalb_mct
-  use seq_flux_mct, only: seq_flux_atmocn_mct, seq_flux_atmocnexch_mct
+  use seq_flux_mct, only: seq_flux_atmocn_mct, seq_flux_atmocnexch_mct, seq_flux_readnl_mct
 
   ! domain fraction routines
   use seq_frac_mct, only : seq_frac_init, seq_frac_set
@@ -639,7 +639,7 @@ module cime_comp_mod
   character(*), parameter :: F01 = "('"//subname//" : ', A, 2i8, 3x, A )"
   character(*), parameter :: F0R = "('"//subname//" : ', A, 2g23.15 )"
   character(*), parameter :: FormatA = '(A,": =============== ", A44,          " ===============")'
-  character(*), parameter :: FormatD = '(A,": =============== ", A20,I10.8,I8,8x,   " ===============")'
+  character(*), parameter :: FormatD = '(A,": =============== ", A20,I10.8,I8,6x,   " ===============")'
   character(*), parameter :: FormatR = '(A,": =============== ", A31,F12.3,1x,  " ===============")'
   character(*), parameter :: FormatQ = '(A,": =============== ", A20,2F10.2,4x," ===============")'
   !===============================================================================
@@ -1005,6 +1005,11 @@ contains
     else
        call seq_infodata_init(infodata,nlfilename, GLOID, pioid)
     end if
+
+    !----------------------------------------------------------
+    ! Read shr_flux  namelist settings
+    !----------------------------------------------------------
+    call seq_flux_readnl_mct(nlfilename, CPLID)
 
     !----------------------------------------------------------
     ! Print Model heading and copyright message
@@ -1617,8 +1622,11 @@ contains
        if (glcocn_present .and. ocn_prognostic) glc_c2_ocn = .true.
        ! For now, glcshelf->ocn only activated if the ocean has activated ocn->glcshelf
        if (ocn_c2_glcshelf .and. glcocn_present .and. ocn_prognostic) glcshelf_c2_ocn = .true.
+       ! For now, glacshelf->ice also controlled by ocean's ocn_c2_glcshelf flag
+       !    Note that ice also has to be prognostic for glcshelf_c2_ice to be true.
+       !    It is not expected that glc and ice would ever be run without ocn prognostic.
+       if (ocn_c2_glcshelf .and. glcice_present .and. ice_prognostic) glcshelf_c2_ice = .true.
        if (glcice_present .and. iceberg_prognostic) glc_c2_ice = .true.
-       if (glcocn_present .and. ice_prognostic) glcshelf_c2_ice = .true.
     endif
     if (wav_present) then
        if (ocn_prognostic) wav_c2_ocn = .true.
@@ -1639,11 +1647,7 @@ contains
     ! set skip_ocean_run flag, used primarily for ocn run on first timestep
     ! use reading a restart as a surrogate from whether this is a startup run
 
-#ifdef COMPARE_TO_NUOPC
-    skip_ocean_run = .false.
-#else
     skip_ocean_run = .true.
-#endif
     if ( read_restart) skip_ocean_run = .false.
     ocnrun_count = 0
     cpl2ocn_first = .true.
@@ -1911,7 +1915,7 @@ contains
     !----------------------------------------------------------
 
     areafact_samegrid = .false.
-#if (defined BFB_CAM_SCAM_IOP )
+#if (defined E3SM_SCM_REPLAY )
     if (.not.samegrid_alo) then
        call shr_sys_abort(subname//' ERROR: samegrid_alo is false - Must run with same atm/ocn/lnd grids when configured for scam iop')
     else
@@ -3877,12 +3881,24 @@ contains
 
        ! ocn prep-merge (cesm1_mod or cesm1_mod_tight)
        if (ocn_prognostic) then
+#if COMPARE_TO_NUOPC          
+          !This is need to compare to nuopc
+          if (.not. skip_ocean_run) then
+             ! ocn prep-merge
+             xao_ox => prep_aoflux_get_xao_ox()
+             call prep_ocn_mrg(infodata, fractions_ox, xao_ox=xao_ox, timer_mrg='CPL:atmocnp_mrgx2o')
+
+             ! Accumulate ocn inputs - form partial sum of tavg ocn inputs (virtual "send" to ocn)
+             call prep_ocn_accum(timer='CPL:atmocnp_accum')
+          end if
+#else 
           ! ocn prep-merge
           xao_ox => prep_aoflux_get_xao_ox()
           call prep_ocn_mrg(infodata, fractions_ox, xao_ox=xao_ox, timer_mrg='CPL:atmocnp_mrgx2o')
 
           ! Accumulate ocn inputs - form partial sum of tavg ocn inputs (virtual "send" to ocn)
           call prep_ocn_accum(timer='CPL:atmocnp_accum')
+#endif
        end if
 
        !----------------------------------------------------------
@@ -3915,36 +3931,37 @@ contains
 
     if (glc_present) then
 
-          if (ocn_c2_glcshelf .and. glcshelf_c2_ocn) then
-             ! the boundary flux calculations done in the coupler require inputs from both GLC and OCN,
-             ! so they will only be valid if both OCN->GLC and GLC->OCN
+       if (ocn_c2_glcshelf .and. glcshelf_c2_ocn) then
+          ! the boundary flux calculations done in the coupler require inputs from both GLC and OCN,
+          ! so they will only be valid if both OCN->GLC and GLC->OCN
 
-             call prep_glc_calc_o2x_gx(timer='CPL:glcprep_ocn2glc') !remap ocean fields to o2x_g at ocean couping interval
+          call prep_glc_calc_o2x_gx(timer='CPL:glcprep_ocn2glc') !remap ocean fields to o2x_g at ocean couping interval
 
-             call prep_glc_calculate_subshelf_boundary_fluxes ! this is actual boundary layer flux calculation
-                                           !this outputs
-                                           !x2g_g/g2x_g, where latter is going
-                                           !to ocean, so should get remapped to
-                                           !ocean grid in prep_ocn_shelf_calc_g2x_ox
-             call prep_ocn_shelf_calc_g2x_ox(timer='CPL:glcpost_glcshelf2ocn')
-                                           !Map g2x_gx shelf fields that were updated above, to g2x_ox.
-                                           !Do this at intrinsic coupling
-                                           !frequency
-             call prep_ice_shelf_calc_g2x_ix(timer='CPL:glcpost_glcshelf2ice')
-                                           !Map g2x_gx shelf fields to g2x_ix.
-                                           !Do this at intrinsic coupling
-                                           !frequency.  This is perhaps an
-                                           !unnecessary place to put this
-                                           !call, since these fields aren't
-                                           !changing on the intrinsic
-                                           !timestep.  But I don't think it's
-                                           !unsafe to do it here.
-
-             call prep_glc_accum_ocn(timer='CPL:glcprep_accum_ocn') !accum x2g_g fields here into x2g_gacc
-
-          endif
-
+          call prep_glc_calculate_subshelf_boundary_fluxes ! this is actual boundary layer flux calculation
+                                        !this outputs
+                                        !x2g_g/g2x_g, where latter is going
+                                        !to ocean, so should get remapped to
+                                        !ocean grid in prep_ocn_shelf_calc_g2x_ox
+          call prep_ocn_shelf_calc_g2x_ox(timer='CPL:glcpost_glcshelf2ocn')
+                                        !Map g2x_gx shelf fields that were updated above, to g2x_ox.
+                                        !Do this at intrinsic coupling
+                                        !frequency
+          call prep_glc_accum_ocn(timer='CPL:glcprep_accum_ocn') !accum x2g_g fields here into x2g_gacc
        endif
+
+       if (glcshelf_c2_ice) then
+          call prep_ice_shelf_calc_g2x_ix(timer='CPL:glcpost_glcshelf2ice')
+                                        !Map g2x_gx shelf fields to g2x_ix.
+                                        !Do this at intrinsic coupling
+                                        !frequency.  This is perhaps an
+                                        !unnecessary place to put this
+                                        !call, since these fields aren't
+                                        !changing on the intrinsic
+                                        !timestep.  But I don't think it's
+                                        !unsafe to do it here.
+       endif
+
+    endif
 
   end subroutine cime_run_ocnglc_coupling
 

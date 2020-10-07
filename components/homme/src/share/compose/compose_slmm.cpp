@@ -16,6 +16,10 @@
 #include <iostream>
 #include <sstream>
 
+#ifdef _OPENMP
+# include <omp.h>
+#endif
+
 #include <Kokkos_Core.hpp>
 
 #ifdef SIQK_TIME
@@ -1835,9 +1839,9 @@ int get_nearest_point (const nearest_point::Mesh& m, const MeshNearestPointData&
 }
 
 Int unittest (const nearest_point::Mesh& m, const Int tgt_elem) {
-  Int nerr = 0, ne;
+  Int nerr = 0, ne = 0;
   const Int nc = len(m.e);
-  for (Int ic = 0, ne = 0; ic < nc; ++ic) {
+  for (Int ic = 0; ic < nc; ++ic) {
     const auto cell = slice(m.e, ic);
     static const Real alphas[] = { 0.01, 0.99, 0, 1 };
     static const int nalphas = sizeof(alphas)/sizeof(*alphas);
@@ -2022,6 +2026,8 @@ struct Advecter {
       local_mesh_nearest_point_data_.resize(nelem);
   }
 
+  void fill_nearest_points_if_needed();
+
   Int np  () const { return np_ ; }
   Int np2 () const { return np2_; }
   Int np4 () const { return np4_; }
@@ -2127,9 +2133,13 @@ void Advecter::init_local_mesh_if_needed (const Int ie, const Array3D& corners,
   m.tgt_elem = slmm::get_src_cell(m, p_inside);
   slmm_assert(m.tgt_elem >= 0 &&
               m.tgt_elem < ncell);
+}
+
+void Advecter::fill_nearest_points_if_needed () {
   if (nearest_point_permitted_lev_bdy_ >= 0)
-    init_nearest_point_data(local_mesh_[ie],
-                            local_mesh_nearest_point_data_[ie]);
+    for (Int ie = 0; ie < static_cast<Int>(local_mesh_.size()); ++ie)
+      init_nearest_point_data(local_mesh_[ie],
+                              local_mesh_nearest_point_data_[ie]);
 }
 
 void Advecter::check_ref2sphere (const Int ie, const Real* p_homme) {
@@ -2323,6 +2333,16 @@ int waitall (int count, Request* reqs, MPI_Status* stats = nullptr) {
                      stats ? stats : MPI_STATUS_IGNORE);
 #endif
 }
+
+int wait (Request* req, MPI_Status* stat = nullptr) {
+#ifdef COMPOSE_DEBUG_MPI
+  const auto out = MPI_Wait(&req->request, stat ? stat : MPI_STATUS_IGNORE);
+  req->unfreed--;
+  return out;
+#else
+  return MPI_Wait(reinterpret_cast<MPI_Request*>(req), stat ? stat : MPI_STATUS_IGNORE);
+#endif
+}
 } // namespace mpi
 
 namespace cslmpi {
@@ -2397,7 +2417,7 @@ struct ListOfLists {
 
   ListOfLists () {}
   ListOfLists (const Int nlist, const Int* nlist_per_list) { init(nlist, nlist_per_list); }
-  void init (const Int nlist, const Int* nlist_per_list) {
+  void init (const Int nlist, const Int* nlist_per_list, T* buf = nullptr) {
     slmm_assert(nlist >= 0); 
     ptr_.resize(nlist+1);
     ptr_[0] = 0;
@@ -2405,7 +2425,12 @@ struct ListOfLists {
       slmm_assert(nlist_per_list[i] >= 0);
       ptr_[i+1] = ptr_[i] + nlist_per_list[i];
     }
-    d_.resize(ptr_.back());
+    if (buf) {
+      d_ = buf;
+    } else {
+      v_.resize(ptr_.back());
+      d_ = v_.data();
+    }
   }
 
   Int n () const { return static_cast<Int>(ptr_.size()) - 1; }
@@ -2430,10 +2455,11 @@ struct ListOfLists {
 
 private:
   friend class BufferLayoutArray;
-  std::vector<T> d_;
+  std::vector<T> v_;
   std::vector<Int> ptr_;
-  T* data () { return d_.data(); }
-  const T* data () const { return d_.data(); }
+  T* d_;
+  T* data () { return d_; }
+  const T* data () const { return d_; }
 };
 
 struct LayoutTriple {
@@ -2585,6 +2611,8 @@ struct CslMpi {
   ListOfLists<omp_lock_t> ri_lidi_locks;
 #endif
 
+  // temporary work space
+  std::vector<Int> nlid_per_rank, sendsz, recvsz;
   Array<Real**> rwork;
 
   CslMpi (const mpi::Parallel::Ptr& ip, const slmm::Advecter::ConstPtr& advecter,
@@ -3186,8 +3214,8 @@ void set_idx2_maps (CslMpi& cm, const Rank2Gids& rank2rmtgids,
 // has a 1-halo patch of bulk data. For a 1-halo, allocations in this routine
 // use essentially the same amount of memory, but not more. We could use less if
 // we were willing to realloc space at each SL time step.
-void alloc_mpi_buffers (CslMpi& cm, const Rank2Gids& rank2rmtgids,
-                        const Rank2Gids& rank2owngids) {
+void size_mpi_buffers (CslMpi& cm, const Rank2Gids& rank2rmtgids,
+                       const Rank2Gids& rank2owngids) {
   const auto myrank = cm.p->rank();
   // sizeof real, int, single int (b/c of alignment)
   const Int sor = sizeof(Real), soi = sizeof(Int), sosi = sor;
@@ -3210,29 +3238,38 @@ void alloc_mpi_buffers (CslMpi& cm, const Rank2Gids& rank2rmtgids,
 
   slmm_assert(cm.ranks.back() == myrank);
   const Int nrmtrank = static_cast<Int>(cm.ranks.size()) - 1;
-  std::vector<Int> nlid_per_rank(nrmtrank), sendsz(nrmtrank), recvsz(nrmtrank);
+  cm.nlid_per_rank.resize(nrmtrank);
+  cm.sendsz.resize(nrmtrank);
+  cm.recvsz.resize(nrmtrank);
   for (Int ri = 0; ri < nrmtrank; ++ri) {
     const auto& rmtgids = rank2rmtgids.at(cm.ranks(ri));
     const auto& owngids = rank2owngids.at(cm.ranks(ri));
-    nlid_per_rank[ri] = rmtgids.size();
-    sendsz[ri] = bytes2real(std::max(xbufcnt(rmtgids, owngids),
-                                     qbufcnt(owngids, rmtgids)));
-    recvsz[ri] = bytes2real(std::max(xbufcnt(owngids, rmtgids),
-                                     qbufcnt(rmtgids, owngids)));
+    cm.nlid_per_rank[ri] = rmtgids.size();
+    cm.sendsz[ri] = bytes2real(std::max(xbufcnt(rmtgids, owngids),
+                                        qbufcnt(owngids, rmtgids)));
+    cm.recvsz[ri] = bytes2real(std::max(xbufcnt(owngids, rmtgids),
+                                        qbufcnt(rmtgids, owngids)));
   }
+}
+
+void alloc_mpi_buffers (CslMpi& cm, Real* sendbuf = nullptr, Real* recvbuf = nullptr) {
+  const Int nrmtrank = static_cast<Int>(cm.ranks.size()) - 1;
   cm.nx_in_rank.reset_capacity(nrmtrank, true);
-  cm.nx_in_lid.init(nrmtrank, nlid_per_rank.data());
-  cm.bla.init(nrmtrank, nlid_per_rank.data(), cm.nlev);
-  cm.sendbuf.init(nrmtrank, sendsz.data());
-  cm.recvbuf.init(nrmtrank, recvsz.data());
+  cm.nx_in_lid.init(nrmtrank, cm.nlid_per_rank.data());
+  cm.bla.init(nrmtrank, cm.nlid_per_rank.data(), cm.nlev);
+  cm.sendbuf.init(nrmtrank, cm.sendsz.data(), sendbuf);
+  cm.recvbuf.init(nrmtrank, cm.recvsz.data(), recvbuf);
+  cm.nlid_per_rank.clear();
+  cm.sendsz.clear();
+  cm.recvsz.clear();
 #ifdef HORIZ_OPENMP
-  cm.ri_lidi_locks.init(nrmtrank, nlid_per_rank.data());
+  cm.ri_lidi_locks.init(nrmtrank, cm.nlid_per_rank.data());
   for (Int ri = 0; ri < nrmtrank; ++ri) {
     auto&& locks = cm.ri_lidi_locks(ri);
     for (auto& lock: locks)
       omp_init_lock(&lock);
   }
-#endif
+#endif  
 }
 
 // At simulation initialization, set up a bunch of stuff to make the work at
@@ -3246,7 +3283,7 @@ void setup_comm_pattern (CslMpi& cm, const Int* nbr_id_rank, const Int* nirptr) 
     comm_lid_on_rank(cm, rank2rmtgids, rank2owngids, gid2rmt_owning_lid);
     set_idx2_maps(cm, rank2rmtgids, gid2rmt_owning_lid);
   }
-  alloc_mpi_buffers(cm, rank2rmtgids, rank2owngids);
+  size_mpi_buffers(cm, rank2rmtgids, rank2owngids);
 }
 
 // mylid_with_comm(rankidx) is a list of element LIDs that have relations with
@@ -3297,6 +3334,7 @@ CslMpi::Ptr init (const slmm::Advecter::ConstPtr& advecter,
 // already has a ref to the const'ed one.
 void finalize_local_meshes (CslMpi& cm, slmm::Advecter& advecter) {
   if (cm.halo == 2) extend_halo::extend_local_meshes(*cm.p, cm.ed, advecter);
+  advecter.fill_nearest_points_if_needed();
 }
 
 // Set pointers to HOMME data arrays.
@@ -3336,7 +3374,6 @@ void isend (CslMpi& cm, const bool want_req = true, const bool skip_if_empty = f
 # pragma omp master
 #endif
   {
-    slmm_assert( ! (skip_if_empty && want_req));
     const Int nrmtrank = static_cast<Int>(cm.ranks.size()) - 1;
     for (Int ri = 0; ri < nrmtrank; ++ri) {
       if (skip_if_empty && cm.sendcount(ri) == 0) continue;
@@ -3353,6 +3390,21 @@ void recv_and_wait_on_send (CslMpi& cm) {
   {
     mpi::waitall(cm.sendreq.n(), cm.sendreq.data());
     mpi::waitall(cm.recvreq.n(), cm.recvreq.data());
+  }
+#ifdef HORIZ_OPENMP
+# pragma omp barrier
+#endif
+}
+
+void wait_on_send (CslMpi& cm, const bool skip_if_empty = false) {
+#ifdef HORIZ_OPENMP
+# pragma omp master
+#endif
+  {
+    for (Int ri = 0; ri < cm.sendreq.n(); ++ri) {
+      if (skip_if_empty && cm.sendcount(ri) == 0) continue;
+      mpi::wait(&cm.sendreq(ri));
+    }
   }
 #ifdef HORIZ_OPENMP
 # pragma omp barrier
@@ -3628,7 +3680,9 @@ void calc_q (const CslMpi& cm, const Int& src_lid, const Int& lev,
   if (use_q) {
     // We can use q from calc_q_extrema.
     const Real* const qs0 = ed.q + levos;
-#   pragma ivdep
+    // It was found that Intel 18 produced code that was not BFB between runs
+    // due to this pragma.
+    //#pragma ivdep
     for (Int iq = 0; iq < cm.qsize; ++iq) {
       const Real* const qs = qs0 + iq*np2nlev;
       q_tgt[iq] =
@@ -3641,7 +3695,8 @@ void calc_q (const CslMpi& cm, const Int& src_lid, const Int& lev,
     // q from calc_q_extrema is being overwritten, so have to use qdp/dp.
     const Real* const dp = ed.dp + levos;
     const Real* const qdp0 = ed.qdp + levos;
-#   pragma ivdep
+    // I'm commented out this pragma, too, to be safe.
+    //#pragma ivdep
     for (Int iq = 0; iq < cm.qsize; ++iq) {
       const Real* const qdp = qdp0 + iq*np2nlev;
       q_tgt[iq] = (ry[0]*(rx[0]*(qdp[ 0]/dp[ 0]) + rx[1]*(qdp[ 1]/dp[ 1])  +
@@ -3707,15 +3762,14 @@ void calc_own_q (CslMpi& cm, const Int& nets, const Int& nete,
                  const FA4<Real>& q_min, const FA4<Real>& q_max) {
   const int tid = get_tid();
   for (Int tci = nets; tci <= nete; ++tci) {
-    const Int ie0 = tci - nets;
     auto& ed = cm.ed(tci);
     const FA3<Real> q_tgt(ed.q, cm.np2, cm.nlev, cm.qsize);
     for (const auto& e: ed.own) {
       const Int slid = ed.nbrs(ed.src(e.lev, e.k)).lid_on_rank;
       const auto& sed = cm.ed(slid);
       for (Int iq = 0; iq < cm.qsize; ++iq) {
-        q_min(e.k, e.lev, iq, ie0) = sed.q_extrema(iq, e.lev, 0);
-        q_max(e.k, e.lev, iq, ie0) = sed.q_extrema(iq, e.lev, 1);
+        q_min(e.k, e.lev, iq, tci) = sed.q_extrema(iq, e.lev, 0);
+        q_max(e.k, e.lev, iq, tci) = sed.q_extrema(iq, e.lev, 1);
       }
       Real* const qtmp = &cm.rwork(tid, 0);
       calc_q<np>(cm, slid, e.lev, &dep_points(0, e.k, e.lev, tci), qtmp, false);
@@ -3733,7 +3787,6 @@ void copy_q (CslMpi& cm, const Int& nets,
            end = cm.mylid_with_comm_tid_ptr(tid+1);
        ptr < end; ++ptr) {
     const Int tci = cm.mylid_with_comm(ptr);
-    const Int ie0 = tci - nets;
     auto& ed = cm.ed(tci);
     const FA3<Real> q_tgt(ed.q, cm.np2, cm.nlev, cm.qsize);
     for (const auto& e: ed.rmt) {
@@ -3741,8 +3794,8 @@ void copy_q (CslMpi& cm, const Int& nets,
       const Int ri = ed.nbrs(ed.src(e.lev, e.k)).rank_idx;
       const auto&& recvbuf = cm.recvbuf(ri);
       for (Int iq = 0; iq < cm.qsize; ++iq) {
-        q_min(e.k, e.lev, iq, ie0) = recvbuf(e.q_extrema_ptr + 2*iq    );
-        q_max(e.k, e.lev, iq, ie0) = recvbuf(e.q_extrema_ptr + 2*iq + 1);
+        q_min(e.k, e.lev, iq, tci) = recvbuf(e.q_extrema_ptr + 2*iq    );
+        q_max(e.k, e.lev, iq, tci) = recvbuf(e.q_extrema_ptr + 2*iq + 1);
       }
       for (Int iq = 0; iq < cm.qsize; ++iq) {
         slmm_assert(recvbuf(e.q_ptr + iq) != -1);
@@ -3770,8 +3823,8 @@ void step (
                3, cm.np2, cm.nlev, cm.nelemd);
   const Int nelem = nete - nets + 1;
   const FA4<Real>
-    q_min(q_min_r, cm.np2, cm.nlev, cm.qsize, nelem),
-    q_max(q_max_r, cm.np2, cm.nlev, cm.qsize, nelem);
+    q_min(q_min_r, cm.np2, cm.nlev, cm.qsize, cm.nelemd),
+    q_max(q_max_r, cm.np2, cm.nlev, cm.qsize, cm.nelemd);
 
   // Partition my elements that communicate with remotes among threads, if I
   // haven't done that yet.
@@ -3794,7 +3847,7 @@ void step (
   // Compute the requested q for departure points from remotes.
   calc_rmt_q<np>(cm);
   // Send q data.
-  isend(cm, false /* want_req */, true /* skip_if_empty */);
+  isend(cm, true /* want_req */, true /* skip_if_empty */);
   // Set up to receive q for each of my departure point requests sent to
   // remotes. We can't do this until the OpenMP barrier in isend assures that
   // all threads are done with the receive buffer's departure points.
@@ -3805,9 +3858,8 @@ void step (
   // Receive remote q data and use this to fill in the rest of my fields.
   recv(cm, true /* skip_if_empty */);
   copy_q(cm, nets, q_min, q_max);
-  // Don't need to wait on send buffer again because MPI-level synchronization
-  // outside of SL transport assures the send buffer is ready at the next call
-  // to step. But do need to dealloc the send requests.
+  // Wait on send buffer so it's free to be used by others.
+  wait_on_send(cm, true /* skip_if_empty */);
 }
 } // namespace cslmpi
 } // namespace homme
@@ -3847,18 +3899,34 @@ void slmm_init_impl (
   homme::Int fcomm, homme::Int transport_alg, homme::Int np,
   homme::Int nlev, homme::Int qsize, homme::Int qsized, homme::Int nelem,
   homme::Int nelemd, homme::Int cubed_sphere_map,
-  const homme::Int** lid2gid, const homme::Int** lid2facenum,
-  const homme::Int** nbr_id_rank, const homme::Int** nirptr,
-  homme::Int sl_nearest_point_lev)
+  const homme::Int* lid2gid, const homme::Int* lid2facenum,
+  const homme::Int* nbr_id_rank, const homme::Int* nirptr,
+  homme::Int sl_nearest_point_lev, homme::Int, homme::Int, homme::Int,
+  homme::Int)
 {
   homme::slmm_init(np, nelem, nelemd, transport_alg, cubed_sphere_map,
-                   sl_nearest_point_lev - 1, *lid2facenum);
+                   sl_nearest_point_lev - 1, lid2facenum);
   slmm_throw_if(homme::g_advecter->is_cisl(),
                 "CISL code was removed.");
   const auto p = homme::mpi::make_parallel(MPI_Comm_f2c(fcomm));
   g_csl_mpi = homme::cslmpi::init(homme::g_advecter, p, np, nlev, qsize,
-                                  qsized, nelemd, *nbr_id_rank, *nirptr,
+                                  qsized, nelemd, nbr_id_rank, nirptr,
                                   2 /* halo */);
+}
+
+void slmm_query_bufsz (homme::Int* sendsz, homme::Int* recvsz) {
+  slmm_assert(g_csl_mpi);
+  homme::Int s = 0, r = 0;
+  for (const auto e : g_csl_mpi->sendsz) s += e;
+  for (const auto e : g_csl_mpi->recvsz) r += e;
+  *sendsz = s;
+  *recvsz = r;
+}
+
+void slmm_set_bufs (homme::Real* sendbuf, homme::Real* recvbuf,
+                    homme::Int, homme::Int) {
+  slmm_assert(g_csl_mpi);
+  homme::cslmpi::alloc_mpi_buffers(*g_csl_mpi, sendbuf, recvbuf);
 }
 
 void slmm_get_mpi_pattern (homme::Int* sl_mpi) {
@@ -3866,12 +3934,12 @@ void slmm_get_mpi_pattern (homme::Int* sl_mpi) {
 }
 
 void slmm_init_local_mesh (
-  homme::Int ie, homme::Cartesian3D** neigh_corners, homme::Int nnc,
-  homme::Cartesian3D* p_inside)
+  homme::Int ie, homme::Cartesian3D* neigh_corners, homme::Int nnc,
+  homme::Cartesian3D* p_inside, homme::Int)
 {
   homme::g_advecter->init_local_mesh_if_needed(
     ie - 1, homme::FA3<const homme::Real>(
-      reinterpret_cast<const homme::Real*>(*neigh_corners), 3, 4, nnc),
+      reinterpret_cast<const homme::Real*>(neigh_corners), 3, 4, nnc),
     reinterpret_cast<const homme::Real*>(p_inside));
 }
 
@@ -3899,6 +3967,7 @@ void slmm_csl (
   homme::Real* minq, homme::Real* maxq, homme::Int* info)
 {
   slmm_assert(g_csl_mpi);
+  slmm_assert(g_csl_mpi->sendsz.empty()); // alloc_mpi_buffers was called
   *info = 0;
   try {
     homme::cslmpi::step<4>(*g_csl_mpi, nets - 1, nete - 1,
@@ -3907,5 +3976,10 @@ void slmm_csl (
     std::cerr << e.what();
     *info = -1;
   }
+}
+
+void slmm_finalize () {
+  g_csl_mpi = nullptr;
+  homme::g_advecter = nullptr;
 }
 } // extern "C"
