@@ -14,7 +14,7 @@ module RtmRestFile
   use RtmSpmd       , only : masterproc 
   use RtmVar        , only : rtmlon, rtmlat, iulog, inst_suffix, rpntfil, &
                              caseid, nsrest, brnch_retain_casename, &
-                             finidat_rtm, nrevsn_rtm, wrmflag, &
+                             finidat_rtm, nrevsn_rtm, wrmflag, inundflag, &
                              nsrContinue, nsrBranch, nsrStartup, &
                              ctitle, version, username, hostname, conventions, source
   use RtmHistFile   , only : RtmHistRestart
@@ -23,10 +23,10 @@ module RtmRestFile
   use RunoffMod     , only : rtmCTL
   use RtmIO       
   use RtmDateTime
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
   use WRM_subw_io_mod, only : WRM_computeRelease
-#endif
+!#endif
   use rof_cpl_indices , only : nt_rtm, rtm_tracers 
 !
 ! !PUBLIC TYPES:
@@ -396,11 +396,14 @@ contains
     storage_read = .true.
     release_read = .true.
     stormth_read = .true.
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
+if (wrmflag) then
     nvmax = 10
-#else
+else
+!#else
     nvmax = 7
-#endif
+endif
+!#endif
 
     do nv = 1,nvmax
     do nt = 1,nt_rtm
@@ -442,7 +445,7 @@ contains
           lname = 'instataneous flow out of main channel in cell'
           uname = 'm3/s'
           dfld  => rtmCTL%erout(:,nt)
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
        elseif (nv == 8 .and. trim(rtm_tracers(nt)) == 'LIQ') then
           varok = .false.
           if (wrmflag) then
@@ -491,7 +494,7 @@ contains
              uname = 'm3'
              dfld  => WRMUnit%StorMthStOpG(:)
           endif
-#endif
+!#endif
        else
           varok = .false.
        endif
@@ -537,13 +540,13 @@ contains
              if (abs(rtmCTL%wr(n,nt))      > 1.e30) rtmCTL%wr(n,nt) = 0.
              if (abs(rtmCTL%erout(n,nt))   > 1.e30) rtmCTL%erout(n,nt) = 0.
           end do  ! nt
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
           if (wrmflag) then
              if (abs(storWater%storageG(n)) > 1.e30) storWater%storageG(n) = 0.
              if (abs(storWater%releaseG(n)) > 1.e30) storWater%releaseG(n) = 0.
              if (abs(WRMUnit%StorMthStOpG(n)) > 1.e30) WRMUnit%StorMthStOpG(n) = 0.
           endif
-#endif
+!#endif
           if (rtmCTL%mask(n) == 1) then
              do nt = 1,nt_rtm
                 rtmCTL%runofflnd(n,nt) = rtmCTL%runoff(n,nt)
@@ -557,7 +560,7 @@ contains
           endif
        enddo  ! n
 
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
        ! only overwrite fields that have been read, otherwise, use initial values
        if (wrmflag) then
           do idam = 1, ctlSubwWRM%localNumDam
@@ -570,7 +573,7 @@ contains
              call WRM_computeRelease()
           endif
        endif
-#endif
+!#endif
     endif  ! read
 
   end subroutine RtmRestart

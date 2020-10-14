@@ -15,11 +15,11 @@ MODULE WRM_modules
                               MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
   use RtmTimeManager , only : get_curr_date
 #if (1 == 0)
-  use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
-                                 updatestate_mainchannel, hillsloperouting, &
-                                 subnetworkrouting, mainchannelrouting
-  use rof_cpl_indices, only : nt_rtm
-  use WRM_returnflow , only : insert_returnflow_channel
+!  use MOSART_physics_mod, only : updatestate_hillslope, updatestate_subnetwork, &
+!                                 updatestate_mainchannel, hillsloperouting, &
+!                                 subnetworkrouting, mainchannelrouting
+!  use rof_cpl_indices, only : nt_rtm
+!  use WRM_returnflow , only : insert_returnflow_channel
 #endif
   use WRM_type_mod   , only : ctlSubwWRM, WRMUnit, StorWater, &
                               aVect_wg, aVect_wd, sMatP_g2d, sMatP_d2g, &
@@ -35,7 +35,7 @@ MODULE WRM_modules
 
 ! !PUBLIC MEMBER FUNCTIONS:
 #if (1 == 0)
-  public Euler_WRM  
+!  public Euler_WRM  
 #endif
   public irrigationExtraction
   public irrigationExtractionSubNetwork
@@ -60,7 +60,7 @@ MODULE WRM_modules
      real(r8) :: temp_erout(nt_rtm), localDeltaT
      character(len=*),parameter :: subname='(Euler_WRM)'
 
-     if (Tctl%RoutingFlag == 1) then
+     if(Tctl%RoutingFlag == 1) then
         !print*, "Running WRM Euler"
         do iunit=rtmCTL%begr,rtmCTL%endr
            call hillslopeRouting(iunit, Tctl%DeltaT)
@@ -268,14 +268,7 @@ MODULE WRM_modules
         StorWater%supply(iunit)= StorWater%supply(iunit) + flow_vol
         StorWater%demand(iunit)= StorWater%demand(iunit) - flow_vol
         flow_vol = 0._r8
-     endif
-
-     ! debug (N. Sun)
-     if (StorWater%demand(iunit)>0 .and. iunit==1175) then
-        write(iulog,*) ' subnetwork supply = m3', iunit, StorWater%supply(iunit)
-        write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
-     endif     ! debug (N. Sun)
-        
+     endif        
   
      !Trunoff%etin(iunit,nt_nliq) = flow_vol / (TheDeltaT)
      Trunoff%wt(iunit,nt_nliq) = flow_vol 
@@ -336,11 +329,11 @@ MODULE WRM_modules
         endif
      endif
 
-     ! debug (N. Sun)
-     if (StorWater%demand(iunit)>0 .and. iunit==1175) then
-        write(iulog,*) ' channel supply = m3', iunit, StorWater%supply(iunit)
-        write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
-     endif
+     ! debug 
+     !if (StorWater%demand(iunit)>0 .and. iunit==1175) then
+     !   write(iulog,*) ' channel supply = m3', iunit, StorWater%supply(iunit)
+     !   write(iulog,*) ' demand = m3', iunit, StorWater%demand(iunit)
+     !endif
 
      if (check_local_budget) then
         budget = budget - (Trunoff%wr(iunit,nt_nliq) + StorWater%supply(iunit))
@@ -413,12 +406,12 @@ MODULE WRM_modules
 !       endif
 
        !NV checks
-       if ( idam .eq. 80) then
-       write(iulog,*) 'Regulation release',idam,month,StorWater%release(idam)
-       write(iulog,*) k,factor, Storwater%pre_release(idam,month)
-       write(iulog,*) 'flows', WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13)
-       write(iulog,*) 'storages',StorWater%storage(idam)
-       endif
+ !      if ( idam .eq. 80) then
+ !      write(iulog,*) 'Regulation release',idam,month,StorWater%release(idam)
+ !      write(iulog,*) k,factor, Storwater%pre_release(idam,month)
+ !      write(iulog,*) 'flows', WRMUnit%MeanMthFlow(idam,month),WRMUnit%MeanMthFlow(idam,13)
+ !      write(iulog,*) 'storages',StorWater%storage(idam)
+ !      endif
      end do
 
   end subroutine RegulationRelease
@@ -616,7 +609,7 @@ MODULE WRM_modules
      !--- return and do nothing under certain conditions
      !---------------------------------------------
 
-     if (damID > ctlSubwWRM%LocalNumDam .OR. damID <= 0 .or. WRMUnit%MeanMthFlow(damID,13) <= 0.01_r8) then
+     if (damID > ctlSubwWRM%LocalNumDam .OR. damID <= 0) then ! .or. WRMUnit%MeanMthFlow(damID,13) <= 0.01_r8) then
         return
         !write(iulog,*) "Error in Regulation with DamID ",damID
         !call shr_sys_abort(subname//' error in damID')
@@ -691,11 +684,11 @@ MODULE WRM_modules
 
 
 !test NV
-     if ( damID .eq. 80) then 
-       flow_vol = flow_vol /  theDeltaT
-       flow_res = flow_res /  theDeltaT
-       write(iulog,'(2a,i8,3f20.2)') subname,'check Coulee',damID,flow_vol,flow_res,StorWater%storage(damID)
-     endif
+!     if ( damID .eq. 80) then 
+!       flow_vol = flow_vol /  theDeltaT
+!       flow_res = flow_res /  theDeltaT
+!       write(iulog,'(2a,i8,3f20.2)') subname,'check Coulee',damID,flow_vol,flow_res,StorWater%storage(damID)
+!     endif
   end subroutine Regulation
 
 !-----------------------------------------------------------------------
@@ -1114,8 +1107,8 @@ MODULE WRM_modules
      !--- g2d sum ---
 !     do idam = 1,ctlSubwWRM%LocalNumDam
 !NV check
-        idam = 80
-        write(iulog,'(2a,2i8,2g20.10)') subname,' Coulee demand =',idam,WRMUnit%damID(idam),aVect_wd%rAttr(1,idam),StorWater%storage(idam)
+!        idam = 80
+!        write(iulog,'(2a,2i8,2g20.10)') subname,' Coulee demand =',idam,WRMUnit%damID(idam),aVect_wd%rAttr(1,idam),StorWater%storage(idam)
 !     enddo
      call t_stopf('moswrm_ERFlow_writ1')
 

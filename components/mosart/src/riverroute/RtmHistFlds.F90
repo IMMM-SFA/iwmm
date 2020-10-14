@@ -11,10 +11,10 @@ module RtmHistFlds
   use shr_kind_mod   , only: r8 => shr_kind_r8
   use RunoffMod      , only : rtmCTL
   use RtmHistFile    , only : RtmHistAddfld, RtmHistPrintflds
-  use RtmVar         , only : wrmflag, inundflag
-#ifdef INCLUDE_WRM
+  use RtmVar         , only : wrmflag, inundflag, sediflag, heatflag, thermpflag
+!#ifdef INCLUDE_WRM
   use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater
-#endif
+!#endif
   use rof_cpl_indices, only : nt_rtm, rtm_tracers  
 
   implicit none
@@ -90,6 +90,10 @@ contains
          avgflag='A', long_name='MOSART direct discharge into ocean: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%runoffdir_nt2, default='active')
 
+    call RtmHistAddfld (fname='Main_Channel_STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
+         avgflag='A', long_name='MOSART main channel storage: '//trim(rtm_tracers(1)), &
+         ptr_rof=rtmCTL%wr_nt1, default='active')
+
     call RtmHistAddfld (fname='STORAGE'//'_'//trim(rtm_tracers(1)), units='m3',  &
          avgflag='A', long_name='MOSART storage: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%volr_nt1, default='active')
@@ -115,14 +119,12 @@ contains
          ptr_rof=rtmCTL%dvolrdtocn_nt2, default='inactive')
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='ALM irrigation demand: '//trim(rtm_tracers(1)), &
+         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%qsur_nt1, default='active')
-       !MOSART input surface runoff was modified to ALM irrigation demand by Yuna 1/29/2018
 
     call RtmHistAddfld (fname='QSUR'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='ALM irrigation demand: '//trim(rtm_tracers(2)), &
+         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%qsur_nt2, default='active')
-       !MOSART input surface runoff was modified to ALM irrigation demand by Yuna 1/29/2018
 
     call RtmHistAddfld (fname='QSUB'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
          avgflag='A', long_name='MOSART input subsurface runoff: '//trim(rtm_tracers(1)), &
@@ -149,14 +151,14 @@ contains
          ptr_rof=rtmCTL%qdto_nt2, default='active')
 
     call RtmHistAddfld (fname='QDEM'//'_'//trim(rtm_tracers(1)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(1)), &
+         avgflag='A', long_name='MOSART total demand: '//trim(rtm_tracers(1)), &
          ptr_rof=rtmCTL%qdem_nt1, default='active')
 
     call RtmHistAddfld (fname='QDEM'//'_'//trim(rtm_tracers(2)), units='m3/s',  &
-         avgflag='A', long_name='MOSART input surface runoff: '//trim(rtm_tracers(2)), &
+         avgflag='A', long_name='MOSART total demand: '//trim(rtm_tracers(2)), &
          ptr_rof=rtmCTL%qdem_nt2, default='active')
 
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
     if (wrmflag) then
 
       call RtmHistAddfld (fname='WRM_SUPPLY', units='m3/s',  &
@@ -182,9 +184,9 @@ contains
          avgflag='A', long_name='WRM storage ', &
          ptr_rof=StorWater%storageG, default='active')
     endif
-#endif
+!#endif
 
-#ifdef INCLUDE_INUND
+!#ifdef INCLUDE_INUND
     if (inundflag) then
       call RtmHistAddfld (fname='FLOODPLAIN_VOLUME', units='m3',  &
          avgflag='A', long_name='MOSART floodplain water volume', &
@@ -196,10 +198,80 @@ contains
       call RtmHistAddfld (fname='FLOODPLAIN_FRACTION', units='none',  &
          avgflag='A', long_name='MOSART floodplain water area fraction', &
          ptr_rof=rtmCTL%inundff, default='active')
-		!!!!!!!!!!!!!!!!!!!!!!!!
+      call RtmHistAddfld (fname='FLOODED_FRACTION', units='none',  &
+         avgflag='A', long_name='MOSART flooded water area fraction', &
+         ptr_rof=rtmCTL%inundffunit, default='active')
+        !!!!!!!!!!!!!!!!!!!!!!!!
     endif
-#endif
+!#endif
 
+    if(heatflag) then
+      call RtmHistAddfld (fname='TEMP_QSUR', units='Kelvin',  &
+           avgflag='A', long_name='Temperature of surface runoff', &
+           ptr_rof=rtmCTL%templand_Tqsur_nt1)
+    
+      call RtmHistAddfld (fname='TEMP_QSUB', units='Kelvin',  &
+           avgflag='A', long_name='Temperature of subsurface runoff', &
+           ptr_rof=rtmCTL%templand_Tqsub_nt1)
+
+      call RtmHistAddfld (fname='QTHERM_FROM_CIME', units='m3/s',  &
+           avgflag='A', long_name='Thermal discharge Q ', &
+           ptr_rof=rtmCTL%QTHERM)
+
+      call RtmHistAddfld (fname='TTHERM_FROM_CIME', units='Kelvin',  &
+           avgflag='A', long_name='Thermal effluent temperature ', &
+           ptr_rof=rtmCTL%TTHERM)
+    
+      call RtmHistAddfld (fname='TEMP_TRIB', units='Kelvin',  &
+           avgflag='A', long_name='Water temperature of tributary channels', &
+           ptr_rof=rtmCTL%templand_Ttrib_nt1)
+    
+      call RtmHistAddfld (fname='TEMP_CHANR', units='Kelvin',  &
+           avgflag='A', long_name='Water temperature of main channels', &
+           ptr_rof=rtmCTL%templand_Tchanr_nt1)         
+    
+      call RtmHistAddfld (fname='ATM_TAIR', units='Kelvin',  &
+           avgflag='A', long_name='Atmospheric temperature', &
+           ptr_rof=rtmCTL%forc_tair)
+		   
+      call RtmHistAddfld (fname='ATM_PBOT', units='Pa',  &
+           avgflag='A', long_name='Atmospheric pressure', &
+           ptr_rof=rtmCTL%forc_pbot)
+		   
+      call RtmHistAddfld (fname='ATM_VP', units='Pa',  &
+           avgflag='A', long_name='Atmospheric vapor pressure', &
+           ptr_rof=rtmCTL%forc_vp)
+		   
+	  call RtmHistAddfld (fname='ATM_WIND', units='m/s',  &
+           avgflag='A', long_name='Wind speed', &
+           ptr_rof=rtmCTL%forc_wind)
+	
+      call RtmHistAddfld (fname='ATM_LWRAD', units='m2/s',  &
+           avgflag='A', long_name='Downward infrared (longwave) radiation', &
+           ptr_rof=rtmCTL%forc_lwrad)
+		   
+      call RtmHistAddfld (fname='ATM_RH', units='%',  &
+           avgflag='A', long_name='Relative humidity', &
+           ptr_rof=rtmCTL%forc_rh)
+		   
+      call RtmHistAddfld (fname='ATM_SWRAD', units='m2/s',  &
+           avgflag='A', long_name='Atmospheric incident solar (shortwave) radiation', &
+           ptr_rof=rtmCTL%forc_swrad)
+		   
+		   
+      if (thermpflag) then
+        call RtmHistAddfld (fname='QTHERM', units='m3/s',  &
+           avgflag='A', long_name='Thermal discharge from thermo-electric power plants', &
+           ptr_rof=rtmCTL%Qp_nt1)		
+        call RtmHistAddfld (fname='TTHERM', units='Kelvin',  &
+           avgflag='A', long_name='Water temperature of thermal effluent', &
+           ptr_rof=rtmCTL%Tp_nt1)	
+        call RtmHistAddfld (fname='THERM_WDEMAND', units='%',  &
+           avgflag='A', long_name='Percent of TEPP met water demand', &
+           ptr_rof=rtmCTL%metThermDem)	
+      
+      end if
+    end if     
     ! Print masterlist of history fields
 
     call RtmHistPrintflds()
@@ -212,7 +284,7 @@ contains
 
     !-----------------------------------------------------------------------
     ! !DESCRIPTION:
-    ! Set mosart history fields as 1d poitner arrays
+    ! Set mosart history fields as 1d pointer arrays
     !
     implicit none
     integer :: idam, ig
@@ -243,6 +315,8 @@ contains
     rtmCTL%dvolrdtocn_nt1(:) = rtmCTL%dvolrdtocn(:,1)
     rtmCTL%dvolrdtocn_nt2(:) = rtmCTL%dvolrdtocn(:,2)
 
+    rtmCTL%wr_nt1(:)         = rtmCTL%wr(:,1)
+
     rtmCTL%volr_nt1(:)       = rtmCTL%volr(:,1)
     rtmCTL%volr_nt2(:)       = rtmCTL%volr(:,2)
 
@@ -261,7 +335,7 @@ contains
     rtmCTL%qdem_nt1(:)       = rtmCTL%qdem(:,1)
     rtmCTL%qdem_nt2(:)       = rtmCTL%qdem(:,2)
 
-#ifdef INCLUDE_WRM
+!#ifdef INCLUDE_WRM
     if (wrmflag) then
        StorWater%storageG = 0._r8
        do idam = 1, ctlSubwWRM%localNumDam
@@ -269,8 +343,26 @@ contains
           StorWater%storageG(ig) = StorWater%storage(idam)
        enddo
     endif
-#endif
+!#endif
 
+    if(heatflag) then
+      rtmCTL%templand_Tqsur_nt1(:) = rtmCTL%templand_Tqsur(:)
+      rtmCTL%templand_Tqsur_nt2(:) = rtmCTL%templand_Tqsur(:)
+      rtmCTL%templand_Tqsub_nt1(:) = rtmCTL%templand_Tqsub(:)
+      rtmCTL%templand_Tqsub_nt2(:) = rtmCTL%templand_Tqsub(:)
+      rtmCTL%templand_Ttrib_nt1(:) = rtmCTL%templand_Ttrib(:)
+      rtmCTL%templand_Ttrib_nt2(:) = rtmCTL%templand_Ttrib(:)
+      rtmCTL%templand_Tchanr_nt1(:) = rtmCTL%templand_Tchanr(:)
+      rtmCTL%templand_Tchanr_nt2(:) = rtmCTL%templand_Tchanr(:)
+	  
+      if (thermpflag) then  
+        rtmCTL%Qp_nt1(:) = rtmCTL%avgQp(:,1)
+        rtmCTL%Qp_nt2(:) = rtmCTL%avgQp(:,2)
+        rtmCTL%Tp_nt1(:) = rtmCTL%avgTp(:)
+        rtmCTL%Tp_nt2(:) = rtmCTL%avgTp(:)
+      end if
+    end if
+    
   end subroutine RtmHistFldsSet
 
 
