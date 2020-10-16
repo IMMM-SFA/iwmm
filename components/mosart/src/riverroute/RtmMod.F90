@@ -4046,7 +4046,7 @@ endif
         allocate (THeat%QTHERM(begr:endr))
         THeat%QTHERM = 0.0_r8
         allocate (THeat%TTHERM(begr:endr))
-        THeat%TTHERM = 273.15_r8
+        THeat%TTHERM = 0.0_r8
 
         allocate (THeat%Tt(begr:endr))
         THeat%Tt = 273.15_r8
@@ -4105,7 +4105,7 @@ endif
         
         if (thermpflag) then
           allocate (THeat%Tp(begr:endr))
-          THeat%Tp = 273.15_r8
+          THeat%Tp = 0._r8
           allocate (THeat%Ha_p2r(begr:endr))
           THeat%Ha_p2r = 0._r8
           allocate (THeat%metdemand_r(begr:endr))

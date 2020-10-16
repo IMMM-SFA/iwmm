@@ -125,7 +125,7 @@ MODULE MOSART_physics_mod
           do iunit=rtmCTL%begr,rtmCTL%endr
              TRunoff%Qp(iunit,nt_nliq) = 0._r8
              TRunoff%Qp(iunit,nt_nice) = 0._r8
-             THeat%Tp(iunit) = 273.15_r8
+             THeat%Tp(iunit) = 0._r8
           end do
        end if
     end if

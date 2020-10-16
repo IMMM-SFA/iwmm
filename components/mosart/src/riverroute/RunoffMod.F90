@@ -94,7 +94,7 @@ module RunoffMod
      real(r8), pointer :: qdto(:,:)        ! coupler diret-to-ocean forcing [m3/s]
      real(r8), pointer :: qdem(:,:)        ! coupler total demand diagnostic [m3/s]
      real(r8), pointer :: Qp(:,:)          ! coupler thermal discharge (m3/s)
-     real(r8), pointer :: Tp(:)            ! coupler thermal effluent tempeature (K)
+     real(r8), pointer :: Tp(:)            ! coupler delta tempeature of TEPP thermal effluent T minus inlet T (K)
 	 real(r8), pointer :: forc_tair(:)     ! atmospheric temperature (Kelvin)
 	 real(r8), pointer :: forc_pbot(:)     ! atmospheric pressure (Pa)
 	 real(r8), pointer :: forc_vp(:)       ! atmospheric vapor pressure (Pa)
@@ -444,14 +444,14 @@ module RunoffMod
       
        ! thermal effluent from thermo-electric power plant 
       !! states
-      real(r8), pointer :: Tp(:)          ! temperature of thermal effluent, [K]
+      real(r8), pointer :: Tp(:)          ! delta tempeature of TEPP thermal effluent T minus inlet T (K)
            
       ! hillsloope
       !! states
       real(r8), pointer :: Tqsur(:)       ! temperature of surface runoff, [K]
       real(r8), pointer :: Tqsub(:)       ! temperature of subsurface runoff, [K]
       real(r8), pointer :: QTHERM(:)      ! thermal discharge Q [m3/s]
-      real(r8), pointer :: TTHERM(:)      ! thermal effluent T [K]
+      real(r8), pointer :: TTHERM(:)      ! tempeature difference between thermal effluent T and inlet water T [K]
       real(r8), pointer :: Tqice(:)       ! temperature of ice flow, [K]
       !! fluxes
       
@@ -650,7 +650,7 @@ contains
       rtmCTL%Tqsur(:)        = 273.15_r8
       rtmCTL%Tqsub(:)        = 273.15_r8                                        
       rtmCTL%QTHERM(:)        = 0.0_r8
-      rtmCTL%TTHERM(:)        = 273.15_r8
+      rtmCTL%TTHERM(:)        = 0.0_r8
       rtmCTL%templand_Tqsur(:)  = spval
       rtmCTL%templand_Tqsub(:)  = spval
       rtmCTL%templand_Ttrib(:)  = spval
@@ -678,7 +678,7 @@ contains
           write(iulog,*)'Rtmini ERROR allocation of arrays related to thermp module'
           call shr_sys_abort
         end if
-        rtmCTL%Tp(:)       	 	= 273.15_r8 
+        rtmCTL%Tp(:)       	 	= 0.0_r8 
         rtmCTL%avgQp(:,:)   	= spval
  	    rtmCTL%avgTp(:)     	= spval
 		rtmCTL%metThermDem(:)   = spval

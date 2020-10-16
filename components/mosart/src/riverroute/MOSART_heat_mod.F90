@@ -189,7 +189,6 @@ MODULE MOSART_heat_mod
             end if
 			!!!! debug !!!!
             if (thermpflag) then
-                Ha_temp = Ha_temp + cr_advectheat(Qplant, THeat%Tr(iunit))
                 THeat%deltaM_r(iunit) = theDeltaT * (THeat%Ha_lateral(iunit) + THeat%Ha_rin(iunit) + THeat%Ha_p2r(iunit) - Ha_temp)
             else
                 THeat%deltaM_r(iunit) = theDeltaT * (THeat%Ha_lateral(iunit) + THeat%Ha_rin(iunit) - Ha_temp)
