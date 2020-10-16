@@ -30,13 +30,9 @@ module clm_cpl_indices
   integer, public ::index_l2x_Flrl_rofi       ! lnd->rtm input frozen fluxes
   integer, public ::index_l2x_Flrl_Tqsur      ! lnd->rtm input surface runoff temperature
   integer, public ::index_l2x_Flrl_Tqsub      ! lnd->rtm input subsurface runoff temperature
-<<<<<<< HEAD
   integer, public ::index_l2x_Flrl_QTHERM      ! lnd->rtm
   integer, public ::index_l2x_Flrl_TTHERM      ! lnd->rtm
-
-=======
   integer, public ::index_l2x_coszen_str      ! lnd->rtm cosine of zenith  
->>>>>>> Adding reservoir stratification scheme to MOSART-heat
   integer, public ::index_l2x_Sl_t            ! temperature
   integer, public ::index_l2x_Sl_tref         ! 2m reference temperature
   integer, public ::index_l2x_Sl_qref         ! 2m reference specific humidity

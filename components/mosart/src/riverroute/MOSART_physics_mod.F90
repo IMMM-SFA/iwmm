@@ -200,7 +200,7 @@ MODULE MOSART_physics_mod
 !#ifdef INCLUDE_WRM
              if (wrmflag) then
                 if (nt == nt_nliq) then
-                   if  (ctlSubwWRM%ExtractionFlag > 0 .and. TRunoff%yt(iunit,nt_nliq) >= 0.1_r8) then
+                   if  (ctlSubwWRM%ExtractionFlag > 0) then
                       localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
                       call irrigationExtractionSubNetwork(iunit, localDeltaT )
                       call UpdateState_subnetwork(iunit,nt)
@@ -419,7 +419,7 @@ MODULE MOSART_physics_mod
              if (wrmflag) then
                 if (nt == nt_nliq) then
                    localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
-                   if (ctlSubwWRM%ExtractionMainChannelFlag > 0 .AND. ctlSubwWRM%ExtractionFlag > 0  .and. TRunoff%yr(iunit,nt_nliq) >= 0.1_r8) then
+                   if (ctlSubwWRM%ExtractionMainChannelFlag > 0 .AND. ctlSubwWRM%ExtractionFlag > 0) then
                       call IrrigationExtractionMainChannel(iunit, localDeltaT )
                       if (ctlSubwWRM%TotalDemandFlag > 0 .AND. ctlSubwWRM%ReturnFlowFlag > 0 ) then
                          call insert_returnflow_channel(iunit, localDeltaT )
