@@ -43,7 +43,7 @@ module RtmTimeManager
 
 ! Private data for input
 
-   character(len=ESMF_MAXSTR), save :: calendar   = 'NO_LEAP'     ! Calendar to use in date calculations ('NO_LEAP' or 'GREGORIAN')
+   character(len=ESMF_MAXSTR), save :: calendar   = 'GREGORIAN'     ! Calendar to use in date calculations ('NO_LEAP' or 'GREGORIAN')
    integer,  parameter :: uninit_int = -999999999
    real(r8), parameter :: uninit_r8  = -999999999.0
 

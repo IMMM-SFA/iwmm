@@ -77,6 +77,10 @@ MODULE WRM_type_mod
 	 real(r8), pointer :: p2_xforecast(:,:)  ! (nd,52) release policy parameter
 	 real(r8), pointer :: p3_xforecast(:,:)  ! (nd,52) release policy parameter
 	 real(r8), pointer :: p4_xforecast(:,:)  ! (nd,52) release policy parameter
+	 real(r8), pointer :: p1_wforecast(:,:)  ! (nd,52) release policy parameter
+	 real(r8), pointer :: p2_wforecast(:,:)  ! (nd,52) release policy parameter
+	 real(r8), pointer :: p3_wforecast(:,:)  ! (nd,52) release policy parameter
+	 real(r8), pointer :: p4_wforecast(:,:)  ! (nd,52) release policy parameter
      real(r8), pointer :: INVc(:)           ! (nd) inverse of c of Biemans 2011 ands Hanasaki 2006 RUnoff/Capacity
      real(r8), pointer :: TotStorCapDepend(:) ! (b:e) sum of the reservoir capacities each subw depends on
      real(r8), pointer :: TotInflowDepend(:)  ! (b:e) sum of the total inflow to dependen reservoir each subw depends on

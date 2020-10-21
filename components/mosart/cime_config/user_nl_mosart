@@ -23,11 +23,11 @@
 !   - regardless, a new file is still written only once every 30 days,
 !     controlled by the parameter `rtmhist_mfilt = 30`
 !----------------------------------------------------------------------------------
-rtmhist_nhtfrq = 0
+rtmhist_nhtfrq = -24
 rtmhist_mfilt = 30
 
 !----------------------------------------------------------------------------------
-! toggle the water resources management feature [.true. / .false]
+! toggle the water resources management feature [.true. / .false.]
 !----------------------------------------------------------------------------------
 wrmflag = .true.
 
@@ -49,8 +49,7 @@ demandvariablename = 'totalDemand'
 !----------------------------------------------------------------------------------
 ! set the path to a file defining the reservoir parameters
 !----------------------------------------------------------------------------------
-parafile = '/pic/projects/im3/iwmm/input_data/runoff/US_reservoir_8th_NLDAS3_updated_CERF_Livneh_naturalflow.nc'
-!parafile = '/pic/projects/im3/wm/Sean/wm_res_params/US_reservoir_8th_NLDAS_release_policy.nc'
+parafile = '/pic/projects/im3/wm/Sean/wm_res_params/US_reservoir_8th_NLDAS_release_policy.nc'
 
 !----------------------------------------------------------------------------------
 ! set the flag and file for inflow forecasts

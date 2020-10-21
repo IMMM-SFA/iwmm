@@ -607,7 +607,7 @@ MODULE WRM_modules
 !-----------------------------------------------------------------------
    subroutine release_from_policy()
 
-      ! DESCRIPTION: procedure which sets the release to equal half of stored water
+      ! DESCRIPTION: weekly release policy
 
       implicit none
       integer :: idam, yr, month, day, tod, water_week, day_of_simulation, &
@@ -637,10 +637,17 @@ MODULE WRM_modules
 
       do idam=1,ctlSubwWRM%LocalNumDam
 
-         p1 = WRMUnit%p1_xforecast(idam, water_week)
-         p2 = WRMUnit%p2_xforecast(idam, water_week)
-         p3 = WRMUnit%p3_xforecast(idam, water_week)
-         p4 = WRMUnit%p4_xforecast(idam, water_week)
+         if (ctlSubwWRM%InflowForecastFlag .eq. 0) then
+            p1 = WRMUnit%p1_xforecast(idam, water_week)
+            p2 = WRMUnit%p2_xforecast(idam, water_week)
+            p3 = WRMUnit%p3_xforecast(idam, water_week)
+            p4 = WRMUnit%p4_xforecast(idam, water_week)
+         else if (ctlSubwWRM%InflowForecastFlag .eq. 1) then
+            p1 = WRMUnit%p1_wforecast(idam, water_week)
+            p2 = WRMUnit%p2_wforecast(idam, water_week)
+            p3 = WRMUnit%p3_wforecast(idam, water_week)
+            p4 = WRMUnit%p4_wforecast(idam, water_week)
+         endif
 
          ! parameter 1 is the slope (must be > 0) on dams with release policies....
          ! ... so p1 > 0 selects for dams with polcies (p1 = 0 defines dams without release policies)
@@ -661,6 +668,9 @@ MODULE WRM_modules
                StorWater%release(idam) = ((water_availability * p2) + (p3 - (p2 * p4))) * 1e6 / (7 * 86400)
             endif
 
+         ! ensure release is non-negative
+         StorWater%release(idam) = max(0.0_r8, StorWater%release(idam))
+
          endif
 
       end do
@@ -679,7 +689,7 @@ MODULE WRM_modules
      real(r8), intent(in) :: TheDeltaT
      !--- local ---
      integer  :: match
-     integer  :: yr, month, day, tod
+     integer  :: yr, month, day, tod, water_week
      integer  :: damID,k,isDam
      real(r8) :: flow_vol, flow_res, min_flow, min_stor, evap, max_stor, stor_init, budget
      logical  :: check_local_budget = .false.
@@ -687,6 +697,7 @@ MODULE WRM_modules
 
      match = 0
      call get_curr_date(yr, month, day, tod)
+     call get_water_week(water_week, month, day)
 
      damID = WRMUnit%INVicell(iunit)
      isDam = WRMUnit%isDam(iunit)
@@ -707,8 +718,16 @@ MODULE WRM_modules
      StorWater%inflow(damID) = -Trunoff%erout(iunit,nt_nliq)
      flow_res = StorWater%release(damID) * theDeltaT
      evap = StorWater%pot_evap(iunit) * theDeltaT * WRMUnit%SurfArea(damID) * 1000000._r8 ! potential evaporation in the grid cell of the reservoir
-     min_flow = 0.1_r8 * WRMUnit%MeanMthFlow(damID, month) * theDeltaT
-     min_stor = 0.1_r8 * WRMUnit%StorCap(damID)
+
+     if (WRMUnit%p1_xforecast(damID, water_week) .gt. 0) then
+        min_flow = 0.0_r8
+        min_stor = 0.0_r8
+        write(iulog,*) "ENVIRONMENTAL FLOW EXCLUDED FROM DAM: ",damID
+     else
+        min_flow = 0.1_r8 * WRMUnit%MeanMthFlow(damID, month) * theDeltaT
+        min_stor = 0.1_r8 * WRMUnit%StorCap(damID)
+     end if
+
      max_stor = WRMUnit%StorCap(damID)
      if ( WRMUnit%StorageCalibFlag(damID).eq.1) then
         ! code calib4

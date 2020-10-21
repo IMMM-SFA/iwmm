@@ -13,7 +13,7 @@ MODULE WRM_subw_IO_mod
   use RtmVar        , only : iulog, inst_suffix, smat_option
   use RtmFileUtils  , only : getfil, getavu, relavu
   use RtmIO         , only : pio_subsystem, ncd_pio_openfile, ncd_pio_closefile
-  use RtmTimeManager, only : get_curr_date, get_nstep
+  use RtmTimeManager, only : get_curr_date, get_nstep, is_new_month
   use rof_cpl_indices, only : nt_rtm
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
@@ -544,6 +544,14 @@ MODULE WRM_subw_IO_mod
      WRMUnit%p3_xforecast = 0._r8
      allocate (WRMUnit%p4_xforecast(ctlSubwWRM%localNumDam,53))
      WRMUnit%p4_xforecast = 0._r8
+     allocate (WRMUnit%p1_wforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p1_wforecast = 0._r8
+     allocate (WRMUnit%p2_wforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p2_wforecast = 0._r8
+     allocate (WRMUnit%p3_wforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p3_wforecast = 0._r8
+     allocate (WRMUnit%p4_wforecast(ctlSubwWRM%localNumDam,53))
+     WRMUnit%p4_wforecast = 0._r8
 
 
 
@@ -797,6 +805,42 @@ MODULE WRM_subw_IO_mod
             call shr_sys_flush(iulog)
          enddo
 
+         !--- read weekly policy parameter p1 w_forecast
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p1_wforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p1_wforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p2 w_forecast
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p2_wforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p2_wforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p3 w_forecast
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p3_wforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p3_wforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
+         !--- read weekly policy parameter p4 w_forecast
+         do ww = 1,52
+            ier = pio_inq_varid (ncid, name='p4_wforecast', vardesc=vardesc)
+            frame = ww
+            call pio_setframe(ncid,vardesc,frame)
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_dam2dam, WRMUnit%p4_wforecast(:,ww), ier)
+            call shr_sys_flush(iulog)
+         enddo
+
 
         do idam = 1,ctlSubwWRM%LocalNumDam
            WRMUnit%MeanMthFlow(idam,13) = sum(WRMUnit%MeanMthFlow(idam,1:12))/12.0_r8
@@ -1046,12 +1090,14 @@ MODULE WRM_subw_IO_mod
 
      call release_from_policy()
 
-     call RegulationRelease()
-     !!write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)
-     !!write(iulog,*) 'start Op mon, storage ', WRMUnit%MthStOp(80),WRMUnit%StorMthStOp(80)
-     !!write(iulog,*)  'storage, release pre targets ',StorWater%storage(80), StorWater%release(80)
-     call WRM_storage_targets()
-     !!write(iulog,*) 'Coulee targets ',StorWater%release(80)
+     if ( is_new_month() ) then
+
+        call RegulationRelease()
+        call WRM_storage_targets()
+
+     end if
+
+
 
   end subroutine WRM_computeRelease
 
