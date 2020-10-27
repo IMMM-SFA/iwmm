@@ -181,6 +181,7 @@
     <group>streams_file</group>
     <desc>List of streams used for the given datm_mode</desc>
     <values>
+      <value>NULL</value>
       <value datm_mode="CLM_QIAN$">CLM_QIAN.Solar,CLM_QIAN.Precip,CLM_QIAN.TPQW</value>
       <value datm_mode="CLM_QIAN_WISO">CLM_QIAN_WISO.Solar,CLM_QIAN_WISO.Precip,CLM_QIAN_WISO.TPQW</value>
       <value datm_mode="CLM1PT">CLM1PT.$ATM_GRID</value>
@@ -2347,7 +2348,7 @@
       <value datm_mode="CORE2_IAF">CORE2_IAF</value>
       <value datm_mode="CORE_IAF_JRA">CORE_IAF_JRA</value>
       <value datm_mode="CPLHIST">COPYALL</value>
-      <value datm_mode="HEAT">CLMNCEP</value>
+      <value datm_mode="HEAT">COPYALL</value>
     </values>
   </entry>
 

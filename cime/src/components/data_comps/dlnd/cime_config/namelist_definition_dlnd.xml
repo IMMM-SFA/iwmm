@@ -69,6 +69,7 @@
     <values>
       <value dlnd_mode="NULL">NULL</value>
       <value dlnd_mode="^CPLHIST$">lnd.cplhist</value>
+      <value dlnd_mode="NLDAS">heat.nldas</value>
       <value dlnd_mode="HEAT">heat.nldas,heat.tepp</value>
       <value dlnd_mode="CLMNLDAS">clm.nldas</value>
       <value dlnd_mode="GLC_CPLHIST">sno.cplhist</value>
@@ -116,15 +117,11 @@
         time     time
         lon      lon
         lat      lat
-        area     area
-        landfrac mask
       </value>
       <value stream="heat.tepp">
         time     time
         lon      lon
         lat      lat
-        area     area
-        landfrac mask
       </value>
       <value stream="clm.nldas">
         time     time
@@ -264,6 +261,7 @@
       <value dlnd_mode="NULL">NULL</value>
       <value dlnd_mode="GLC_CPLHIST">COPYALL</value>
       <value dlnd_mode="CPLHIST">COPYALL</value>
+      <value dlnd_mode="NLDAS">COPYALL</value>
       <value dlnd_mode="HEAT">COPYALL</value>
       <value dlnd_mode="CLMNLDAS">COPYALL</value>
     </values>
@@ -298,6 +296,7 @@
     </desc>
     <values>
       <value>nn</value>
+      <value dlnd_mode="NLDAS">copy</value>
       <value dlnd_mode="HEAT">copy</value>
       <value dlnd_mode="CLMNLDAS">copy</value>
     </values>
@@ -579,7 +578,6 @@
     <desc>If TRUE, prognostic is forced to true.</desc>
     <values>
       <value>.false.</value>
-      <value dlnd_mode="HEAT">.true.</value>
     </values>
   </entry>
 
@@ -593,6 +591,7 @@
     </desc>
     <values>
       <value>doml_frac</value>
+      <value dlnd_mode="NLDAS">null</value>
       <value dlnd_mode="HEAT">null</value>
     </values>
   </entry>

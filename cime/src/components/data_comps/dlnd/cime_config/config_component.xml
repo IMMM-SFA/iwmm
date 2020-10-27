@@ -12,11 +12,12 @@
        This file may have lnd desc entries.
   -->
   <description modifier_mode="1">
-    <desc lnd="DLND[%NULL][%SCPL][%LCPL][%LCLMR][%HEAT]">Data land model (DLND) </desc>
+    <desc lnd="DLND[%NULL][%SCPL][%LCPL][%LCLMR][%HEAT][%NLDAS]">Data land model (DLND) </desc>
     <desc option="NULL">Null mode </desc>
     <desc option="SCPL">snow coupling mode </desc>
     <desc option="LCPL">non-snow coupling </desc>
     <desc option="LCLMR">mosart coupling </desc>
+    <desc option="NLDAS">mosart coupling with additional DLND coupling on NLDAS regional 0.125 degree grid </desc>
     <desc option="HEAT">mosart coupling with additional DATM and DLND coupling on NLDAS regional 0.125 degree grid </desc>
   </description>
 
@@ -31,12 +32,13 @@
 
   <entry id="DLND_MODE">
     <type>char</type>
-    <valid_values>CPLHIST,CLMNLDAS,HEAT,GLC_CPLHIST,NULL</valid_values>
+    <valid_values>CPLHIST,CLMNLDAS,HEAT,NLDAS,GLC_CPLHIST,NULL</valid_values>
     <default_value>NULL</default_value>
     <values match="last">
       <value compset="DLND%NULL">NULL</value>
       <value compset="DLND%LCPL">CPLHIST</value>
       <value compset="DLND%LCLMR">CLMNLDAS</value>
+      <value compset="DLND%NLDAS">NLDAS</value>
       <value compset="DLND%HEAT">HEAT</value>
       <value compset="DLND%SCPL">GLC_CPLHIST</value>
     </values>
@@ -68,6 +70,7 @@
     <type>char</type>
     <default_value>UNSET</default_value>
     <values match="last">
+      <value compset="DLND%NLDAS" grid="l%NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/</value>
       <value compset="DLND%HEAT" grid="l%NLDAS">/pic/projects/im3/wm/sunn067/MOSART-WM-HEAT2/InputData/</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">$DIN_LOC_ROOT/lnd/dlnd7/NLDAS</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">$DIN_LOC_ROOT/lnd/dlnd7/CPLHIST_SNO/i.e20.I1850Clm50Sp.f09_g17.001_c180502</value>
@@ -81,6 +84,7 @@
     <type>char</type>
     <default_value>UNSET</default_value>
     <values match="last">
+      <value compset="DLND%NLDAS" grid="l%NLDAS">NLDAS</value>
       <value compset="DLND%HEAT" grid="l%NLDAS">NLDAS</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">NLDAS</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">i.e20.I1850Clm50Sp.f09_g17.001</value>
@@ -94,6 +98,7 @@
     <type>integer</type>
     <default_value>-999</default_value>
     <values match="last">
+      <value compset="DLND%NLDAS" grid="l%NLDAS">$DLND_CPLHIST_YR_START</value>
       <value compset="DLND%HEAT" grid="l%NLDAS">$DLND_CPLHIST_YR_START</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">1975</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">1</value>
@@ -119,6 +124,7 @@
     <type>integer</type>
     <default_value>-999</default_value>
     <values match="last">
+      <value compset="DLND%NLDAS" grid="l%NLDAS">1950</value>
       <value compset="DLND%HEAT" grid="l%NLDAS">1950</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">1975</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">1</value>
@@ -132,6 +138,7 @@
     <type>integer</type>
     <default_value>-999</default_value>
     <values match="last">
+      <value compset="DLND%NLDAS" grid="l%NLDAS">2011</value>
       <value compset="DLND%HEAT" grid="l%NLDAS">2011</value>
       <value compset="2000.*_DLND%LCLMR" grid="l%NLDAS">1975</value>
       <value compset="1850.*_DLND%SCPL" grid="l%0.9x1.25">30</value>
