@@ -873,7 +873,8 @@ MODULE WRM_subw_IO_mod
     
         write(strYear,'(I4.4)') yr
         write(strMonth,'(I2.2)') mon
-        fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
+        !fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
+        fname = trim(ctlSubwWRM%demandPath)//'1980_'//strMonth//'.nc'   ! constant 1980 demand
 
         write(iulog,*) subname, ' reading ',trim(fname)
 
@@ -916,11 +917,11 @@ MODULE WRM_subw_IO_mod
     end if
      enddo
      call RegulationRelease()
-     write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)
-     write(iulog,*) 'start Op mon, storage ', WRMUnit%MthStOp(80),WRMUnit%StorMthStOp(80)
-     write(iulog,*)  'storage, release pre targets ',StorWater%storage(80), StorWater%release(80)
+     !write(iulog,*) 'Start Coulee ',mon,day,tod,WRMUnit%MeanMthFlow(80,13)
+     !write(iulog,*) 'start Op mon, storage ', WRMUnit%MthStOp(80),WRMUnit%StorMthStOp(80)
+     !write(iulog,*)  'storage, release pre targets ',StorWater%storage(80), StorWater%release(80)
      call WRM_storage_targets()
-     write(iulog,*) 'Coulee targets ',StorWater%release(80)
+     !write(iulog,*) 'Coulee targets ',StorWater%release(80)
 
   end subroutine WRM_computeRelease
 
