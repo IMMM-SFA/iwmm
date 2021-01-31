@@ -14,10 +14,11 @@ MODULE MOSART_physics_mod
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_abort
   use RtmVar        , only : iulog, barrier_timers, wrmflag, inundflag, sediflag, &
-                             heatflag, thermpflag
+                             heatflag, rstraflag, thermpflag
   use RunoffMod     , only : Tctl, TUnit, TRunoff, Theat, TPara, rtmCTL, &
                              SMatP_upstrm, avsrc_upstrm, avdst_upstrm
   use MOSART_heat_mod
+  use MOSART_stra_mod
   use RtmSpmd       , only : masterproc, mpicom_rof, iam
   use RtmTimeManager, only : get_curr_date, is_new_month
 !#ifdef INCLUDE_WRM
@@ -199,7 +200,7 @@ MODULE MOSART_physics_mod
 !#ifdef INCLUDE_WRM
              if (wrmflag) then
                 if (nt == nt_nliq) then
-                   if  (ctlSubwWRM%ExtractionFlag > 0 .and. TRunoff%yt(iunit,nt_nliq) >= 0.1_r8) then
+                   if  (ctlSubwWRM%ExtractionFlag > 0) then
                       localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
                       call irrigationExtractionSubNetwork(iunit, localDeltaT )
                       call UpdateState_subnetwork(iunit,nt)
@@ -418,7 +419,7 @@ MODULE MOSART_physics_mod
              if (wrmflag) then
                 if (nt == nt_nliq) then
                    localDeltaT = Tctl%DeltaT/Tctl%DLevelH2R
-                   if (ctlSubwWRM%ExtractionMainChannelFlag > 0 .AND. ctlSubwWRM%ExtractionFlag > 0  .and. TRunoff%yr(iunit,nt_nliq) >= 0.1_r8) then
+                   if (ctlSubwWRM%ExtractionMainChannelFlag > 0 .AND. ctlSubwWRM%ExtractionFlag > 0) then
                       call IrrigationExtractionMainChannel(iunit, localDeltaT )
                       if (ctlSubwWRM%TotalDemandFlag > 0 .AND. ctlSubwWRM%ReturnFlowFlag > 0 ) then
                          call insert_returnflow_channel(iunit, localDeltaT )
@@ -435,11 +436,10 @@ MODULE MOSART_physics_mod
                    if ( ctlSubwWRM%RegulationFlag>0 ) then
 !                     call t_startf('mosartr_wrm_Reg')
                       call Regulation(iunit, localDeltaT)
-!                     call t_stopf('mosartr_wrm_Reg')
-!                      if ( ctlSubwWRM%ExtractionFlag > 0 ) then
-!                         call ExtractionRegulatedFlow(iunit, localDeltaT)
-!                      endif
-                      if (heatflag) then
+                      if (heatflag .and. rstraflag) then
+                          call stratification(iunit, localDeltaT,nt)
+                          call reservoirHeat(iunit, localDeltaT)
+                      elseif (heatflag .and. (rstraflag == .false.)) then
                           call reservoirHeat(iunit, localDeltaT)
                       end if
                    endif
