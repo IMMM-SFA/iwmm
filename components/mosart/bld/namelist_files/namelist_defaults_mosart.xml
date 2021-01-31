@@ -41,6 +41,7 @@ for the CLM data in the CESM distribution
 
 <paraFile rof_grid="NLDAS" >input_data/runoff/US_reservoir_8th_NLDAS3_c20161220_updated_20170314.nc</paraFile>
 <demandPath rof_grid="NLDAS" >input_data/demand/GCAM_waterdemand_nc/RCP8.5_GCAM_water_demand_</demandPath>
+<RoutingFlag>1</RoutingFlag>
 <ExtractionFlag>1</ExtractionFlag>
 <ExtractionMainChannelFlag>1</ExtractionMainChannelFlag>
 <RegulationFlag>1</RegulationFlag>

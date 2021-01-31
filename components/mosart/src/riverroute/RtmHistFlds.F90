@@ -181,6 +181,65 @@ contains
       call RtmHistAddfld (fname='WRM_STORAGE', units='m3',  &
          avgflag='A', long_name='WRM storage ', &
          ptr_rof=StorWater%storageG, default='active')
+
+      if ( ctlSubwWRM%ReturnFlowFlag > 0 .OR. ctlSubwWRM%TotalDemandFlag > 0 .OR. ctlSubwWRM%GroundwaterFlag > 0 ) then
+
+        call RtmHistAddfld (fname='WRM_SUPPIRRIG', units='m3/s',  &
+           avgflag='A', long_name='WRM storage ', &
+           ptr_rof=StorWater%SuppIrrig, default='active')
+
+        call RtmHistAddfld (fname='WRM_SUPPNONIRRIG', units='m3/s',  &
+           avgflag='A', long_name='WRM storage ', &
+           ptr_rof=StorWater%SuppNonIrrig, default='active')
+
+        if ( ctlSubwWRM%ReturnFlowFlag > 0 ) then
+
+          call RtmHistAddfld (fname='WRM_WITHDEMANDNONIRRIG', units='m3/s',  &
+             avgflag='A', long_name='WRM storage ', &
+             ptr_rof=StorWater%WithDemNonIrrig, default='active')
+
+          if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
+
+            call RtmHistAddfld (fname='WRM_WITHDEMANDIRRIG', units='m3/s',  &
+               avgflag='A', long_name='WRM storage ', &
+               ptr_rof=StorWater%WithDemIrrig, default='active')
+
+          endif
+
+        else
+
+          call RtmHistAddfld (fname='WRM_CONDEMANDNONIRRIG', units='m3/s',  &
+             avgflag='A', long_name='WRM storage ', &
+             ptr_rof=StorWater%ConDemNonIrrig, default='active')
+
+          if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
+
+            call RtmHistAddfld (fname='WRM_CONDEMANDIRRIG', units='m3/s',  &
+               avgflag='A', long_name='WRM storage ', &
+               ptr_rof=StorWater%ConDemIrrig, default='active')
+
+          endif
+
+        endif
+
+        if ( ctlSubwWRM%GroundwaterFlag > 0 ) then
+
+          call RtmHistAddfld (fname='WRM_GWSHARENONIRRIG', units='m3/s',  &
+             avgflag='A', long_name='WRM storage ', &
+             ptr_rof=StorWater%GWShareNonIrrig, default='active')
+
+          if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
+
+            call RtmHistAddfld (fname='WRM_GWSHAREIRRIG', units='m3/s',  &
+               avgflag='A', long_name='WRM storage ', &
+               ptr_rof=StorWater%GWShareIrrig, default='active')
+
+          endif
+
+        endif
+
+     endif
+
     endif
 #endif
 

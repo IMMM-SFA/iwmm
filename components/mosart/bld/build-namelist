@@ -331,6 +331,7 @@ else {
 
     add_default($nl, 'paraFile');
     add_default($nl, 'demandPath');
+    add_default($nl, 'RoutingFlag');
     add_default($nl, 'ExtractionFlag'); 
     add_default($nl, 'ExtractionMainChannelFlag');
     add_default($nl, 'RegulationFlag');

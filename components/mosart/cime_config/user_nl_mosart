@@ -32,17 +32,41 @@ rtmhist_mfilt = 30
 wrmflag = .true.
 
 !----------------------------------------------------------------------------------
+! toggle the kinematic wave component for surface runoff [ 1 / 0 ]
+! if set to 1, the runoff becomes available to drain within the subnetwork channel immediately
+! this is a reasonable option when running at a daily timestep
+!----------------------------------------------------------------------------------
+routingflag = 1
+
+!----------------------------------------------------------------------------------
 ! toggle whether the external demand comes from the demand file or from ELM [ 1 / 0 ]
 !----------------------------------------------------------------------------------
 externaldemandflag = 1
 
 !----------------------------------------------------------------------------------
+! toggle the types of demand read from files:
+! - TotalDemandFlag: if set to 1, demand input is defined for irrigation and non-irrigation sectors. If set to 0, demand input is not distinguished between sectors.
+! - GroundwaterFlag: if set to 1, demand input is for both surface water and groundwater (proportions defined in gw_irr and gw_nonirr input files). If set to 0, demand input is for surface water only.
+! - ReturnFlowFlag: if set to 1, demand input is for withdrawals and model calculates return flows. If set to 0, demand input is for consumptive use and model assumes no return flows.
+!
+! if any of these flags are 1, demand will be read from files with the following suffixes:
+! - TotalDemand: 'nonirr_consumption_{Y}_{M}.nc' & 'irr_consumption_{Y}_{M}.nc', or if ReturnFlowFlag = 1, 'nonirr_withdraw_{Y}_{M}.nc' & 'irr_withdraw_{Y}_{M}.nc'
+! - ReturnFlow: 'irr_withdraw_{Y}_{M}.nc', or if TotalDemand = 1 'irr_withdraw_{Y}_{M}.nc' & 'nonirr_withdraw_{Y}_{M}.nc'
+! - if the GroundwaterFlag is set to 1, additional 'irr_groundwater_{Y}_{M}.nc' & 'nonirr_groundwater_{Y}_{M}.nc' files will be read in and applied to the demand input files that define a percentage of demand met by gw (nonirr_groundwater is 0 if TotalDemandFlag = 0)
+!----------------------------------------------------------------------------------
+TotalDemandFlag = 0
+GroundwaterFlag = 0
+ReturnFlowFlag = 0
+
+!----------------------------------------------------------------------------------
 ! set the path and prefix for the demand data
 !----------------------------------------------------------------------------------
 demandpath = '/pic/projects/im3/iwmm/input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_'
+!demandpath = '/pic/projects/im3/wm/Jim/USGS_demand/USGS_'
 
 !----------------------------------------------------------------------------------
 ! set the demand type, corresponding to the variable in the demand files [totalDemand / consDemand / etc. ]
+! if reading from multiple types of demand files, this should be the same for all files
 !----------------------------------------------------------------------------------
 demandvariablename = 'totalDemand'
 

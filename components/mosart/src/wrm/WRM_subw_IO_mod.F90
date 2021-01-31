@@ -75,11 +75,11 @@ MODULE WRM_subw_IO_mod
      character(len=256):: nlfilename_wrm
 
      character(len=350) :: paraFile, demandPath, DemandVariableName
-     integer :: ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
+     integer :: RoutingFlag, ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
         ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
      namelist /wrm_inparm/  &
-        paraFile, demandPath, DemandVariableName, &
+        paraFile, demandPath, DemandVariableName, RoutingFlag, &
         ExtractionFlag, ExtractionMainChannelFlag, RegulationFlag, &
         ReturnFlowFlag, TotalDemandFlag, GroundWaterFlag, ExternalDemandFlag
 
@@ -124,6 +124,7 @@ MODULE WRM_subw_IO_mod
      call mpi_bcast(paraFile   ,len(paraFile)  , MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(demandPath ,len(demandPath), MPI_CHARACTER, 0, mpicom_rof, ier)
      call mpi_bcast(DemandVariableName ,len(DemandVariableName), MPI_CHARACTER, 0, mpicom_rof, ier)
+     call mpi_bcast(RoutingFlag,      1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(ExtractionMainChannelFlag, 1, MPI_INTEGER, 0, mpicom_rof, ier)
      call mpi_bcast(RegulationFlag,   1, MPI_INTEGER, 0, mpicom_rof, ier)
@@ -134,6 +135,7 @@ MODULE WRM_subw_IO_mod
 
      ctlSubwWRM%paraFile = paraFile
      ctlSubwWRM%demandPath = demandPath
+     ctlSubwWRM%RoutingFlag = RoutingFlag
      ctlSubwWRM%ExtractionFlag = ExtractionFlag
      ctlSubwWRM%ExtractionMainChannelFlag = ExtractionMainChannelFlag
      ctlSubwWRM%RegulationFlag = RegulationFlag
@@ -147,6 +149,7 @@ MODULE WRM_subw_IO_mod
         write(iulog,*) subname," paraFile        = ",trim(ctlSubwWRM%paraFile)
         write(iulog,*) subname," demandPath      = ",trim(ctlSubwWRM%demandPath)
         write(iulog,*) subname," DemandVariableName = ",trim(ctlSubwWRM%DemandVariableName)
+        write(iulog,*) subname," RoutingFlag     = ",ctlSubwWRM%RoutingFlag
         write(iulog,*) subname," ExtractionFlag  = ",ctlSubwWRM%ExtractionFlag
         write(iulog,*) subname," ExtractionMainChannelFlag = ",ctlSubwWRM%ExtractionMainChannelFlag
         write(iulog,*) subname," RegulationFlag  = ",ctlSubwWRM%RegulationFlag
@@ -866,30 +869,117 @@ MODULE WRM_subw_IO_mod
      type(var_desc_t) :: vardesc    ! netCDF variable description
      character(len=*),parameter :: subname='(WRM_readDemand)'
 
+     ! ExtractionFlag set to 1 means read demand from file(s), otherwise demand comes from coupled models
+
+     ! TotalDemandFlag set to 1 means demand input is defined for irrigation and non-irrigation sectors, otherwise demand input is not distinguished between sectors
+     ! GroundwaterFlag set to 1 means demand input is for both surface water and groundwater, otherwise demand input is for surface water only
+     ! ReturnFlowFlag  set to 1 means demand input is for withdrawals and model calculates return flows, otherwise demand input is for consumptive use and model assumes no return flows
+
+     ! If any of TotalDemand, Groundwater, or ReturnFlow is enabled, multiple files with the special suffixes will be read; otherwise, just the basic file will be read.
+
+     ! Extraction ON
      if (ctlSubwWRM%ExtractionFlag > 0) then
 
-        call get_curr_date(yr, mon, day, tod)
-        write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
-    
-        write(strYear,'(I4.4)') yr
-        write(strMonth,'(I2.2)') mon
-        fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
+       call get_curr_date(yr, mon, day, tod)
+       write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
+       write(strYear,'(I4.4)') yr
+       write(strMonth,'(I2.2)') mon
 
-        write(iulog,*) subname, ' reading ',trim(fname)
+        ! Read the usual files
+        if (( ctlSubwWRM%TotalDemandFlag < 1 ) .AND. ( ctlSubwWRM%GroundwaterFlag < 1 ) .AND. ( ctlSubwWRM%ReturnFlowFlag < 1 )) then
 
-        call ncd_pio_openfile(ncid, trim(fname), 0)
-        ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
-        call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%demand0, ier)
-        call ncd_pio_closefile(ncid)
+          fname = trim(ctlSubwWRM%demandPath)//strYear//'_'//strMonth//'.nc'
+          write(iulog,*) subname, ' reading ',trim(fname)
+          call ncd_pio_openfile(ncid, trim(fname), 0)
+          ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+          call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%demand0, ier)
+          call ncd_pio_closefile(ncid)
 
-        do nr=rtmCTL%begr,rtmCTL%endr
-           if (StorWater%demand0(nr).lt.0._r8) then
-              StorWater%demand0(nr) = 0._r8
-           end if
-        end do
-        write(iulog,FORMR2) trim(subname),' read totalDemand',iam,minval(StorWater%demand0),maxval(StorWater%demand0)
-        call shr_sys_flush(iulog)
+        ! Read the suffixed files
+        else
 
+          ! consumptive irrigation
+          fname = trim(ctlSubwWRM%demandPath)//'irr_consumption_'//strYear//'_'//strMonth//'.nc'
+          write(iulog,*) subname, ' reading ',trim(fname)
+          call ncd_pio_openfile(ncid, trim(fname), 0)
+          ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+          call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%ConDemIrrig, ier)
+          call ncd_pio_closefile(ncid)
+
+          ! TotalDemand ON
+          if ( ctlSubwWRM%TotalDemandFlag > 0 ) then
+            ! consumptive non-irrigation
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_consumption_'//strYear//'_'//strMonth//'.nc'
+            write(iulog,*) subname, ' reading ',trim(fname)
+            call ncd_pio_openfile(ncid, trim(fname), 0)
+            ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%ConDemNonIrrig, ier)
+            call ncd_pio_closefile(ncid)
+          endif
+
+          ! Groundwater ON
+          if ( ctlSubwWRM%GroundwaterFlag > 0 ) then
+            ! groundwater irrigation
+            fname = trim(ctlSubwWRM%demandPath)//'irr_groundwater_'//strYear//'_'//strMonth//'.nc'
+            write(iulog,*) subname, ' reading ',trim(fname)
+            call ncd_pio_openfile(ncid, trim(fname), 0)
+            ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%GWShareIrrig, ier)
+            call ncd_pio_closefile(ncid)
+          endif
+
+          ! Groundwater ON and TotalDemand ON
+          if (( ctlSubwWRM%GroundwaterFlag > 0 ) .AND. ( ctlSubwWRM%TotalDemandFlag > 0 )) then
+            ! groundwater non-irrigation
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_groundwater_'//strYear//'_'//strMonth//'.nc'
+            write(iulog,*) subname, ' reading ',trim(fname)
+            call ncd_pio_openfile(ncid, trim(fname), 0)
+            ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%GWShareNonIrrig, ier)
+            call ncd_pio_closefile(ncid)
+          endif
+
+          ! ReturnFlow ON
+          if ( ctlSubwWRM%ReturnFlowFlag > 0 ) then
+            ! return flow irrigation
+            fname = trim(ctlSubwWRM%demandPath)//'irr_withdraw_'//strYear//'_'//strMonth//'.nc'
+            write(iulog,*) subname, ' reading ',trim(fname)
+            call ncd_pio_openfile(ncid, trim(fname), 0)
+            ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%WithDemIrrig, ier)
+            call ncd_pio_closefile(ncid)
+          endif
+
+          ! ReturnFlow ON and TotalDemand ON
+          if (( ctlSubwWRM%ReturnFlowFlag > 0 ) .AND. ( ctlSubwWRM%TotalDemandFlag > 0 )) then
+            ! return flow non-irrigation
+            fname = trim(ctlSubwWRM%demandPath)//'nonirr_withdraw_'//strYear//'_'//strMonth//'.nc'
+            write(iulog,*) subname, ' reading ',trim(fname)
+            call ncd_pio_openfile(ncid, trim(fname), 0)
+            ier = pio_inq_varid (ncid, name=ctlSubwWRM%DemandVariableName, vardesc=vardesc)  !! need to be consistent with the NC file, Tian Apr 2018
+            call pio_read_darray(ncid, vardesc, iodesc_dbl_grd2grd , StorWater%WithDemNonIrrig, ier)
+            call ncd_pio_closefile(ncid)
+          endif
+
+          ! Calculate the initial demand based on what is set above
+          if ( ctlSubwWRM%ReturnFlowFlag > 0 ) then
+            StorWater%demand0 = StorWater%WithDemIrrig * (1._r8 - StorWater%GWShareIrrig) + StorWater%WithDemNonIrrig * (1._r8 - StorWater%GWShareNonIrrig)
+          else
+            StorWater%demand0 = StorWater%ConDemIrrig * (1._r8 - StorWater%GWShareIrrig) + StorWater%ConDemNonIrrig * (1._r8 - StorWater%GWShareNonIrrig)
+          endif
+
+       endif
+
+       ! Ensure that minimum demand is 0
+       do nr=rtmCTL%begr,rtmCTL%endr
+         if (StorWater%demand0(nr).lt.0._r8) then
+           StorWater%demand0(nr) = 0._r8
+         end if
+       end do
+       write(iulog,FORMR2) trim(subname),' read totalDemand',iam,minval(StorWater%demand0),maxval(StorWater%demand0)
+       call shr_sys_flush(iulog)
+
+     ! Extraction OFF
      else
         do nr=rtmCTL%begr,rtmCTL%endr
            StorWater%demand0(nr) = 0._r8

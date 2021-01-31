@@ -25,6 +25,7 @@ MODULE WRM_type_mod
   type WRMcontrol_subw
      integer :: NDam             ! number of dams
      integer :: localNumDam      ! number of dams on decomposition
+     integer :: RoutingFlag      ! Flag to toggle the kinematic wave component for surface runoff
      integer :: ExtractionFlag   ! Flag for whether including Water Demand extraction : 1--> water extraction from each subbasin , uses extraction module ; 0 --> no extraction
      integer :: ExtractionMainChannelFlag   ! Flag for whether including Water Demand extraction from the main channel, only if unregulated flow ( bells and whistle here based on RegulationFlag is 1, etc)
      integer :: RegulationFlag   ! Flag whether to use reseervoir regulation or not : 1 --> use reservoir module; 0--> natural flow

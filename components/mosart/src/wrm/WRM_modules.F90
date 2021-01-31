@@ -72,6 +72,7 @@ MODULE WRM_modules
         if (ctlSubwWRM%ExtractionFlag > 0) then
            call irrigationExtractionSubNetwork
         end if
+        call UpdateState_subnetwork(iunit)
 
         Trunoff%flow = 0._r8
         do m=1,Tctl%DLevelH2R

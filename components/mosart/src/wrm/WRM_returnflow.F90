@@ -148,17 +148,17 @@ MODULE WRM_returnflow
       !irrigation demand by default goes into baseflow 
       ! version 1.0: no lag between application and return
       do iunit=rtmCTL%begr,rtmCTL%endr
-         temp = StorWater%ReturnIrrig(iunit) / ( TUnit%area(iunit) * TUnit%frac(iunit) * Tctl%DATAH ) !m/seconds! 
+         temp = StorWater%ReturnIrrig(iunit) / ( TUnit%area(iunit) * TUnit%frac(iunit) * Tctl%DeltaT ) !m/seconds!
          Trunoff%qsub(iunit,nt_nliq) = Trunoff%qsub(iunit,nt_nliq) + temp
          StorWater%ReturnIrrig(iunit) = 0._r8
       end do
       ! oput non irrigation back into main channel instead
-      !if ( (ctlSubwWRM%TotalDemandFlag > 0) ) then
-      !  do iunit=rtmCTL%begr,rtmCTL%endr
-      !    Trunoff%qsur(iunit,nt_nliq) = Trunoff%qsur(iunit,nt_nliq) + StorWater%ReturnNonIrrig(iunit) / (TUnit%area(iunit) * TUnit%frac(iunit))
-      !    StorWater%ReturnNonIrrig(iunit) = 0._r8
-      !  end do
-      !endif
+      if ( (ctlSubwWRM%TotalDemandFlag > 0) ) then
+        do iunit=rtmCTL%begr,rtmCTL%endr
+          Trunoff%qsur(iunit,nt_nliq) = Trunoff%qsur(iunit,nt_nliq) + StorWater%ReturnNonIrrig(iunit) / (TUnit%area(iunit) * TUnit%frac(iunit))
+          StorWater%ReturnNonIrrig(iunit) = 0._r8
+        end do
+      endif
   end subroutine insert_returnflow_soilcolumn
 !__________________________________________________________________________________________________
 !
@@ -171,7 +171,7 @@ MODULE WRM_returnflow
      ! version 1.0: no lag between application and return
      !flow_vol = (-Trunoff%erout(iunit,nt_nliq) + (StorWater%ReturnNonIrrig(iunit) / Tctl%DATAH) ) * theDeltaT ! m3 into m3/s
      !FIX WR Trunoff%erout(iunit,nt_nliq) = Trunoff%erout(iunit,nt_nliq) - StorWater%ReturnNonIrrig(iunit)/Tctl%DATAH
-     Trunoff%wr(iunit,nt_nliq) = Trunoff%wr(iunit,nt_nliq) + StorWater%ReturnNonIrrig(iunit)/Tctl%DATAH
+     Trunoff%wr(iunit,nt_nliq) = Trunoff%wr(iunit,nt_nliq) + StorWater%ReturnNonIrrig(iunit) / Tctl%DeltaT
      !Trunoff%erout(iunit,nt_nliq) = -flow_vol / (theDeltaT)
   end subroutine insert_returnflow_channel
 
