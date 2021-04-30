@@ -261,7 +261,7 @@ for mct, etc.
   </CFLAGS>
   <CPPDEFS>
     <!-- http://software.intel.com/en-us/articles/intel-composer-xe/ -->
-    <append> -DFORTRANUNDERSCORE -DNO_R16 -DCPRINTEL</append>
+    <append> -DFORTRANUNDERSCORE -DNO_R16 -DCPRINTEL -DPYTHON2 -DPYTHON_NARROW</append>
   </CPPDEFS>
   <CXX_LDFLAGS>
     <base> -cxxlib </base>
@@ -1035,7 +1035,7 @@ for mct, etc.
   <PIO_FILESYSTEM_HINTS>lustre</PIO_FILESYSTEM_HINTS>
   <PNETCDF_PATH>$ENV{PNETCDFROOT}</PNETCDF_PATH>
   <SLIBS>
-    <base> -L$NETCDF_PATH/lib -lnetcdf -lnetcdff -lpmi -L$ENV{MKL_PATH} -lmkl_rt</base>
+    <base> -L$NETCDF_PATH/lib -lnetcdf -lnetcdff -lpmi -L$ENV{MKL_PATH} -lmkl_rt -L/qfs/projects/ops/rh6/python/2.7.13/lib -lpython2.7 -lpthread -ldl -lutil -lm -Xlinker -export-dynamic</base>
   </SLIBS>
 </compiler>
 

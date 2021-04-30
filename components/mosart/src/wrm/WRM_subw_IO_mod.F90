@@ -1,12 +1,13 @@
 !
 MODULE WRM_subw_IO_mod
 ! Description: module to provide interface between WRM and other CLM components
-! 
+!
 ! Developed by Nathalie Voisin 2/1/2010
 ! REVISION HISTORY:
 !-----------------------------------------------------------------------
 
 ! !USES:
+  use forpy_mod !JY!
   use RunoffMod     , only : Tctl, TUnit, rtmCTL
   use RtmSpmd       , only : masterproc, mpicom_rof, iam, ROFID, &
                              MPI_REAL8,MPI_INTEGER,MPI_CHARACTER,MPI_LOGICAL,MPI_MAX
@@ -18,7 +19,7 @@ MODULE WRM_subw_IO_mod
   use shr_kind_mod  , only : r8 => shr_kind_r8, SHR_KIND_CL
   use shr_const_mod , only : SHR_CONST_REARTH, SHR_CONST_PI
   use shr_sys_mod   , only : shr_sys_flush, shr_sys_abort
-  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater, & 
+  use WRM_type_mod  , only : ctlSubwWRM, WRMUnit, StorWater, &
                              gsMap_wg, gsMap_wd, sMatP_g2d, sMatP_d2g, &
                              aVect_wg, aVect_wd
   use WRM_modules   , only : RegulationRelease, WRM_storage_targets
@@ -27,6 +28,7 @@ MODULE WRM_subw_IO_mod
   use netcdf
   use pio
   use perf_mod      , only : t_startf, t_stopf
+  use shr_sys_mod   , only : shr_sys_getenv
 
   implicit none
   private
@@ -34,6 +36,7 @@ MODULE WRM_subw_IO_mod
   public WRM_init
   public WRM_ReadDemand
   public WRM_computeRelease
+  public FORPY_init !JY!
 
   type(io_desc_t)  :: iodesc_int_grd2grd ! pio io desc, global grid to local grid
   type(io_desc_t)  :: iodesc_dbl_grd2grd ! pio io desc, global grid to local grid
@@ -45,10 +48,38 @@ MODULE WRM_subw_IO_mod
   character(len=*),parameter :: FORMR = '(2A,2g15.7)'
   character(len=*),parameter :: FORMR2= '(2A,i8,2g15.7)'
 
+  logical :: forpy_is_initialized !JY!
+  integer :: ierror !JY!
+  type(module_py) :: forpy_pyomo !JY!
+
 !-----------------------------------------------------------------------
   contains
 !-----------------------------------------------------------------------
-  
+
+  !JY!
+  subroutine FORPY_init
+     ! !DESCRIPTION: initialization of forpy module
+     type(list)         :: paths
+     character(len=256) :: codepath  ! path to search for python files in
+     if (.not. forpy_is_initialized) then
+       call shr_sys_getenv('CIMEROOT', codepath, ierror)
+       write(iulog,*) 'TBT getenv, ierror = ', ierror
+       ierror = forpy_initialize(use_numpy=.false.)
+       write(iulog,*) 'TBT forpy_init, ierror = ', ierror
+       ierror = get_sys_path(paths)
+       write(iulog,*) 'TBT get_sys_path, ierror = ', ierror
+       ierror = paths%append(trim(codepath) // "/../components/mosart/src/abm") 
+       write(iulog,*) 'TBT path%append, codepath = ',codepath,' ierror = ', ierror
+       ierror = import_py(forpy_pyomo, "forpy_pyomo")
+       write(iulog,*) 'TBT import_py,  ierror = ', ierror
+       if (ierror /= 0) then
+         call err_print
+       endif
+       forpy_is_initialized = .true.
+     end if
+  end subroutine FORPY_init
+
+
   subroutine WRM_init
      ! !DESCRIPTION: initilization of WRM model
      implicit none
@@ -244,7 +275,7 @@ MODULE WRM_subw_IO_mod
      !-------------------
 
      allocate(WRMUnit%INVicell(begr:endr))
-     WRMUnit%INVicell =-99 
+     WRMUnit%INVicell =-99
      allocate(WRMUnit%icell(ctlsubwWRM%localNumDam))
      WRMUnit%icell = 0
      allocate(WRMUnit%damID(ctlSubwWRM%localNumDam))
@@ -562,8 +593,6 @@ MODULE WRM_subw_IO_mod
      StorWater%demand0=0._r8
      allocate (StorWater%supply(begr:endr))
      StorWater%supply=0._r8
-     !allocate (StorWater%SupplyFrac(begr:endr)) !supply fraction relative to the demand Tian June 2018
-     !StorWater%SupplyFrac=0._r8
      allocate (StorWater%deficit(begr:endr))
      StorWater%deficit=0._r8
      allocate (StorWater%storageG(begr:endr))
@@ -733,7 +762,7 @@ MODULE WRM_subw_IO_mod
         enddo
         if (masterproc) write(iulog,FORMR) trim(subname),' MeanMthDemand avg',minval(WRMUnit%MeanMthDemand(:,13)),maxval(WRMUnit%MeanMthDemand(:,13))
 
-        !--- initialize constant monthly pre-release based on longterm mean flow and demand (Biemans 2011) 
+        !--- initialize constant monthly pre-release based on longterm mean flow and demand (Biemans 2011)
 
         do idam=1,ctlSubwWRM%LocalNumDam
            do mth=1,12
@@ -745,11 +774,11 @@ MODULE WRM_subw_IO_mod
                  !TEST
                  !StorWater%pre_release(idam,mth) = WRMUnit%MeanMthDemand(idam,mth)/10._r8 + 9._r8/10._r8*WRMUnit%MeanMthFlow(idam,13)*WRMUnit%MeanMthDemand(idam,mth)/WRMUnit%MeanMthDemand(idam, 13)*.5_r8
               end do
-           else 
+           else
               do mth=1,12
                  if ( (WRMUnit%MeanMthFlow(idam,13) + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13))>0 ) then
                     StorWater%pre_release(idam, mth) = WRMUnit%MeanMthFlow(idam,13) + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13)
-                 endif 
+                 endif
                  ! test 2
                  !StorWater%pre_release(idam, mth) = WRMUnit%MeanMthFlow(idam,13)*0.5_r8 + WRMUnit%MeanMthDemand(idam,mth) - WRMUnit%MeanMthDemand(idam,13)
                  !TEST use pseudo regulated flow
@@ -759,7 +788,7 @@ MODULE WRM_subw_IO_mod
 
            !--- initialize storage in each reservoir - arbitrary 90%
 
-           StorWater%storage(idam) = 0.9_r8 * WRMUnit%StorCap(idam)   
+           StorWater%storage(idam) = 0.9_r8 * WRMUnit%StorCap(idam)
            if (WRMUnit%StorageCalibFlag(idam).eq.1) then
               StorWater%storage(idam)  = WRMUnit%StorTarget(idam,13)
            endif
@@ -773,7 +802,7 @@ MODULE WRM_subw_IO_mod
         end do
 
 !NV
-           if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jan',minval(StorWater%pre_release(:,1)),maxval(StorWater%pre_release(:,1)) 
+           if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jan',minval(StorWater%pre_release(:,1)),maxval(StorWater%pre_release(:,1))
 
            if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Apr', minval(StorWater%pre_release(:,4)),maxval(StorWater%pre_release(:,4))
            if (masterproc) write(iulog,FORMR) trim(subname),'prerelease Jul',minval(StorWater%pre_release(:,7)),maxval(StorWater%pre_release(:,7))
@@ -798,12 +827,12 @@ MODULE WRM_subw_IO_mod
 !
 !           do ng = 1,WRMUnit%dam_Ndepend(idam)
 !              call split(stemp,' ',stmp1)
-!              call str2num(stmp1, ctlSubwWRM%localNumDam, ierror) 
+!              call str2num(stmp1, ctlSubwWRM%localNumDam, ierror)
 !!need additional check due to regionalization, need to remove non existing grid cell NV
 !              if (  WRMUnit%INVisubw(ctlSubwWRM%localNumDam) .lt. 1 ) then
 !                 WRMUnit%dam_Ndepend(idam) = WRMUnit%dam_Ndepend(idam) - 1
 !              else
-!                 WRMUnit%dam_depend(idam,ng) = nd 
+!                 WRMUnit%dam_depend(idam,ng) = nd
 !              endif
 !           end do
 
@@ -843,9 +872,9 @@ MODULE WRM_subw_IO_mod
      ! check
      write(iulog,*) subname, "Done with WM init ..."
      !write(iulog,*) subname, WRMUnit%DamName(59), WRMUnit%Surfarea(59)
-     !write(iulog,*) subname,WRMUnit%isDam(1), WRMUnit%icell(1) 
+     !write(iulog,*) subname,WRMUnit%isDam(1), WRMUnit%icell(1)
      !write(iulog,*) subname, WRMUnit%dam_Ndepend(1), WRMUnit%dam_depend(1,2)
-     !write(iulog,*) subname, "sub = 49",  TUnit%icell(49, 1),WRMUnit%subw_Ndepend(49),  WRMUnit%subw_depend(49,1) 
+     !write(iulog,*) subname, "sub = 49",  TUnit%icell(49, 1),WRMUnit%subw_Ndepend(49),  WRMUnit%subw_depend(49,1)
   end subroutine WRM_init
 
 !-----------------------------------------------------------------------
@@ -866,13 +895,38 @@ MODULE WRM_subw_IO_mod
      type(var_desc_t) :: vardesc    ! netCDF variable description
      character(len=*),parameter :: subname='(WRM_readDemand)'
 
+     !JY! added for forpy test
+
+     type(tuple) :: args
+
+
      if (ctlSubwWRM%ExtractionFlag > 0) then
 
         call get_curr_date(yr, mon, day, tod)
         write(iulog,'(2a,4i6)') subname,'at ',yr,mon,day,tod
-    
         write(strYear,'(I4.4)') yr
         write(strMonth,'(I2.2)') mon
+
+        !JY! added for forpy test
+        if (masterproc) then
+          call FORPY_init
+   
+          ierror = tuple_create(args,3)
+          write(iulog,*) 'JY tuple_create(args,3), ierror = ', ierror
+          ierror = args%setitem(0, strYear)
+          write(iulog,*) 'args%setitem(0, strYear) ', ierror
+          ierror = args%setitem(1, strMonth)
+          write(iulog,*) 'args%setitem(1, strMonth) ', ierror
+          ierror = args%setitem(2, trim(ctlSubwWRM%paraFile))
+          write(iulog,*) 'args%setitem(2, ctlSubwWRM%paraFile) ', ierror
+   
+          ierror = call_py_noret(forpy_pyomo, "calc_demand", args)
+          write(iulog,*) 'call_py_noret(forpy_pyomo, "calc_demand", args) ', ierror
+   
+          call args%destroy
+          write(iulog,*) 'args%destroy '
+        endif
+
         fname = trim(ctlSubwWRM%demandPath)// strYear//'_'//strMonth//'.nc'
 
         write(iulog,*) subname, ' reading ',trim(fname)

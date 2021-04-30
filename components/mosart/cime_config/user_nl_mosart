@@ -37,11 +37,6 @@ wrmflag = .true.
 externaldemandflag = 1
 
 !----------------------------------------------------------------------------------
-! set the path and prefix for the demand data
-!----------------------------------------------------------------------------------
-demandpath = '/pic/projects/im3/iwmm/input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_'
-
-!----------------------------------------------------------------------------------
 ! set the demand type, corresponding to the variable in the demand files [totalDemand / consDemand / etc. ]
 !----------------------------------------------------------------------------------
 demandvariablename = 'totalDemand'
