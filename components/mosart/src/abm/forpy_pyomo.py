@@ -36,7 +36,7 @@ def calc_demand(year, month, reservoir_file_path):
 
     import pyutilib.subprocess.GlobalData
     pyutilib.subprocess.GlobalData.DEFINE_SIGNAL_HANDLERS_DEFAULT = False
-    
+
     logging.info(sys.version_info)
     logging.info(pd.__version__)
     try:
@@ -171,8 +171,7 @@ def calc_demand(year, month, reservoir_file_path):
             farm_ids = range(53835) # total number of farm agents / nldas IDs
             with open(code_path+'/crop_ids_by_farm.p', 'rb') as fp:
                 crop_ids_by_farm = pickle.load(fp)
-            with open(code_path+'/crop_ids_by_farm_and_constraint.p', 'rb') as fp:
-                crop_ids_by_farm_and_constraint = pickle.load(fp)
+                crop_ids_by_farm_and_constraint = np.copy(crop_ids_by_farm)
             with open(code_path+'/max_land_constr_20201102_protocol2.p', 'rb') as fp:
                 land_constraints_by_farm = pickle.load(fp)
 
