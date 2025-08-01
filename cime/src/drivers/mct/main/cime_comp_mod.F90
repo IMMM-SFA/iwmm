@@ -1582,7 +1582,7 @@ contains
     lnd_c2_iac = .false.
 
     if (atm_present) then
-       if (lnd_prognostic) atm_c2_lnd = .true.
+       if (lnd_present) atm_c2_lnd = .true.
        if (rof_prognostic) atm_c2_rof = .true.
        if (ocn_prognostic) atm_c2_ocn = .true.
        if (ocn_present   ) atm_c2_ocn = .true. ! needed for aoflux calc if aoflux=ocn

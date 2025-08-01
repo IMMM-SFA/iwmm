@@ -18,5 +18,10 @@
     <alias>mosart_heat_2</alias>
     <lname>2000_DATM%HEAT_DLND%HEAT_SICE_SOCN_MOSART_SGLC_SWAV</lname>
   </compset>
+  
+  <compset>
+    <alias>mosart_iwmm</alias>
+    <lname>2000_SATM_DLND%NLDAS_SICE_SOCN_MOSART_SGLC_SWAV</lname>
+  </compset>
 
 </compsets>
