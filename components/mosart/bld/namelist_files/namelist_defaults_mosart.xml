@@ -23,6 +23,10 @@ for the CLM data in the CESM distribution
 <sediflag>.false.</sediflag>
 <heatflag>.false.</heatflag>
 <thermpflag>.false.</thermpflag>
+<rstraflag>.false.</rstraflag>
+<rinittemp>283.15</rinittemp>
+<ngeom>50</ngeom>
+<nlayers>30</nlayers>
 <barrier_timers>.false.</barrier_timers>
 <RoutingMethod>1</RoutingMethod>
 <DLevelH2R>5</DLevelH2R>
@@ -42,7 +46,7 @@ for the CLM data in the CESM distribution
 
 <!-- WRM -->
 
-<paraFile rof_grid="NLDAS" >input_data/runoff/US_reservoir_8th_NLDAS3_updated_CERF_Livneh_naturalflow.nc</paraFile>
+<paraFile rof_grid="NLDAS" >input_data/runoff/US_reservoir_8th_NLDAS3_updated_20200421.nc</paraFile>
 <demandPath rof_grid="NLDAS" >input_data/demand/GCAM_waterdemand_nc/rcp8.5/RCP8.5_GCAM_water_demand_</demandPath> 
 <ExtractionFlag>1</ExtractionFlag>
 <ExtractionMainChannelFlag>1</ExtractionMainChannelFlag>

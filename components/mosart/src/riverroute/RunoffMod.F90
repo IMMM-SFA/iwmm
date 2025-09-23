@@ -440,12 +440,11 @@ module RunoffMod
       real(r8), pointer :: forc_wind(:)   ! atmospheric wind speed (m/s)
       real(r8), pointer :: forc_lwrad(:)  ! downward infrared (longwave) radiation (W/m**2)
       real(r8), pointer :: forc_solar(:)  ! atmospheric incident solar (shortwave) radiation (W/m**2)
-	  real(r8), pointer :: forc_rh(:)     ! relative humidity
-      
-       ! thermal effluent from thermo-electric power plant 
+      real(r8), pointer :: forc_rh(:)     ! relative humidity
+      ! thermal effluent from thermo-electric power plant 
       !! states
       real(r8), pointer :: Tp(:)          ! delta tempeature of TEPP thermal effluent T minus inlet T (K)
-           
+      real(r8), pointer :: coszen(:)      ! Cosine of Zenith angle (-)
       ! hillsloope
       !! states
       real(r8), pointer :: Tqsur(:)       ! temperature of surface runoff, [K]
